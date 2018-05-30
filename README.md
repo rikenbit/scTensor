@@ -5,9 +5,14 @@ Installation
 ======
 ~~~~
 git clone https://github.com/rikenbit/scTensor/
-cd scTensor
 R CMD INSTALL scTensor
 ~~~~
+or type the code below in the R console window
+~~~~
+library(devtools)
+devtools::install_github("rikenbit/scTensor")
+~~~~
+
 
 ## License
 Copyright (c) 2018 Koki Tsuyuzaki and Laboratory for Bioinformatics Research, RIKEN Center for Biosystems Dynamics Reseach
