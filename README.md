@@ -13,7 +13,6 @@ library(devtools)
 devtools::install_github("rikenbit/scTensor")
 ~~~~
 
-
 ## License
 Copyright (c) 2018 Koki Tsuyuzaki and Laboratory for Bioinformatics Research, RIKEN Center for Biosystems Dynamics Reseach
 Released under the [Artistic License 2.0](http://www.perlfoundation.org/artistic_license_2_0).
