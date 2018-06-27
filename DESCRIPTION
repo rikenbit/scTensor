@@ -1,0 +1,14 @@
+Package: scTensor
+Type: Package
+Title: Detection and visualization of cell-cell interaction within single-cell RNA-Seq data
+Version: 0.99.0
+Date: 2018-06-18
+Author: Koki Tsuyuzaki
+Maintainer: Koki Tsuyuzaki <k.t.the-answer@hotmail.co.jp>
+Depends: R (>= 3.5.0)
+Imports: methods, igraph, S4Vectors, plotly, AnnotationDbi, reactome.db, SummarizedExperiment, SingleCellExperiment, nnTensor, rTensor, LRBaseDbi, abind, plotrix, heatmaply, tagcloud, RColorBrewer, rmarkdown, BiocStyle, knitr, biomaRt, MeSH.Hsa.eg.db, MeSH.Mmu.eg.db, MeSH.Ath.eg.db, MeSH.Rno.eg.db, MeSH.Bta.eg.db, MeSH.Cel.eg.db, MeSH.Dme.eg.db, MeSH.Dre.eg.db, MeSH.Gga.eg.db, MeSH.Pab.eg.db, MeSH.Xtr.eg.db, MeSH.Ssc.eg.db, MeSHDbi, grDevices, graphics, stats, utils
+Suggests: testthat, RSQLite, LRBase.Hsa.eg.db
+Description: The algorithm is based on non-negative tucker decomposition (NTD) of nnTensor.
+License: Artistic-2.0
+biocViews: DimensionReduction, SingleCell
+VignetteBuilder: knitr
