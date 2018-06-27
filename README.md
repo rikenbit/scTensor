@@ -2,7 +2,7 @@
  R package for detection of cell-cell interaction using Non-negative Tensor Decomposition
 
 
-Installation Dependent Packages
+Installation of Dependent Packages
 ======
 ~~~~
 install.packages("igraph", repos="http://cran.r-project.org")
