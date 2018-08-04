@@ -22,6 +22,7 @@
         intersect(rownames(input), LR$GENEID_R)), ])
     return(list(input_L, input_R))
 }
+
 .cellCellReconst <- function(A1, A2, A3, index,
     type="matrix", names, collapse=FALSE){
     if(type == "matrix"){
@@ -515,7 +516,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         94.1, 93.1, 92.3, 91.7, 91.2, 90.7)[max(l, r)]
 }
 
-.smallTwoDplot <- function(input, geneid, twoD, color){
+.smallTwoDplot <- function(input, geneid, genename, twoD, color){
     target <- which(rownames(input) == geneid)
     exp <- log10(input[target, ]+1)
     label <- smoothPalette(exp,
@@ -524,7 +525,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     par(ps=25)
     par(oma=c(2,2,2,2))
     plot(twoD, col=label, pch=16, cex=3, bty="n", xaxt="n", yaxt="n",
-        xlab="", ylab="", main=geneid)
+        xlab="", ylab="", main=genename)
     # Gradient
     xleft=19
     ybottom=-5
@@ -597,7 +598,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         cat(paste0("Related MeSH IDs are retrieved from ",
             "MeSH.XXX.eg.db-type package...\n"))
         MeSHobj <- eval(parse(text=gsub("LRBase", "MeSH",
-            LRBaseDbi::packageName(metadata(sce)$lrbase))))
+            LRBaseDbi::lrPackageName(metadata(sce)$lrbase))))
         MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
             keytype="GENEID",
             keys=targetGeneID)
@@ -624,17 +625,17 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         Reactome=Reactome, MeSH=MeSH)
 }
 
+## helper for vector dividing
 .div <- function(x, d=1) {
-    y <- list()
     delta <- ceiling(length(x) / d)
-    for(i in seq_len(d)){
-    y[[i]] <- as.vector(na.omit(x[((i-1)*delta+1):(i*delta)]))
-    }
+    y <- lapply(seq_len(d), function(i){
+        as.vector(na.omit(x[((i-1)*delta+1):(i*delta)]))
+    })
     return(y)
 }
 
 .hyperLinks <- function(Ranking, XYZ, LigandGeneID, ReceptorGeneID,
-    LR, Value, Percentage, j, spc, GeneInfo){
+    LR, Value, Percentage, j, spc, GeneInfo, pvalue, qvalue){
     # Ranking
     XYZ <- paste0(XYZ, "|", Ranking, "|")
     # Gene Name (Ligand)
@@ -812,7 +813,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         PubMed = ""
     }
 
-    # Embed
+    # Embedding
     if(spc != "Pab"){
         XYZ <- paste0(XYZ,
             "[", GeneName_L,
@@ -879,6 +880,60 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         "![](figures/Ligand_", LigandGeneID, ".png)", "|",
         "![](figures/Receptor_", ReceptorGeneID, ".png)", "|",
         round(Value[j], 3), " (", round(Percentage[j], 3), "%)",
+        "|", round(pvalue, 3),
+        "|", round(qvalue, 3),
         "|", PubMed, "|\n")
     XYZ
+}
+
+.HCLUST <- function(x){
+    out <- hclust(dist(x), method="ward.D")
+    cluster <- cutree(out, 2)
+    max1 <- max(x[which(cluster == 1)])
+    max2 <- max(x[which(cluster == 2)])
+    if(max1 > max2){
+        cluster[which(cluster == 1)] <- "selected"
+        cluster[which(cluster == 2)] <- "not selected"
+    }else{
+        cluster[which(cluster == 1)] <- "not selected"
+        cluster[which(cluster == 2)] <- "selected"
+    }
+    cluster
+}
+
+.OUTLIERS <- function(x, method="grubbs"){
+  ranking = length(x) - rank(x) + 1
+  sapply(ranking, function(thr){
+    remain = which(ranking > thr)
+    if(length(remain) > 2){
+      if(method == "grubbs"){
+        grubbs.test(x[remain])$p
+      }else if(method == "chisq"){
+        chisq.out.test(x[remain])$p
+      }
+    }else{
+      1
+    }
+  })
+}
+
+.shrink <- function(x){
+    block <- strsplit(x , " & ")[[1]]
+    l <- length(block)
+    nc <- sapply(block, nchar)
+    if(l >= 2){
+        out <- block[1]
+        for(i in 2:l){
+            end <- length(out)
+            tmp <- block[i]
+            if(nchar(out[end])+nchar(tmp) <= 45){
+              out[end] <- paste(c(out[end], tmp), collapse=" & ")
+            }else{
+              out[end+1] <- tmp
+            }
+        }
+    paste(out, collapse="\n")
+    }else{
+        x
+    }
 }

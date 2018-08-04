@@ -164,17 +164,17 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=1){
+    author="The person who runs this script", thr=80, top="full"){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
-    function(sce, reducedDimNames, out.dir, html.open, title, author, thr){
+    function(sce, reducedDimNames, out.dir, html.open, title, author, thr, top){
         userobjects <- deparse(substitute(sce))
         .cellCellReport(userobjects, reducedDimNames, out.dir,
-            html.open, title, author, thr)})
+            html.open, title, author, thr, top)})
 .cellCellReport <- function(userobjects, reducedDimNames,
     out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=1){
+    author="The person who runs this script", thr=80, top="full"){
     # Import from sce object
     sce <- eval(parse(text=userobjects))
     # class-check
@@ -208,7 +208,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         keytype="GENEID_L",
         keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
     # Species
-    lrname <- LRBaseDbi::packageName(metadata(sce)$lrbase)
+    lrname <- LRBaseDbi::lrPackageName(metadata(sce)$lrbase)
     spc <- substr(lrname, nchar(lrname) - 8, nchar(lrname))
     spc <- gsub(".eg.db", "", spc)
 
@@ -225,7 +225,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     corevalue <- index[, "Value"]
     corevalue <- corevalue / sum(corevalue) * 100
     # Thresholding of the elements of core tensor
-    selected <- which(corevalue > thr)
+    selected <- which(cumsum(corevalue) <= thr)
     if(length(selected) == 0){
         message(paste0("None of core tensor element is selected.\n",
         "Please specify the larger thr or perform cellCellDecomp\n",
@@ -253,51 +253,73 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         for(i in seq_along(rmdfiles)){
             cat(paste0(rmdfiles[i],
                 " is created...(", i, " / ", length(rmdfiles), ")\n"))
-            # Save Rmd
-            ranking <- ncol(metadata(sce)$sctensor$ppi) -
-                base::rank(metadata(sce)$sctensor$ppi[index[i,3], ])
-            target <- sapply(seq_len(100), function(x){
-                which(ranking == x)[1]
-                })
+            # LR-Pair vector
+            vec <- metadata(sce)$sctensor$ppi[index[i,3], ]
+            # Clustering
+            cluster <- .HCLUST(vec)
+            # p-value
+            pvalue <- .OUTLIERS(log10(vec+1))
+            # q-value
+            qvalue <- p.adjust(pvalue, "BH")
+            # Target
+            target <- which(cluster == "selected")
+#            top = 10
+            if(top == "full"){
+                target <- target[order(vec[target], decreasing=TRUE)]
+            }else{
+                if(0 <= top && top<=length(target)){
+                    target <- target[order(vec[target], decreasing=TRUE) <= top]
+                }else{
+                    stop(paste0("Please specify the top as a number (0 to ", length(vec), ")"))
+                }
+            }
+
             Value <- metadata(sce)$sctensor$ppi[index[i,3], target]
-            Percentage <- Value /
-                sum(metadata(sce)$sctensor$ppi[index[i,3], ]) * 100
+            Percentage <- Value / sum(vec) * 100
             # Header Row
             XYZ <- paste0("# Details of (",
                 paste(index[i, seq_len(3)], collapse=","),
-                ") Pattern (Top100 LR-pairs)\n\n",
+                ") Pattern (Top",
+                length(target),
+                " LR-pairs)\n\n",
                 "## (", paste(index[i, seq_len(2)], collapse=","),
                 ",\\*) Pattern\n\n",
                 "![](figures/LRNetwork_",
                 paste(index[i, seq_len(2)], collapse="_"), ".png)\n\n",
                 "## (\\*,\\*,", index[i, 3], ") Pattern\n\n",
                 "|Rank|Ligand Gene|Receptor Gene|",
-                "Ligand Expression in each cell (Log10(Exp+1))|",
-                "Receptor Expression in each cell (Log10(Exp+1))|",
+                "Ligand Expression (Log10(Exp+1))|",
+                "Receptor Expression (Log10(Exp+1))|",
                 "LR-pair factor value (Percentage)|",
+                "P-value (Grubbs test)|",
+                "Q-value (BH method)|",
                 "PubMed|\n",
-                "|----|----|----|----|----|----|----|\n")
+                "|----|----|----|----|----|----|----|----|----|\n")
 
             for(j in seq_along(target)){
                 Ranking <- j
                 L_R <- strsplit(colnames(metadata(sce)$sctensor$ppi)[j], "_")
                 LigandGeneID <- L_R[[1]][1]
                 ReceptorGeneID <- L_R[[1]][2]
+                GeneName <- GeneInfo$GeneName
+                LigandGeneName <- GeneName[which(GeneName[,2] == LigandGeneID), 1]
+                ReceptorGeneName <- GeneName[which(GeneName[,2] == ReceptorGeneID), 1]
+
                 # Embed Hyper Link
                 XYZ <- .hyperLinks(Ranking, XYZ, LigandGeneID,
                     ReceptorGeneID, LR, Value, Percentage, j,
-                    spc, GeneInfo)
+                    spc, GeneInfo, pvalue[target[j]], qvalue[target[j]])
 
                 # Plot (Ligand/Receptor)
                 Ligandfile <- paste0(temp, "/figures/Ligand_",
                     LigandGeneID, ".png")
                 png(filename=Ligandfile, width=1000, height=1000)
-                .smallTwoDplot(input, LigandGeneID, twoD, "Reds")
+                .smallTwoDplot(input, LigandGeneID, LigandGeneName, twoD, "Reds")
                 dev.off()
                 Receptorfile <- paste0(temp, "/figures/Receptor_",
                     ReceptorGeneID, ".png")
                 png(filename=Receptorfile, width=1000, height=1000)
-                .smallTwoDplot(input, ReceptorGeneID, twoD, "Blues")
+                .smallTwoDplot(input, ReceptorGeneID, ReceptorGeneName, twoD, "Blues")
                 dev.off()
             }
             # Write to Rmd
@@ -323,37 +345,51 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         }
     }
     # Number of Patterns
-    numLPattern <- nrow(metadata(sce)$sctensor$ligand)
-    numRPattern <- nrow(metadata(sce)$sctensor$receptor)
+    vecL <- metadata(sce)$sctensor$ligand
+    vecR <- metadata(sce)$sctensor$receptor
+    numLPattern <- nrow(vecL)
+    numRPattern <- nrow(vecR)
     col.ligand <- brewer.pal(9, "Reds")
     col.receptor <- brewer.pal(9, "Blues")
 
+    # Clustering
+    ClusterL <- t(apply(vecL, 1, .HCLUST))
+    ClusterR <- t(apply(vecR, 1, .HCLUST))
+
+    # Ligand Pattern
     for(i in seq_len(numLPattern)){
         label.ligand <- unlist(sapply(names(celltypes),
             function(x){
                 metadata(sce)$sctensor$ligand[paste0("Dim", i), x]}))
         label.ligand[] <- smoothPalette(label.ligand,
             palfunc=colorRampPalette(col.ligand, alpha=TRUE))
-        LPatternfile = paste0(temp, "/figures/Pattern_", i, "__", ".png")
+        ClusterName <- paste(names(which(ClusterL[i,] == "selected")), collapse=" & ")
+        titleL <- paste0("(", i, ",*,*)-Pattern", " = ", ClusterName)
+        titleL <- .shrink(titleL)
+        LPatternfile <- paste0(temp, "/figures/Pattern_", i, "__", ".png")
         png(filename=LPatternfile, width=1000, height=1000)
         par(ps=20)
         plot(twoD, col=label.ligand, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",
-            main=paste0("(", i, ",*,*)-Pattern"))
+            main=titleL)
         dev.off()
     }
 
+    # Receptor Pattern
     for(i in seq_len(numRPattern)){
         label.receptor <- unlist(sapply(names(celltypes),
             function(x){metadata(sce)$sctensor$receptor[paste0("Dim", i), x]}))
         label.receptor[] <- smoothPalette(label.receptor,
             palfunc=colorRampPalette(col.receptor, alpha=TRUE))
+        ClusterName <- paste(names(which(ClusterR[i,] == "selected")), collapse=" & ")
+        titleR <- paste0("(*,", i, ",*)-Pattern", " = ", ClusterName)
+        titleR <- .shrink(titleR)
         RPatternfile = paste0(temp, "/figures/Pattern__", i, "_", ".png")
         png(filename=RPatternfile, width=1000, height=1000)
         par(ps=20)
         plot(twoD, col=label.receptor, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",
-            main=paste0("(*,", i, ",*)-Pattern"))
+            main=titleR)
         dev.off()
     }
 

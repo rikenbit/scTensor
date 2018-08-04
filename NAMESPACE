@@ -37,5 +37,6 @@ importFrom(grDevices, colorRampPalette, dev.off, png, rgb)
 importFrom(graphics, par, plot, text)
 importFrom(stats, cor, dist, na.omit, quantile)
 importFrom(utils, browseURL)
+importFrom(outliers, grubbs.test, chisq.out.test)
 
 exportMethods(cellCellSetting, cellCellDecomp, cellCellReport)
