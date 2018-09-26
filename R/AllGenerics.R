@@ -35,24 +35,73 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
 }
 
 #
+# cellCellRanks
+#
+setGeneric("cellCellRanks", function(sce, centering=TRUE, mergeas="mean", outer="*", comb="random", num.sampling=100, ftt=TRUE, thr1=0.8, thr2=0.8, thr3=0.8){
+    standardGeneric("cellCellRanks")})
+setMethod("cellCellRanks",
+    signature(sce="SingleCellExperiment"),
+    function(sce, centering, mergeas, outer, comb, num.sampling, ftt, thr1, thr2, thr3){
+        userobjects <- deparse(substitute(sce))
+        .cellCellRanks(userobjects, centering, mergeas, outer, comb, num.sampling, ftt, thr1, thr2, thr3)
+    })
+
+.cellCellRanks <- function(userobjects, centering, mergeas, outer, comb, num.sampling, ftt, thr1, thr2, thr3){
+    # Import from sce object
+    sce <- eval(parse(text=userobjects))
+    if(ftt){
+        input <- .FTT(assay(sce))
+    }else{
+        input <- assay(sce)
+    }
+    LR <- LRBaseDbi::select(metadata(sce)$lrbase,
+        columns=c("GENEID_L", "GENEID_R"),
+        keytype="GENEID_L",
+        keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
+    celltypes <- metadata(sce)$color
+    names(celltypes) <- metadata(sce)$label
+
+
+    # Tensor is generated, and then matricised
+    tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(3,3,3), centering, mergeas, outer, comb, num.sampling, decomp=FALSE)$cellcelllrpairpattern
+    d1 <- svd(rs_unfold(tnsr, m=1)@data)$d
+    d2 <- svd(rs_unfold(tnsr, m=2)@data)$d
+    d3 <- svd(rs_unfold(tnsr, m=3)@data)$d
+    cumd1 <- cumsum(d1) / sum(d1)
+    cumd2 <- cumsum(d2) / sum(d2)
+    cumd3 <- cumsum(d3) / sum(d3)
+    # Output
+    selected = c(
+        length(which(cumd1 <= thr1)),
+        length(which(cumd2 <= thr2)),
+        length(which(cumd3 <= thr3))
+        )
+
+    list(selected=selected,
+        mode1=d1,
+        mode2=d2,
+        mode3=d3)
+}
+
+#
 # cellCellDecomp
 #
-setGeneric("cellCellDecomp", function(sce, algorithm="ntd", ranks=c(3,3,3),
-    rank=3, thr1=log2(5), thr2=25, centering=TRUE, mergeas="sum",
-    outer="+", comb="random", num.sampling=100, decomp=TRUE){
+setGeneric("cellCellDecomp", function(sce, algorithm="ntd", ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25, centering=TRUE, mergeas="mean", outer="*", comb="random", num.sampling=100, decomp=TRUE, ftt=TRUE){
     standardGeneric("cellCellDecomp")})
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     function(sce, algorithm, ranks, rank, thr1, thr2, centering,
-        mergeas, outer, comb, num.sampling, decomp){
+        mergeas, outer, comb, num.sampling, decomp, ftt){
         userobjects <- deparse(substitute(sce))
-        .cellCellDecomp(userobjects, algorithm, ranks, rank, thr1, thr2,
-            centering, mergeas, outer, comb, num.sampling, decomp)})
+        .cellCellDecomp(userobjects, algorithm, ranks, rank, thr1, thr2, centering, mergeas, outer, comb, num.sampling, decomp, ftt)})
 
-.cellCellDecomp <- function(userobjects, algorithm, ranks, rank, thr1, thr2,
-    centering, mergeas, outer, comb, num.sampling, decomp){
+.cellCellDecomp <- function(userobjects, algorithm, ranks, rank, thr1, thr2, centering, mergeas, outer, comb, num.sampling, decomp, ftt){
     # Import from sce object
     sce <- eval(parse(text=userobjects))
-    input <- assay(sce)
+    if(ftt){
+        input <- .FTT(assay(sce))
+    }else{
+        input <- assay(sce)
+    }
     LR <- LRBaseDbi::select(metadata(sce)$lrbase,
         columns=c("GENEID_L", "GENEID_R"),
         keytype="GENEID_L",
@@ -117,8 +166,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     }
     # 3-Order = NTD
     if(algorithm == "ntd"){
-        res.sctensor <- .cellCellDecomp.Third(input, LR, celltypes, ranks,
-            centering, mergeas, outer, comb, num.sampling, decomp)
+        res.sctensor <- .cellCellDecomp.Third(input, LR, celltypes, ranks, centering, mergeas, outer, comb, num.sampling, decomp)
     }
     # 2-Order = NMF
     else if(algorithm == "nmf"){
@@ -164,17 +212,17 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=80, top="full"){
+    author="The person who runs this script", thr=80, top="full", cl=NULL){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
-    function(sce, reducedDimNames, out.dir, html.open, title, author, thr, top){
+    function(sce, reducedDimNames, out.dir, html.open, title, author, thr, top, cl){
         userobjects <- deparse(substitute(sce))
         .cellCellReport(userobjects, reducedDimNames, out.dir,
-            html.open, title, author, thr, top)})
+            html.open, title, author, thr, top, cl)})
 .cellCellReport <- function(userobjects, reducedDimNames,
     out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=80, top="full"){
+    author="The person who runs this script", thr=80, top="full", cl=NULL){
     # Import from sce object
     sce <- eval(parse(text=userobjects))
     # class-check
@@ -234,116 +282,111 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     names(corevalue) <- c(rep("selected", length=length(selected)),
         rep("not selected",
         length=length(corevalue) - length(selected)))
-    # Save the result of scTensor
-    save(sce, input, twoD, LR, celltypes, index, corevalue, selected,
-        file=paste0(out.dir, "/reanalysis.RData"))
 
     # Tempolary Directory for saving the analytical result
     temp <- tempdir()
     dir.create(paste0(temp, "/figures"),
         showWarnings = FALSE, recursive = TRUE)
-    dir.create(paste0(out.dir, "/figures"),
-        showWarnings = FALSE, recursive = TRUE)
 
     # Table
     if(length(selected) != 0){
-        rmdfiles <- paste0("pattern",
-            apply(index[selected, seq_len(3)], 1,
-                function(x){paste(x, collapse="_")}), ".Rmd")
-        for(i in seq_along(rmdfiles)){
-            cat(paste0(rmdfiles[i],
-                " is created...(", i, " / ", length(rmdfiles), ")\n"))
-            # LR-Pair vector
-            vec <- metadata(sce)$sctensor$ppi[index[i,3], ]
-            # Clustering
-            cluster <- .HCLUST(vec)
-            # p-value
-            pvalue <- .OUTLIERS(log10(vec+1))
-            # q-value
-            qvalue <- p.adjust(pvalue, "BH")
-            # Target
-            target <- which(cluster == "selected")
-#            top = 10
-            if(top == "full"){
-                target <- target[order(vec[target], decreasing=TRUE)]
-            }else{
-                if(0 <= top && top<=length(target)){
-                    target <- target[order(vec[target], decreasing=TRUE) <= top]
-                }else{
-                    stop(paste0("Please specify the top as a number (0 to ", length(vec), ")"))
-                }
-            }
-
-            Value <- metadata(sce)$sctensor$ppi[index[i,3], target]
-            Percentage <- Value / sum(vec) * 100
-            # Header Row
-            XYZ <- paste0("# Details of (",
-                paste(index[i, seq_len(3)], collapse=","),
-                ") Pattern (Top",
-                length(target),
-                " LR-pairs)\n\n",
-                "## (", paste(index[i, seq_len(2)], collapse=","),
-                ",\\*) Pattern\n\n",
-                "![](figures/LRNetwork_",
-                paste(index[i, seq_len(2)], collapse="_"), ".png)\n\n",
-                "## (\\*,\\*,", index[i, 3], ") Pattern\n\n",
-                "|Rank|Ligand Gene|Receptor Gene|",
-                "Ligand Expression (Log10(Exp+1))|",
-                "Receptor Expression (Log10(Exp+1))|",
-                "LR-pair factor value (Percentage)|",
-                "P-value (Grubbs test)|",
-                "Q-value (BH method)|",
-                "PubMed|\n",
-                "|----|----|----|----|----|----|----|----|----|\n")
-
-            for(j in seq_along(target)){
-                Ranking <- j
-                L_R <- strsplit(colnames(metadata(sce)$sctensor$ppi)[j], "_")
-                LigandGeneID <- L_R[[1]][1]
-                ReceptorGeneID <- L_R[[1]][2]
-                GeneName <- GeneInfo$GeneName
-                LigandGeneName <- GeneName[which(GeneName[,2] == LigandGeneID), 1]
-                ReceptorGeneName <- GeneName[which(GeneName[,2] == ReceptorGeneID), 1]
-
-                # Embed Hyper Link
-                XYZ <- .hyperLinks(Ranking, XYZ, LigandGeneID,
-                    ReceptorGeneID, LR, Value, Percentage, j,
-                    spc, GeneInfo, pvalue[target[j]], qvalue[target[j]])
-
-                # Plot (Ligand/Receptor)
-                Ligandfile <- paste0(temp, "/figures/Ligand_",
-                    LigandGeneID, ".png")
-                png(filename=Ligandfile, width=1000, height=1000)
-                .smallTwoDplot(input, LigandGeneID, LigandGeneName, twoD, "Reds")
-                dev.off()
-                Receptorfile <- paste0(temp, "/figures/Receptor_",
-                    ReceptorGeneID, ".png")
-                png(filename=Receptorfile, width=1000, height=1000)
-                .smallTwoDplot(input, ReceptorGeneID, ReceptorGeneName, twoD, "Blues")
-                dev.off()
-            }
-            # Write to Rmd
-            sink(file = paste0(temp, "/", rmdfiles[i]))
-            cat(XYZ)
-            sink()
-        }
-    }
-
-    # Plot (Mode-sum)
-    png(filename=paste0(temp, "/figures/LRNetwork.png"), width=2000, height=950)
-    .lrPlot(metadata(sce)$sctensor, twoDplot=twoD, label=celltypes)
-    dev.off()
-    # Plot (Each <L,R,*>)
-    if(length(selected) != 0){
-        for(i in seq_along(selected)){
-            filenames <- paste0(temp, "/figures/LRNetwork_", index[i, 1],
+        # Plot (Each <L,R,*>)
+        sapply(seq_along(selected), function(i){
+            filenames <- paste0(temp,
+                "/figures/CCIHypergraph_", index[i, 1],
                 "_", index[i, 2], ".png")
             png(filename=filenames, width=2000, height=950)
-            .lrPlot(metadata(sce)$sctensor, twoDplot=twoD, label=celltypes,
+            .CCIhyperGraphPlot(metadata(sce)$sctensor,
+                twoDplot=twoD,
+                label=celltypes,
                 emph=index[i, seq_len(2)])
             dev.off()
+        })
+        SelectedLR <- sort(unique(index[selected, "Mode3"]))
+
+        # Setting for Parallel Computing
+        cat(paste0(length(SelectedLR),
+            " LR vectors will be calculated :\n"))
+        e <<- new.env()
+        e$index <- index
+        e$sce <- sce
+        e$.HCLUST <- .HCLUST
+        e$.OUTLIERS <- .OUTLIERS
+        e$top <- top
+        e$spc <- spc
+        e$.sapply_pb <- .sapply_pb
+        e$GeneInfo <- GeneInfo
+        e$temp <- temp
+        e$.smallTwoDplot <- .smallTwoDplot
+        e$input <- input
+        e$twoD <- twoD
+        e$.hyperLinks <- .hyperLinks
+        e$LR <- LR
+        e$.eachVecLR <- .eachVecLR
+        e$.eachRender <- .eachRender
+        e$.ENRICHMENT <- .ENRICHMENT
+        e$.XYZ_HEADER1 <- .XYZ_HEADER1
+        e$.XYZ_HEADER2 <- .XYZ_HEADER2
+        e$.XYZ_HEADER3 <- .XYZ_HEADER3
+        e$.XYZ_ENRICH <- .XYZ_ENRICH
+
+        if (!is.null(cl)) {
+            ############ Parallel ############
+            # Package Loading in each node
+            invisible(clusterEvalQ(cl, {
+                library("outliers")
+                library("S4Vectors")
+                library("tagcloud")
+                library("RColorBrewer")
+                library("plotrix")
+                library("plotly")
+                library("rmarkdown")
+                library("meshr")
+                library("GOstats")
+                library("ReactomePA")
+            }))
+            clusterExport(cl, "e")
+            out.vecLR <- parSapply(cl, SelectedLR,
+                function(x, e){.eachVecLR(x, e)}, e=e)
+            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
+            e$out.vecLR <- out.vecLR
+            clusterExport(cl, "e")
+            ############ Parallel ############
+        }else{
+            out.vecLR <- sapply(SelectedLR,
+                function(x, e){.eachVecLR(x, e)}, e=e)
+            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
+            e$out.vecLR <- out.vecLR
         }
     }
+
+    # Tagcloud
+    invisible(.tagCloud(out.vecLR, temp))
+
+    # Plot（CCI Hypergraph）
+    png(filename=paste0(temp, "/figures/CCIHypergraph.png"), width=2000, height=950)
+    .CCIhyperGraphPlot(metadata(sce)$sctensor, twoDplot=twoD, label=celltypes)
+    dev.off()
+
+    # Plot（Gene-wise Hypergraph）
+    .geneHyperGraphPlot(out.vecLR, GeneInfo, temp)
+
+    # Rmd（ligand）
+    cat("ligand.Rmd is created...\n")
+    sink(file = paste0(temp, "/ligand.Rmd"))
+    cat(.LIGAND_HEADER)
+    cat(paste0(.LIGAND_BODY(out.vecLR, GeneInfo, index, selected)
+        , "\n"))
+    sink()
+
+    # Rmd（receptor）
+    cat("receptor.Rmd is created...\n")
+    sink(file = paste0(temp, "/receptor.Rmd"))
+    cat(.RECEPTOR_HEADER)
+    cat(paste0(.RECEPTOR_BODY(out.vecLR, GeneInfo, index, selected)
+        , "\n"))
+    sink()
+
     # Number of Patterns
     vecL <- metadata(sce)$sctensor$ligand
     vecR <- metadata(sce)$sctensor$receptor
@@ -351,20 +394,19 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     numRPattern <- nrow(vecR)
     col.ligand <- brewer.pal(9, "Reds")
     col.receptor <- brewer.pal(9, "Blues")
-
     # Clustering
     ClusterL <- t(apply(vecL, 1, .HCLUST))
     ClusterR <- t(apply(vecR, 1, .HCLUST))
 
     # Ligand Pattern
-    for(i in seq_len(numLPattern)){
+    sapply(seq_len(numLPattern), function(i){
         label.ligand <- unlist(sapply(names(celltypes),
             function(x){
                 metadata(sce)$sctensor$ligand[paste0("Dim", i), x]}))
         label.ligand[] <- smoothPalette(label.ligand,
             palfunc=colorRampPalette(col.ligand, alpha=TRUE))
-        ClusterName <- paste(names(which(ClusterL[i,] == "selected")), collapse=" & ")
-        titleL <- paste0("(", i, ",*,*)-Pattern", " = ", ClusterName)
+        ClusterNameL <- paste(names(which(ClusterL[i,] == "selected")), collapse=" & ")
+        titleL <- paste0("(", i, ",*,*)-Pattern", " = ", ClusterNameL)
         titleL <- .shrink(titleL)
         LPatternfile <- paste0(temp, "/figures/Pattern_", i, "__", ".png")
         png(filename=LPatternfile, width=1000, height=1000)
@@ -373,16 +415,16 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             xaxt="n", yaxt="n", xlab="", ylab="",
             main=titleL)
         dev.off()
-    }
+    })
 
     # Receptor Pattern
-    for(i in seq_len(numRPattern)){
+    sapply(seq_len(numRPattern), function(i){
         label.receptor <- unlist(sapply(names(celltypes),
             function(x){metadata(sce)$sctensor$receptor[paste0("Dim", i), x]}))
         label.receptor[] <- smoothPalette(label.receptor,
             palfunc=colorRampPalette(col.receptor, alpha=TRUE))
-        ClusterName <- paste(names(which(ClusterR[i,] == "selected")), collapse=" & ")
-        titleR <- paste0("(*,", i, ",*)-Pattern", " = ", ClusterName)
+        ClusterNameR <- paste(names(which(ClusterR[i,] == "selected")), collapse=" & ")
+        titleR <- paste0("(*,", i, ",*)-Pattern", " = ", ClusterNameR)
         titleR <- .shrink(titleR)
         RPatternfile = paste0(temp, "/figures/Pattern__", i, "_", ".png")
         png(filename=RPatternfile, width=1000, height=1000)
@@ -391,329 +433,81 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             xaxt="n", yaxt="n", xlab="", ylab="",
             main=titleR)
         dev.off()
-    }
+    })
 
-    # Header
-    HEADER <- paste0("---\ntitle: XXXXX\n",
-        "author: YYYYY\ndate:",
-        " \"`r Sys.time()`\"\n",
-        "output: ",
-        "BiocStyle::html_document\nvignette: >\n ",
-        "%\\VignetteIndexEntry{Vignette Title}\n ",
-        "%\\VignetteEngine{knitr::rmarkdown}\n ",
-        "%\\VignetteEncoding{UTF-8}\n---\n")
-    HEADER <- sub("YYYYY", author, sub("XXXXX", title, HEADER))
+    # Save the result of scTensor
+    save(sce, input, twoD, LR, celltypes, index, corevalue,
+        selected, ClusterL, ClusterR, out.vecLR,
+        file=paste0(temp, "/reanalysis.RData"))
 
-    # 1. About Dataset and scTensor Algorithm
-    BODY1 <- paste0("\n\n# About scTensor Algorithm\n\n",
-        "![](Algorithm.png)\n",
-        "[scTensor](https://bioconductor.org/packages/release/",
-        "bioc/html/scTensor.html) is the R/Bioconductor package",
-        " for visualization of cell-cell interaction within ",
-        "single-cell RNA-Seq data. ",
-        "The calculation consists of several steps.\n\n",
-        "Firstly, [LRBase.XXX.eg.db](https://bioconductor.org/",
-        "packages/release/bioc/html/LRBase.Hsa.eg.db.html)-type",
-        " package is loaded for retriving ligand-receptor gene ",
-        "relationship (XXX is the abbreviation of some organisms ",
-        "like \"Hsa\" as Homo sapiens). ",
-        "scTensor searches the corresponding pair of genes in the ",
-        "rownames of input data matrix and extracted as vector. ",
-        "In this step, the gene identifier is limited as [NCBI ",
-        "Gene ID](https://www.ncbi.nlm.nih.gov/gene) for now.\n\n",
-        "Next, the all elements of extracted two vectors are summed ",
-        "up with all possible combination (Kronecker sum) and summarized",
-        " as a matrix. ",
-        "Here, the multiple matrices can be represented as a three-order",
-        " \"tensor\" (Ligand-Cell * Receptor-Cell * LR-Pair). ",
-        "scTensor decomposes the tensor into a small tensor (core tensor)",
-        " and three factor matrices. ",
-        "Tensor decomposition is very similar to the matrix decomposition",
-        " like PCA (principal component analysis). ",
-        "The core tensor is similar to eigenvalue of PCA and means how",
-        " much the pattern is outstanding. ",
-        "Likewise, three matrices is similar to the PC scores and ",
-        "loadings of PCA and represents which ligand-cell/receptor-cell",
-        "/LR-pair are informative. ",
-        "When the matrices have negative values, distinguishing that ",
-        "which direction (+/-) is important and which is not, is ",
-        "difficult to interpret and laboring task. ",
-        "That's why, scTensor performs non-negative Tucker ",
-        "decomposition (NTD), which is non-negative version ",
-        "of Tucker decomposition (c.f. [nnTensor]",
-        "(https://cran.r-project.org/package=nnTensor)). \n\n",
-        "Finaly, the result of NTD is summarized as this report. ",
-        "Most of plots belows are visualized by ",
-        "[plotly](https://plot.ly/r/) package and interactively ",
-        "search the presise information of the plot. ",
-        "The three factor matrices can be interactively viewed ",
-        "and which celltypes are responds to the cell-cell interaction.",
-        "The mode-3 (LR-pair) direction of sum of the core tensor ",
-        "is calculated and visualized as Ligand-Receptor Patterns. ",
-        "Detail of (Ligand-Cell, Receptor-Cell, LR-pair) Patterns ",
-        "are also visualized as below.\n\n",
-        "For more detail, visit the [vignette](https://bioconductor.org",
-        "/packages/devel/bioc/vignettes/scTensor/inst/doc/scTensor.html)",
-        " of [scTensor](https://bioconductor.org/",
-        "packages/release/bioc/html/scTensor.html)"
-        )
-
-    # 2. Global statistics and plots
-    BODY2 <- paste0("\n\n# Global statistics and plots\n\n",
-        "The result of scTensor is saved as a R binary file",
-        " (reanalysis.RData).\n",
-        "```{r}\n", # Top
-        "load(\"reanalysis.RData\")\n\n",
-        "# SingleCellExperiment object\n",
-        "sce\n",
-        "# Gene expression matrix\n",
-        "is(input)\n",
-        "dim(input)\n",
-        "input[seq_len(2), seq_len(2)]\n",
-        "# The result of 2D dimensional reduction (e.g. t-SNE)\n",
-        "is(twoD)\n",
-        "dim(twoD)\n",
-        "head(twoD)\n",
-        "# Ligand-Receptor corresponding table",
-        " extracted from LRBase.XXX.eg.db\n",
-        "is(LR)\n",
-        "dim(LR)\n",
-        "head(LR)\n",
-        "# Celltype label and color scheme\n",
-        "is(celltypes)\n",
-        "length(celltypes)\n",
-        "head(celltypes)\n",
-        "# Core tensor values\n",
-        "is(index)\n",
-        "dim(index)\n",
-        "head(index)\n",
-        "is(corevalue)\n",
-        "length(corevalue)\n",
-        "head(corevalue)\n",
-        "# Selected corevalue position with thr threshold \"thr\"\n",
-        "is(selected)\n",
-        "length(selected)\n",
-        "head(selected)\n",
-        "```\n\n", # Bottom
-        "\n\n## Number of cells in each celltype\n\n",
-        "```{r}\n", # Top
-        "color <- names(celltypes)\n",
-        "colors <- celltypes[sapply(unique(color), ",
-        "function(x){which(color == x)[1]})]\n",
-        "numcells <- sapply(names(colors), function(x){",
-        "length(which(color == x))",
-        "})\n",
-        "numcells <- data.frame(numcells=numcells, ",
-        "celltypes=names(numcells))\n\n",
-        "library(plotly)\n",
-        "plot_ly(numcells, x=~celltypes, y=~numcells, type=\"bar\", ",
-        "marker = list(color = colors))\n",
-        "```\n\n", # Bottom
-        "\n\n## Number of expressed genes in ",
-        "each celltype (Non-zero genes)\n\n",
-        "```{r}\n", # Top
-        "expgenes <- apply(input, 2, ",
-        "function(x){length(which(x != 0))})\n",
-        "expgenes <- data.frame(expgenes=expgenes, ",
-        "celltypes=names(celltypes))\n",
-        "plot_ly(expgenes, y=~expgenes, color=color, ",
-        "colors=colors, type=\"box\")\n",
-        "```\n\n", # Bottom
-        "\n\n## Two dimensional plot of all cells\n\n",
-        "```{r}\n", # Top
-        "plot_ly(x=twoD[,1], y=twoD[,2], ",
-        "color = color, ",
-        "colors = colors, ",
-        "type = \"scatter\",",
-        "text = rownames(twoD),",
-        "mode = \"markers\")\n",
-        "```\n\n", # Bottom
-        "\n\n## Distribution of core tensor values\n\n",
-        "```{r}\n", # Top
-        "corenames <- sapply(seq_len(nrow(index)), ",
-        "function(x){paste(index[x,seq_len(3)], collapse=\",\")})\n",
-        "plot_ly(x=seq_along(corevalue), y=corevalue, ",
-        "type=\"bar\", color=names(corevalue), text=corenames, ",
-        "colors = c(\"#999999\", \"#E41A1C\"))\n",
-        "```\n" # Bottom
-        )
-
-    # 3. L-Pattern
-    BODY3 <- paste0("\n\n# Ligand-Cell Patterns\n\n",
-        "```{r}\n", # Top
-        "library(\"heatmaply\")\n",
-        "l <- metadata(sce)$sctensor$ligand\n",
-        "rownames(l) <- paste0(\"(\",seq_len(nrow(l)), \",*,*)\")\n",
-        "heatmaply(l,",
-        "xlab=\"Celltype\",",
-        "ylab=\"Pattern\",",
-        "fontsize_col=20,",
-        "fontsize_row=20,",
-        "subplot_widths=c(0.7, 0.1),",
-        "subplot_heights=c(0.2, 0.7),",
-        "labRow = rownames(l),",
-        "labCol = colnames(l),",
-        ")\n",
-        "```\n" # Bottom
-        )
-    for(i in seq_len(numLPattern)){
-        BODY3 <- paste0(BODY3, "![](figures/Pattern_", i, "__.png)")
-    }
-    BODY3 <- paste0(BODY3, "\n")
-
-
-    # 4. R-Pattern
-    BODY4 <- paste0("\n\n# Receptor-Cell Patterns\n\n",
-        "```{r}\n", # Top
-        "r <- metadata(sce)$sctensor$receptor\n",
-        "rownames(r) <- paste0(\"(*,\",seq_len(nrow(r)), \",*)\")\n",
-        "heatmaply(r,",
-        "xlab=\"Celltype\",",
-        "ylab=\"Pattern\",",
-        "fontsize_col=20,",
-        "fontsize_row=20,",
-        "subplot_widths=c(0.7, 0.1),",
-        "subplot_heights=c(0.2, 0.7),",
-        "labRow = rownames(r),",
-        "labCol = colnames(r),",
-        ")\n",
-        "```\n" # Bottom
-        )
-    for(i in seq_len(numRPattern)){
-        BODY4 <- paste0(BODY4, "![](figures/Pattern__", i, "_.png)")
-    }
-    BODY4 <- paste0(BODY4, "\n")
-
-    # 5. LR-Pattern
-    BODY5 <- paste0("\n\n# LR-pair Patterns\n\n",
-        "```{r}\n", # Top
-        "lr <- metadata(sce)$sctensor$ppi\n",
-        "rownames(lr) <- paste0(\"(*,*,\",seq_len(nrow(lr)), \")\")\n",
-        "target <- which(rank(colMaxs(lr)) <= 100)\n",
-        "heatmaply(lr[, target],",
-        "xlab=\"LP-Pair\",",
-        "ylab=\"Pattern\",",
-        "fontsize_col=20,",
-        "fontsize_row=20,",
-        "subplot_widths=c(0.7, 0.1),",
-        "subplot_heights=c(0.2, 0.7),",
-        "labRow = rownames(lr[, target]),",
-        "labCol = colnames(lr[, target]),",
-        ")\n",
-        "```\n" # Bottom
-        )
-
-    # 6. Ligand-Receptor Pattern
-    BODY6 <- paste0("\n\n# Ligand-Receptor Patterns ",
-        "(Mode-3/LR-pair direction sum of core tensor)\n\n",
-        "![](figures/LRNetwork.png){ width=100% }\n")
-
-    # 7. (Ligand, Receptor, LR-pair)-Pattern
-    if(length(selected) != 0){
-        htmlfiles <- gsub("Rmd", "html", rmdfiles)
-        BODY7 <- selected
-        for (i in selected){
-            BODY7[i] <- paste0("\n\n## (", paste(index[i,seq_len(3)],
-                collapse=","),
-                ") Pattern : (", round(corevalue[i], 2), " %)\n",
-                "[Details of (", paste(index[i,seq_len(3)],
-                collapse=","),
-                ") Pattern", "](", htmlfiles[i], ")\n")
-        }
-        BODY7 <- paste(BODY7, collapse = "\n")
-        BODY7 <- paste0("# (Ligand-Cell, Receptor-Cell, LR-pair)",
-            " Patterns\n\n", BODY7)
+    # Rendering
+    cat("ligand.Rmd is compiled to index.html...\n")
+    render(paste0(temp, "/ligand.Rmd"), quiet=TRUE)
+    cat("receptor.Rmd is compiled to index.html...\n")
+    render(paste0(temp, "/receptor.Rmd"), quiet=TRUE)
+    if (!is.null(cl)) {
+        cat(paste0(length(selected),
+            " pattern_X_Y_Z.Rmd files will be created :\n"))
+        parSapply(cl, selected,
+            function(x, e, SelectedLR){.eachRender(x, e, SelectedLR)},
+            e=e, SelectedLR=SelectedLR)
     }else{
-        BODY7 <- "# (Ligand-Cell, Receptor-Cell, LR-pair) Patterns\n\n"
+        cat(paste0(length(selected),
+            " pattern_X_Y_Z.Rmd files will be created :\n"))
+        sapply(selected,
+            function(x, e, SelectedLR){.eachRender(x, e, SelectedLR)}, e=e, SelectedLR=SelectedLR)
     }
 
-    # 8. Session Information
-    BODY8 <- paste0("\n\n# Session Information\n\n",
-        "\n```{r}\n",
-        "sessionInfo()\n",
-        "```\n")
+    # File copy
+    file.copy(
+        from = system.file("extdata", "Workflow.jpeg", package = "scTensor"),
+        to = paste0(temp, "/Workflow.jpeg"),
+        overwrite = TRUE)
 
-    # 9. License
-    BODY9 <- paste0("\n\n# License\n\n",
-        "Copyright (c) 2018 Koki Tsuyuzaki and Laboratory for ",
-        "Bioinformatics Research, RIKEN Center for Biosystems Dynamics",
-        " Reseach Released under the ",
-        "[Artistic License 2.0](",
-        "http://www.perlfoundation.org/artistic_license_2_0)\n")
-
-    # Output
+    # Output index.html
+    if(length(selected) != 0){
+        if(length(selected) == 1){
+            RMDFILES <- apply(t(index[selected, seq_len(3)]), 1,
+                function(x){
+                paste0(c("pattern", x), collapse="_")
+            })
+        }else{
+            RMDFILES <- apply(index[selected, seq_len(3)], 1,
+                function(x){
+                paste0(c("pattern", x), collapse="_")
+            })
+        }
+        RMDFILES <- paste0(RMDFILES, ".Rmd")
+    }
     cat("index.Rmd is created...\n")
     sink(file = paste0(temp, "/index.Rmd"))
-    cat(paste0(HEADER, "\n\n"))
-    cat(paste0(BODY1, "\n"))
-    cat(paste0(BODY2, "\n"))
-    cat(paste0(BODY3, "\n"))
-    cat(paste0(BODY4, "\n"))
-    cat(paste0(BODY5, "\n"))
-    cat(paste0(BODY6, "\n"))
-    cat(paste0(BODY7, "\n"))
-    cat(paste0(BODY8, "\n"))
-    cat(paste0(BODY9, "\n"))
+    cat(paste0(.MAINHEADER(author, title), "\n\n"))
+    cat(paste0(.BODY1, "\n"))
+    cat(paste0(.BODY2, "\n"))
+    cat(paste0(.BODY3(numLPattern), "\n"))
+    cat(paste0(.BODY4(numRPattern), "\n"))
+    cat(paste0(.BODY5, "\n"))
+    cat(paste0(.BODY6, "\n"))
+    cat(paste0(.BODY7, "\n"))
+    if(length(selected) != 0){
+        cat(paste0(.BODY8(selected, RMDFILES, index, corevalue), "\n"))
+    }
+    cat(paste0(.BODY9, "\n"))
+    cat(paste0(.BODY10, "\n"))
     sink()
+
+    # Rendering
+    cat("index.Rmd is compiled to index.html...\n")
+    render(paste0(temp, "/index.Rmd"), quiet=TRUE)
 
     # File Copy from Tempolary Directory
     if(temp != out.dir){
-        file.copy(from = paste0(temp, "/index.Rmd"),
-            to = paste0(out.dir, "/index.Rmd"), overwrite = TRUE)
-        file.copy(from = paste0(temp, "/figures"),
-            to = out.dir, recursive=TRUE)
-        if(length(selected) != 0){
-            for(i in seq_along(rmdfiles)){
-                file.copy(from = paste0(temp, "/", rmdfiles[i]),
-                to = out.dir, recursive=TRUE)
-            }
-        }
+        file.copy(from = temp, to = out.dir,
+            overwrite = TRUE, recursive = TRUE)
     }else{
         out.dir = temp
     }
-    file.copy(
-        from = system.file("extdata", "Algorithm.png", package = "scTensor"),
-        to = paste0(out.dir, "/Algorithm.png"),
-        overwrite = TRUE)
 
-    # Rendering
-    if(length(selected) != 0){
-        for(i in seq_along(rmdfiles)){
-            cat(paste0(rmdfiles[i], " is compiled to ",
-                gsub(".Rmd", ".html", rmdfiles[i]),
-                "...(", i, " / ", length(rmdfiles), ")\n"))
-            e <- try(render(paste0(out.dir, "/", rmdfiles[i]),
-                quiet=TRUE))
-            if(is(e)[1] == "try-error"){
-                e <- try(render(paste0(out.dir, "/", rmdfiles[i]),
-                    quiet=TRUE))
-                if(is(e)[1] == "try-error"){
-                    e <- try(render(paste0(out.dir, "/", rmdfiles[i]),
-                        quiet=TRUE))
-                    if(is(e)[1] == "try-error"){
-                        e <- try(render(paste0(out.dir, "/", rmdfiles[i]),
-                            quiet=TRUE))
-                    }
-                }
-            }
-        }
-    }
-    cat("index.Rmd is compiled to index.html...\n")
-    e <- try(render(paste0(out.dir, "/index.Rmd"),
-        quiet=TRUE))
-    if(is(e)[1] == "try-error"){
-        e <- try(render(paste0(out.dir, "/index.Rmd"),
-            quiet=TRUE))
-        if(is(e)[1] == "try-error"){
-            e <- try(render(paste0(out.dir, "/index.Rmd"),
-                quiet=TRUE))
-            if(is(e)[1] == "try-error"){
-                e <- try(render(paste0(out.dir, "/index.Rmd"),
-                    quiet=TRUE))
-            }
-        }
-    }
-    cat("cellCellReport is finished!!!\n")
     # HTML Open
     if(html.open){
         browseURL(paste0(out.dir, "/index.html"))

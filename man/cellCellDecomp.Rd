@@ -10,9 +10,7 @@ Performing scTensor
 All parameters is saved to metadata slot of SingleCellExperiment object.
 }
 \usage{
-cellCellDecomp(sce, algorithm="ntd", ranks=c(3,3,3), rank=3,
-    thr1=log2(5), thr2=25, centering=TRUE, mergeas="sum",
-    outer="+", comb="random", num.sampling=100, decomp=TRUE)
+cellCellDecomp(sce, algorithm="ntd", ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25, centering=TRUE, mergeas="mean", outer="*", comb="random", num.sampling=100, decomp=TRUE, ftt=TRUE)
 }
 
 \arguments{
@@ -63,6 +61,9 @@ The number of random sampling used
 \item{decomp}{
 When the value is TRUE, cell-cell interaction tensor is decomposed
 (Default: TRUE).
+}
+\item{ftt}{
+When the value is TRUE, Freeman-Tuckey transformation (FTT) of data matrix is calculated (Default: TRUE).
 }
 }
 

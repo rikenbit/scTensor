@@ -188,16 +188,16 @@
         colnames(A3) <- Pair.name
         core <- out$S@data
         index <- .core2table(core)
-        ppiout <- .cellCellReconst(A1, A2, A3, index, type="tensor",
+        lrpairout <- .cellCellReconst(A1, A2, A3, index, type="tensor",
             names=list(colnames(A1), colnames(A2), colnames(A3)),
             collapse=TRUE)
         return(list(index=index, ligand=A1,
-            receptor=A2, ppi=A3, cellcellpattern=ppiout))
+            receptor=A2, lrpair=A3, cellcellpattern=lrpairout))
     }else{
         tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
         dimnames(tnsr_cc) <- list(unique(names(celltypes)),
             unique(names(celltypes)))
-        return(list(cellcellpattern=tnsr_cc, cellcellppipattern=tnsr))
+        return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr))
     }
 }
 
@@ -356,10 +356,10 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     tnsr_cc <- modeSum(as.tensor(tnsr_bin), m=3, drop=TRUE)@data
     dimnames(tnsr_cc) <- list(unique(names(celltypes)),
         unique(names(celltypes)))
-    return(list(cellcellpattern=tnsr_cc, cellcellppipattern=tnsr_bin))
+    return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr_bin))
 }
 
-.lrPlot <- function(outobj, twoDplot=NULL, vertex.size=18, xleft=1.75,
+.CCIhyperGraphPlot <- function(outobj, twoDplot=NULL, vertex.size=18, xleft=1.75,
     ybottom=-0.5, xright=1.85, ytop=0.5, label="", emph=NULL){
     # Number of Patterns
     numLPattern <- nrow(outobj$ligand)
@@ -368,17 +368,19 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     #
     # Step.1 : Background Network
     #
-    edgewd <- matrix(0, nrow=numLPattern*numRPattern, ncol=3)
-    counter <- 1
-    for(i in seq_len(numLPattern)){
-        for(j in seq_len(numRPattern)){
-            targetL <- which(outobj$index[, "Mode1"] == i)
-            targetR <- which(outobj$index[, "Mode2"] == j)
-            edgewd[counter, ] <- c(i, j,
-                sum(outobj$index[intersect(targetL, targetR), 4]))
-            counter <- counter + 1
-        }
-    }
+    edgewd_L <- unlist(sapply(seq_len(numLPattern), function(x){
+        rep(x, numRPattern)
+        }, simplify=FALSE))
+    edgewd_R <- rep(seq_len(numRPattern), numLPattern)
+    edgewd_Strength <- sapply(
+        seq_len(numLPattern*numRPattern), function(x){
+            targetL <- which(
+                outobj$index[, "Mode1"] == edgewd_L[x])
+            targetR <- which(
+                outobj$index[, "Mode2"] == edgewd_R[x])
+            sum(outobj$index[intersect(targetL, targetR), 4])
+        })
+    edgewd <- cbind(edgewd_L, edgewd_R, edgewd_Strength)
     colnames(edgewd) <- c("L", "R", "Strength")
 
     # Node name (Top<Ligand> and Bottom<Receptor>)
@@ -390,16 +392,18 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 
     # Add nodes
     g <- add.vertices(g, nv=length(nodesSetTop),
-        attr=list(name=nodesSetTop, type=rep(TRUE, length(nodesSetTop))))
+        attr=list(name=nodesSetTop,
+            type=rep(TRUE, length(nodesSetTop))))
     g <- add.vertices(g, nv=length(nodesSetBottom),
-        attr=list(name=nodesSetBottom, type=rep(TRUE, length(nodesSetBottom))))
+        attr=list(name=nodesSetBottom,
+            type=rep(TRUE, length(nodesSetBottom))))
 
     # Add edges
     edgeListVec <- as.vector(t(as.matrix(
         data.frame(
             S1=paste0('L', edgewd[,1]),
             S2=paste0('R', edgewd[,2])
-            ))))
+    ))))
     g <- add.edges(g, edgeListVec)
 
     # Edge weghts
@@ -411,7 +415,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     mycolor <- smoothPalette(E(g)$weight,
         palfunc=colorRampPalette(brewer.pal(9, "Greens"), alpha=TRUE))
     if(!is.null(emph)){
-        target <- numLPattern * (emph[1] - 1) + emph[2]
+        target <- intersect(
+            which(get.edgelist(g)[, 1] == paste0("L", emph[1])),
+            which(get.edgelist(g)[, 2] == paste0("R", emph[2])))
         mycolor[target] <- rgb(1,0,0,0.5)
     }
 
@@ -462,7 +468,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             LOMA_1 = 48.85
             LOMA_2 = 42
             LOMA_3 = 4
-            for(i in seq_len(numLPattern)){
+            sapply(seq_len(numLPattern), function(i){
                 label.ligand <- unlist(sapply(names(label),
                     function(x){outobj$ligand[paste0("Dim", i), x]}))
                 label.ligand[] <- smoothPalette(label.ligand,
@@ -473,7 +479,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
                 plot(twoDplot, col=label.ligand, pch=16, cex=0.5, bty="n",
                     xaxt="n", yaxt="n", xlab="", ylab="",
                     main=paste0("(", i, ",*,*)"))
-            }
+                })
 
             #
             # Step.3 : Receptor Plot
@@ -484,7 +490,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             ROMA_1 = 4
             ROMA_2 = 42
             ROMA_3 = 48.85
-            for(i in seq_len(numRPattern)){
+            sapply(seq_len(numRPattern), function(i){
                 label.receptor <- unlist(sapply(names(label),
                     function(x){outobj$receptor[paste0("Dim", i), x]}))
                 label.receptor[] <- smoothPalette(label.receptor,
@@ -495,7 +501,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
                 plot(twoDplot, col=label.receptor, pch=16, cex=0.5,
                     bty="n", xaxt="n", yaxt="n", xlab="", ylab="",
                     main=paste0("(*,", i, ",*)"))
-            }
+                })
         }else{
             warning(paste0("LR plot can be performed when \n",
                 "the maximum number of Ligand/Receptor patterns are \n",
@@ -527,18 +533,18 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     plot(twoD, col=label, pch=16, cex=3, bty="n", xaxt="n", yaxt="n",
         xlab="", ylab="", main=genename)
     # Gradient
-    xleft=19
-    ybottom=-5
-    xright=20
-    ytop=10
+    xleft = max(twoD[,1])+1
+    ybottom=quantile(twoD[,2])[2]
+    xright = max(twoD[,1])+2
+    ytop=quantile(twoD[,2])[4]
     gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(sort(exp),
         palfunc=colorRampPalette(brewer.pal(9, color),
         alpha=TRUE)), gradient="y")
-    text(17, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1]))
-    text(17, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2]))
-    text(17, ybottom+(ytop-ybottom)*2/4, round(quantile(exp)[3]))
-    text(17, ybottom+(ytop-ybottom)*3/4, round(quantile(exp)[4]))
-    text(17, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5]))
+    text(xleft-1, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1]))
+    text(xleft-1, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2]))
+    text(xleft-1, ybottom+(ytop-ybottom)*2/4, round(quantile(exp)[3]))
+    text(xleft-1, ybottom+(ytop-ybottom)*3/4, round(quantile(exp)[4]))
+    text(xleft-1, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5]))
 }
 
 .ensembl <- function(species){
@@ -570,8 +576,8 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 }
 
 .geneinformation <- function(sce, ens, spc, LR){
+    targetGeneID <- unique(c(LR$GENEID_L, LR$GENEID_R))
     if(!is.null(ens)){
-        targetGeneID <- unique(c(LR$GENEID_L, LR$GENEID_R))
         # Gene Name
         cat(paste0("Related gene names are retrieved from Biomart",
         	" by biomaRt package...\n"))
@@ -594,296 +600,259 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
-        # MeSH
-        cat(paste0("Related MeSH IDs are retrieved from ",
-            "MeSH.XXX.eg.db-type package...\n"))
-        MeSHobj <- eval(parse(text=gsub("LRBase", "MeSH",
-            LRBaseDbi::lrPackageName(metadata(sce)$lrbase))))
-        MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
-            keytype="GENEID",
-            keys=targetGeneID)
-        if(spc != "Pab"){
-            # Reactome
-            cat(paste0("Related Reactome IDs are retrieved from ",
-            	"reactome.db package...\n"))
-            Reactome <- toTable(reactomeEXTID2PATHID)
-            targetReactome <- unlist(sapply(targetGeneID,
-                function(x){which(Reactome$gene_id == x)}))
-            Reactome <- Reactome[targetReactome, ]
-        }else{
-            Reactome <- NULL
-        }
     }else{
         GeneName <- NULL
         Description <- NULL
         GO <- NULL
+    }
+    # MeSH
+    cat(paste0("Related MeSH IDs are retrieved from ",
+        "MeSH.XXX.eg.db-type package...\n"))
+    MeSHobj <- eval(parse(text=gsub("LRBase", "MeSH",
+        LRBaseDbi::lrPackageName(metadata(sce)$lrbase))))
+    MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
+        keytype="GENEID",
+        keys=targetGeneID)
+    if(spc != "Pab"){
+        # Reactome
+        cat(paste0("Related Reactome IDs are retrieved from ",
+            "reactome.db package...\n"))
+        Reactome <- toTable(reactomeEXTID2PATHID)
+        targetReactome <- unlist(sapply(targetGeneID,
+            function(x){which(Reactome$gene_id == x)}))
+        Reactome <- Reactome[targetReactome, ]
+    }else{
         Reactome <- NULL
-        MeSH <- NULL
     }
     # Output
     list(GeneName=GeneName, Description=Description, GO=GO,
         Reactome=Reactome, MeSH=MeSH)
 }
 
-## helper for vector dividing
-.div <- function(x, d=1) {
-    delta <- ceiling(length(x) / d)
-    y <- lapply(seq_len(d), function(i){
-        as.vector(na.omit(x[((i-1)*delta+1):(i*delta)]))
-    })
-    return(y)
-}
+.hyperLinks <- function(ranking, ligandGeneID, receptorGeneID,
+    lr, value, percentage, spc, geneInfo, pvalue, qvalue){
+    ## helper for vector dividing
+    div <- function(x, d=1) {""
+        delta <- ceiling(length(x) / d)
+        y <- lapply(seq_len(d), function(i){
+            as.vector(na.omit(x[((i-1)*delta+1):(i*delta)]))
+        })
+        return(y)
+    }
 
-.hyperLinks <- function(Ranking, XYZ, LigandGeneID, ReceptorGeneID,
-    LR, Value, Percentage, j, spc, GeneInfo, pvalue, qvalue){
-    # Ranking
-    XYZ <- paste0(XYZ, "|", Ranking, "|")
+    embedBySpc <- function(spc, genename1, geneid1, description1,
+                go1, reactome1, mesh1,
+                genename2, geneid2, description2,
+                go2, reactome2, mesh2){
+        if(spc == "Ath"){
+            paste0("[", geneid1,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid1, ")<br>",
+                "Reactome: ", reactome1, "<br>",
+                "MeSH: ", mesh1,
+                "|",
+                "[", geneid2,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid2, ")<br>",
+                "Reactome: ", reactome2, "<br>",
+                "MeSH: ", mesh2,
+                "|"
+            )
+        }else if(spc == "Pab"){
+            paste0(
+                "[", genename1,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid1, ")<br>",
+                "Description: ", description1, "<br>",
+                "GO: ", go1, "<br>",
+                "MeSH: ", mesh1,
+                "|",
+                "[", genename2,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid2, ")<br>",
+                "Description: ", description2, "<br>",
+                "GO: ", go2, "<br>",
+                "MeSH: ", mesh2,
+                "|"
+            )
+        }else{
+            paste0(
+                "[", genename1,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid1, ")<br>",
+                "Description: ", description1, "<br>",
+                "GO: ", go1, "<br>",
+                "Reactome: ", reactome1, "<br>",
+                "MeSH: ", mesh1,
+                "|",
+                "[", genename2,
+                "](https://www.ncbi.nlm.nih.gov/gene/",
+                geneid2, ")<br>",
+                "Description: ", description2, "<br>",
+                "GO: ", go2, "<br>",
+                "Reactome: ", reactome2, "<br>",
+                "MeSH: ", mesh2,
+                "|"
+            )
+        }
+    }
+
+    convertGeneName <- function(geneid, geneInfo){
+        genename <- geneInfo$GeneName[
+            which(geneInfo$GeneName$entrezgene == geneid),
+            "external_gene_name"][1]
+        if(is.na(genename)){
+            genename = geneid
+        }else{
+            if(length(genename) == 0 || genename == ""){
+                genename = geneid
+            }
+        }
+        genename
+    }
+
+    convertGeneDescription <- function(geneid, geneInfo){
+        description <- geneInfo$Description[
+            which(geneInfo$Description$entrezgene ==
+                geneid), "description"][1]
+        if(length(description) == 0 || is.na(description)){
+            description = ""
+        }
+        description
+    }
+
+    convertGeneOntology <- function(geneid, geneInfo){
+        GO <- unique(unlist(geneInfo$GO[
+            which(geneInfo$GO$entrezgene == geneid),
+            "go_id"]))
+        GO <- GO[which(GO != "")]
+        GO <- gsub(":", "%3A", GO)
+        if(length(GO) != 0){
+            tmp_GO <- list()
+            GO_loc <- div(seq_along(GO), ceiling(length(GO) / 100))
+            GO <- lapply(GO_loc, function(x){
+                mi <- min(x)
+                ma <- max(x)
+                paste0("[", mi, "-", ma, "](",
+                    "http://amigo.geneontology.org/",
+                    "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
+                    paste0(GO[mi:ma], collapse="%27+OR+acc%3D%27"),
+                    "%27%3B&mirror=bbop)")
+                })
+            GO <- paste(unlist(GO), collapse=" ")
+        }else{
+            GO <- ""
+        }
+        GO
+    }
+
+    convertReactome <- function(geneid, geneInfo){
+        Reactome <- unique(unlist(geneInfo$Reactome[
+            which(geneInfo$Reactome$gene_id ==
+            geneid), "DB_ID"]))
+        Reactome <- Reactome[which(Reactome != "")]
+        if(length(Reactome) != 0){
+            Reactome_loc <- div(seq_along(Reactome),
+                ceiling(length(Reactome) / 100))
+            Reactome <- lapply(Reactome_loc, function(x){
+                mi <- min(x)
+                ma <- max(x)
+                paste0("[", mi, "-", ma, "](",
+                    "https://reactome.org/content/query?q=",
+                    paste0(Reactome[mi:ma], collapse="+"),
+                    "&types=Pathway&cluster=true)")
+            })
+            Reactome = paste(unlist(Reactome), collapse=" ")
+        }else{
+            Reactome = ""
+        }
+        Reactome
+    }
+
+    convertMeSH <- function(geneid, geneInfo){
+        MeSH <- geneInfo$MeSH[which(geneInfo$MeSH$GENEID == geneid),
+            "MESHID"]
+        MeSH <- MeSH[which(MeSH != "")]
+        if(length(MeSH) != 0){
+            MeSH_loc <- div(seq_along(MeSH), ceiling(length(MeSH) / 100))
+            MeSH <- lapply(MeSH_loc, function(x){
+                mi <- min(x)
+                ma <- max(x)
+                paste0("[", mi, "-", ma, "](",
+                    "https://www.ncbi.nlm.nih.gov/mesh?term=",
+                    paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
+                })
+            MeSH = paste(unlist(MeSH), collapse=" ")
+        }else{
+            MeSH = ""
+        }
+        MeSH
+    }
+
+    convertPubMed <- function(geneid1, geneid2, lr){
+        target <- intersect(
+            which(lr$GENEID_L == geneid1),
+            which(lr$GENEID_R == geneid2))
+        PubMed <- lr$SOURCEID[target]
+        LEN <- length(target) != 0
+        NUL <- !is.null(lr$SOURCEID[target])
+        HYP <- length(grep("-", PubMed)) == 0
+        if(LEN && NUL && HYP){
+            PubMed <- unique(strsplit(lr$SOURCEID[target], "\\|")[[1]])
+            PubMed_loc <- div(seq_along(PubMed),
+                ceiling(length(PubMed) / 100))
+            PubMed <- lapply(PubMed_loc, function(x){
+                mi <- min(x)
+                ma <- max(x)
+                paste0("[", mi, "-", ma, "](",
+                    "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
+                    paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")
+            })
+            PubMed = paste(unlist(PubMed), collapse=" ")
+        }else{
+            PubMed = ""
+        }
+        PubMed
+    }
+
+    # ranking
+    XYZ <- paste0("|", ranking, "|")
     # Gene Name (Ligand)
-    GeneName_L <- GeneInfo$GeneName[
-        which(GeneInfo$GeneName$entrezgene == LigandGeneID),
-        "external_gene_name"][1]
-    if(length(GeneName_L) == 0){
-        GeneName_L = LigandGeneID
-    }
+    GeneName_L <- convertGeneName(ligandGeneID, geneInfo)
     # Gene Name (Receptor)
-    GeneName_R <- GeneInfo$GeneName[
-        which(GeneInfo$GeneName$entrezgene == ReceptorGeneID),
-        "external_gene_name"][1]
-    if(length(GeneName_R) == 0){
-        GeneName_R = ReceptorGeneID
-    }
+    GeneName_R <- convertGeneName(receptorGeneID, geneInfo)
     # Description (Ligand)
-    Description_L <- GeneInfo$Description[
-        which(GeneInfo$Description$entrezgene ==
-            LigandGeneID), "description"][1]
-    if(length(Description_L) == 0){
-        Description_L = ""
-    }
+    Description_L <- convertGeneDescription(ligandGeneID, geneInfo)
     # Description (Receptor)
-    Description_R <- GeneInfo$Description[
-        which(GeneInfo$Description$entrezgene ==
-            ReceptorGeneID), "description"][1]
-    if(length(Description_R) == 0){
-        Description_R = ""
-    }
+    Description_R <- convertGeneDescription(receptorGeneID, geneInfo)
     # Gene Ontology (Ligand)
-    GO_L <- unique(unlist(GeneInfo$GO[
-        which(GeneInfo$GO$entrezgene ==
-            LigandGeneID), "go_id"]))
-    GO_L <- GO_L[which(GO_L != "")]
-    GO_L <- gsub(":", "%3A", GO_L)
-    if(length(GO_L) != 0){
-        tmp_GO_L <- list()
-        GO_L_loc <- .div(seq_along(GO_L), ceiling(length(GO_L) / 100))
-        for(i in seq_along(GO_L_loc)){
-            mi <- min(GO_L_loc[[i]])
-            ma <- max(GO_L_loc[[i]])
-            tmp_GO_L[[i]] <- paste0("[", mi, "-", ma, "](",
-                "http://amigo.geneontology.org/",
-                "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
-                paste0(GO_L[mi:ma], collapse="%27+OR+acc%3D%27"),
-                "%27%3B&mirror=bbop)")
-        }
-        GO_L = paste(unlist(tmp_GO_L), collapse=" ")
-    }else{
-        GO_L = ""
-    }
+    GO_L <- convertGeneOntology(ligandGeneID, geneInfo)
     # Gene Ontology (Receptor)
-    GO_R <- unique(unlist(GeneInfo$GO[
-        which(GeneInfo$GO$entrezgene ==
-            ReceptorGeneID), "go_id"]))
-    GO_R <- GO_R[which(GO_R != "")]
-    GO_R <- gsub(":", "%3A", GO_R)
-    if(length(GO_R) != 0){
-        tmp_GO_R <- list()
-        GO_R_loc <- .div(seq_along(GO_R),
-            ceiling(length(GO_R) / 100))
-        for(i in seq_along(GO_R_loc)){
-            mi <- min(GO_R_loc[[i]])
-            ma <- max(GO_R_loc[[i]])
-            tmp_GO_R[[i]] <- paste0("[", mi, "-", ma, "](",
-                "http://amigo.geneontology.org/",
-                "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
-                paste0(GO_R[mi:ma],
-                collapse="%27+OR+acc%3D%27"),
-                "%27%3B&mirror=bbop)")
-        }
-        GO_R = paste(unlist(tmp_GO_R), collapse=" ")
-    }else{
-        GO_R = ""
-    }
+    GO_R <- convertGeneOntology(receptorGeneID, geneInfo)
     # Reactome (Ligand)
-    Reactome_L <- unique(unlist(GeneInfo$Reactome[
-        which(GeneInfo$Reactome$gene_id ==
-        LigandGeneID), "DB_ID"]))
-    Reactome_L <- Reactome_L[which(Reactome_L != "")]
-    if(length(Reactome_L) != 0){
-        tmp_Reactome_L <- list()
-        Reactome_L_loc <- .div(seq_along(Reactome_L),
-            ceiling(length(Reactome_L) / 100))
-        for(i in seq_along(Reactome_L_loc)){
-            mi <- min(Reactome_L_loc[[i]])
-            ma <- max(Reactome_L_loc[[i]])
-            tmp_Reactome_L[[i]] <- paste0("[", mi, "-", ma, "](",
-                "https://reactome.org/content/query?q=",
-                paste0(Reactome_L[mi:ma], collapse="+"),
-                "&types=Pathway&cluster=true)")
-        }
-        Reactome_L = paste(unlist(tmp_Reactome_L), collapse=" ")
-    }else{
-        Reactome_L = ""
-    }
+    Reactome_L <- convertReactome(ligandGeneID, geneInfo)
     # Reactome (Receptor)
-    Reactome_R <- unique(unlist(GeneInfo$Reactome[
-        which(GeneInfo$Reactome$gene_id ==
-        ReceptorGeneID), "DB_ID"]))
-    Reactome_R <- Reactome_R[which(Reactome_R != "")]
-    if(length(Reactome_R) != 0){
-        tmp_Reactome_R <- list()
-        Reactome_R_loc <- .div(seq_along(Reactome_R),
-            ceiling(length(Reactome_R) / 100))
-        for(i in seq_along(Reactome_R_loc)){
-            mi <- min(Reactome_R_loc[[i]])
-            ma <- max(Reactome_R_loc[[i]])
-            tmp_Reactome_R[[i]] <- paste0("[", mi, "-", ma, "](",
-                "https://reactome.org/content/query?q=",
-                paste0(Reactome_R[mi:ma], collapse="+"),
-                "&types=Pathway&cluster=true)")
-        }
-        Reactome_R = paste(unlist(tmp_Reactome_R), collapse=" ")
-    }else{
-        Reactome_R = ""
-    }
+    Reactome_R <- convertReactome(receptorGeneID, geneInfo)
     # MeSH (Ligand)
-    MeSH_L <- GeneInfo$MeSH[which(GeneInfo$MeSH$GENEID == LigandGeneID),
-        "MESHID"]
-    MeSH_L <- MeSH_L[which(MeSH_L != "")]
-    if(length(MeSH_L) != 0){
-        tmp_MeSH_L <- list()
-        MeSH_L_loc <- .div(seq_along(MeSH_L),
-            ceiling(length(MeSH_L) / 100))
-        for(i in seq_along(MeSH_L_loc)){
-            mi <- min(MeSH_L_loc[[i]])
-            ma <- max(MeSH_L_loc[[i]])
-            tmp_MeSH_L[[i]] <- paste0("[", mi, "-", ma, "](",
-                "https://www.ncbi.nlm.nih.gov/mesh?term=",
-                paste0(MeSH_L[mi:ma], collapse="%20OR%20"), ")")
-        }
-        MeSH_L = paste(unlist(tmp_MeSH_L), collapse=" ")
-    }else{
-        MeSH_L = ""
-    }
+    MeSH_L <- convertMeSH(ligandGeneID, geneInfo)
     # MeSH (Receptor)
-    MeSH_R <- GeneInfo$MeSH[which(GeneInfo$MeSH$GENEID == ReceptorGeneID),
-        "MESHID"]
-    MeSH_R <- MeSH_R[which(MeSH_R != "")]
-    if(length(MeSH_R) != 0){
-        tmp_MeSH_R <- list()
-        MeSH_R_loc <- .div(seq_along(MeSH_R),
-            ceiling(length(MeSH_R) / 100))
-        for(i in seq_along(MeSH_R_loc)){
-            mi <- min(MeSH_R_loc[[i]])
-            ma <- max(MeSH_R_loc[[i]])
-            tmp_MeSH_R[[i]] <- paste0("[", mi, "-", ma, "](",
-                "https://www.ncbi.nlm.nih.gov/mesh?term=",
-                paste0(MeSH_R[mi:ma], collapse="%20OR%20"), ")")
-        }
-        MeSH_R = paste(unlist(tmp_MeSH_R), collapse=" ")
-    }else{
-        MeSH_R = ""
-    }
+    MeSH_R <- convertMeSH(receptorGeneID, geneInfo)
     # PubMed (L and R)
-    targetPubMed <- intersect(which(LR$GENEID_L == LigandGeneID),
-        which(LR$GENEID_R == ReceptorGeneID))
-    PubMed <- LR$SOURCEID[targetPubMed]
-    if(length(targetPubMed) != 0 && !is.null(LR$SOURCEID[targetPubMed])){
-        PubMed <- unique(strsplit(LR$SOURCEID[targetPubMed], "\\|")[[1]])
-        tmp_PubMed <- list()
-        PubMed_loc <- .div(seq_along(PubMed),
-            ceiling(length(PubMed) / 100))
-        for(i in seq_along(PubMed_loc)){
-            mi <- min(PubMed_loc[[i]])
-            ma <- max(PubMed_loc[[i]])
-            tmp_PubMed[[i]] <- paste0("[", mi, "-", ma, "](",
-                "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
-                paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")
-        }
-        PubMed = paste(unlist(tmp_PubMed), collapse=" ")
-    }else{
-        PubMed = ""
-    }
-
+    PubMed <- convertPubMed(ligandGeneID, receptorGeneID, lr)
     # Embedding
-    if(spc != "Pab"){
-        XYZ <- paste0(XYZ,
-            "[", GeneName_L,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            LigandGeneID, ")<br>",
-            "Description: ", Description_L, "<br>",
-            "GO: ", GO_L, "<br>",
-            "Reactome: ", Reactome_L, "<br>",
-            "MeSH: ", MeSH_L,
-            "|",
-            "[", GeneName_R,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            ReceptorGeneID, ")<br>",
-            "Description: ", Description_R, "<br>",
-            "GO: ", GO_R, "<br>",
-            "Reactome: ", Reactome_R, "<br>",
-            "MeSH: ", MeSH_R,
-            "|"
-        )
-    }else if(spc %in% c("Cel", "Dme", "Pab", "Ssc")){
-        XYZ <- paste0(XYZ,
-            "[", GeneName_L,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            LigandGeneID, ")<br>",
-            "Description: ", Description_L, "<br>",
-            "GO: ", GO_L, "<br>",
-            "MeSH: ", MeSH_L,
-            "|",
-            "[", GeneName_R,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            ReceptorGeneID, ")<br>",
-            "Description: ", Description_R, "<br>",
-            "GO: ", GO_R, "<br>",
-            "MeSH: ", MeSH_R,
-            "|"
-        )
-    }else if(spc == "Ath"){
-        XYZ <- paste0(XYZ,
-            "[", LigandGeneID,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            LigandGeneID, ")<br>",
-            "MeSH: ", MeSH_L,
-            "|",
-            "[", ReceptorGeneID,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            ReceptorGeneID, ")<br>",
-            "MeSH: ", MeSH_R,
-            "|"
-        )
-    }else{
-        XYZ <- paste0(XYZ,
-            "[", LigandGeneID,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            LigandGeneID, ")",
-            "|",
-            "[", ReceptorGeneID,
-            "](https://www.ncbi.nlm.nih.gov/gene/",
-            ReceptorGeneID, ")",
-            "|"
-        )
-    }
-    # Figure, Core Tensor value, PubMed
-    XYZ <- paste0(XYZ,
-        "![](figures/Ligand_", LigandGeneID, ".png)", "|",
-        "![](figures/Receptor_", ReceptorGeneID, ".png)", "|",
-        round(Value[j], 3), " (", round(Percentage[j], 3), "%)",
+    paste0(XYZ,
+        embedBySpc(spc,
+            GeneName_L, ligandGeneID, Description_L,
+            GO_L, Reactome_L, MeSH_L,
+            GeneName_R, receptorGeneID, Description_R,
+            GO_R, Reactome_R, MeSH_R
+            ),
+        "![](figures/Ligand_", ligandGeneID, ".png)", "|",
+        "![](figures/Receptor_", receptorGeneID, ".png)", "|",
+        round(value, 3), " (", round(percentage, 3), "%)",
         "|", round(pvalue, 3),
         "|", round(qvalue, 3),
         "|", PubMed, "|\n")
-    XYZ
 }
 
 .HCLUST <- function(x){
@@ -936,4 +905,1556 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }else{
         x
     }
+}
+
+# Header Row
+.XYZ_HEADER1 <- function(index, i){
+    TITLE <- paste0("Details of (",
+    paste(index[i, seq_len(3)], collapse=","),
+    ") Pattern")
+    HEADER <- paste0("---\n",
+    "title: <font color='#87b13f'>XXXXX</font>\n",
+    "output:\n",
+    "    html_document:\n",
+    "        toc: true\n",
+    "        toc_depth: 2\n",
+    "---\n",
+    "# <font color='#1881c2'>(", paste(index[i, seq_len(2)], collapse=","),
+    ",\\*) Pattern</font>\n\n",
+    "![](figures/CCIHypergraph_",
+    paste(index[i, seq_len(2)], collapse="_"), ".png)\n\n")
+    sub("XXXXX", TITLE, HEADER)
+}
+
+.XYZ_HEADER2 <- function(i, top){
+    paste0("# <font color='#1881c2'>(\\*,\\*,", i, ") Pattern",
+    " (Top", top, " LR-pairs)</font>\n\n",
+    paste0("![](figures/GeneHypergraph_", i, ".png)\n\n", collapse=""),
+    "|Rank|Ligand Gene|Receptor Gene|",
+    "Ligand Expression (Log10(exp + 1))|",
+    "Receptor Expression (Log10(exp + 1))|",
+    "LR-pair factor value (Percentage)|",
+    "P-value (Grubbs test)|",
+    "Q-value (BH method)|",
+    "PubMed|\n",
+    "|----|----|----|----|----|----|----|----|----|\n")
+}
+
+.XYZ_HEADER3 <- function(i){
+    paste0("# <font color='#1881c2'>(\\*,\\*,", i,
+        ") Pattern-related Enrichment Analysis</font>\n\n",
+        "```{r}\n", # Top
+        "load(\"reanalysis.RData\")\n",
+        "library(\"plotly\")\n",
+        "```\n\n" # Bottom
+        )
+}
+
+.XYZ_ENRICH <- function(out.vecLR, i){
+    patternName <- paste0("pattern", i)
+    paste0(
+    ################ GO_BP ################
+    "## <font color='#1881c2'>GO-Enrichment Analysis (BP : Biological Process)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_BP$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_BP$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"GO-Enrichment Analysis (BP)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_GO_BP_",
+    patternName,
+    ".png)\n\n",
+    ################ GO_MF ################
+    "## <font color='#1881c2'>GO-Enrichment Analysis (MF : Molecular Function)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_MF$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_MF$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"GO-Enrichment Analysis (MF)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_GO_MF_",
+    patternName,
+    ".png)\n\n",
+    ################ GO_CC ################
+    "## <font color='#1881c2'>GO-Enrichment Analysis (CC : Cellular Component)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_CC$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$GO_CC$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"GO-Enrichment Analysis (CC)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_GO_CC_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_A ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (A : Anatomy)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_A$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_A$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (A)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_A_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_B ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (B : Organisms)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_B$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_B$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (B)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_B_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_C ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (C : Diseases)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_C$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_C$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (C)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_C_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_D ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (D : Drugs)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_D$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_D$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (D)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_D_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_E ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (E : Analytical, Diagnostic and Therapeutic Techniques and Equipment)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_E$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_E$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (E)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_E_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_F ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (F : Psychiatry and Psychology)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_F$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_F$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (F)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_F_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_G ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (G : Phenomena and Processes)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_G$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_G$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (G)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_G_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_H ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (H : Disciplines and Occupations)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_H$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_H$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (H)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_H_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_I ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (I : Anthropology, Education, Sociology and Social Phenomena)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_I$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_I$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (I)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_I_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_J ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (J : Technology and Food and Beverages)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_J$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_J$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (J)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_J_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_K ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (K : Humanities)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_K$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_K$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (K)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_K_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_L ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (L : Information Science)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_L$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_L$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (L)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_L_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_M ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (M : Persons)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_M$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_M$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (M)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_M_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_N ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (N : Health Care)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_N$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_N$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (N)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_N_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_V ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (V : Publication Type)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_V$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_V$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (V)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_V_",
+    patternName,
+    ".png)\n\n",
+    ################ MeSH_Z ################
+    "## <font color='#1881c2'>MeSH-Enrichment Analysis (Z : Geographical Locations)</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_Z$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$MeSH_Z$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"MeSH-Enrichment Analysis (Z)\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_MeSH_Z_",
+    patternName,
+    ".png)\n\n",
+    ################ Reactome ################
+    "## <font color='#1881c2'>Reactome Pathway-Enrichment Analysis</font>\n\n",
+    "```{r}\n", # Top
+    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$Reactome$Pvalue + 1E-10)\n",
+    "term <- out.vecLR[\"Enrich\", \"",
+    patternName,
+    "\"][[1]]$Reactome$Term\n",
+    "target <- seq_len(min(100, length(negLogPval)))\n",
+    "negLogPval <- negLogPval[target]\n",
+    "term <- term[target]\n",
+    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
+    "type=\"bar\", color=~negLogPval, text=term,\n",
+    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
+    "layout(p, title=\"Reactome-Enrichment Analysis\",\n",
+    "   xaxis=list(title=\"Term\"),\n",
+    "   yaxis=list(title=\"-Log(P-value)\"),\n",
+    "   legend=list(name=\"\"))\n",
+    "```\n\n", # Bottom
+    "![](figures/Tagcloud_Reactome_",
+    patternName,
+    ".png)\n\n",
+    collapse="")
+}
+
+.MAINHEADER <- function(author, title){
+    HEADER <- paste0("---\ntitle: XXXXX\n",
+        "author: YYYYY\ndate:",
+        " \"`r Sys.time()`\"\n",
+        "output: ",
+        "BiocStyle::html_document\nvignette: >\n ",
+        "%\\VignetteIndexEntry{Vignette Title}\n ",
+        "%\\VignetteEngine{knitr::rmarkdown}\n ",
+        "%\\VignetteEncoding{UTF-8}\n---\n")
+    sub("YYYYY", author, sub("XXXXX", title, HEADER))
+}
+
+# 1. About Dataset and scTensor Algorithm
+.BODY1 <- paste0("\n\n# About scTensor Algorithm\n\n",
+    "![](Workflow.jpeg)\n",
+    "[scTensor](https://bioconductor.org/packages/release/",
+    "bioc/html/scTensor.html) is the R/Bioconductor package",
+    " for visualization of cell-cell interaction within ",
+    "single-cell RNA-Seq data. ",
+    "The calculation consists of several steps.\n\n",
+    "Firstly, [LRBase.XXX.eg.db](https://bioconductor.org/",
+    "packages/release/bioc/html/LRBase.Hsa.eg.db.html)-type",
+    " package is loaded for retriving ligand-receptor gene ",
+    "relationship (XXX is the abbreviation of some organisms ",
+    "like \"Hsa\" as Homo sapiens). ",
+    "scTensor searches the corresponding pair of genes in the ",
+    "rownames of input data matrix and extracted as vector. ",
+    "In this step, the gene identifier is limited as [NCBI ",
+    "Gene ID](https://www.ncbi.nlm.nih.gov/gene) for now.\n\n",
+    "Next, the all elements of extracted two vectors are summed ",
+    "up with all possible combination (Kronecker sum) and summarized",
+    " as a matrix. ",
+    "Here, the multiple matrices can be represented as a three-order",
+    " \"tensor\" (Ligand-Cell * Receptor-Cell * LR-Pair). ",
+    "scTensor decomposes the tensor into a small tensor (core tensor)",
+    " and three factor matrices. ",
+    "Tensor decomposition is very similar to the matrix decomposition",
+    " like PCA (principal component analysis). ",
+    "The core tensor is similar to eigenvalue of PCA and means how",
+    " much the pattern is outstanding. ",
+    "Likewise, three matrices is similar to the PC scores and ",
+    "loadings of PCA and represents which ligand-cell/receptor-cell",
+    "/LR-pair are informative. ",
+    "When the matrices have negative values, distinguishing that ",
+    "which direction (+/-) is important and which is not, is ",
+    "difficult to interpret and laboring task. ",
+    "That's why, scTensor performs non-negative Tucker ",
+    "decomposition (NTD), which is non-negative version ",
+    "of Tucker decomposition (c.f. [nnTensor]",
+    "(https://cran.r-project.org/package=nnTensor)). \n\n",
+    "Finaly, the result of NTD is summarized as this report. ",
+    "Most of plots belows are visualized by ",
+    "[plotly](https://plot.ly/r/) package and interactively ",
+    "search the presise information of the plot. ",
+    "The three factor matrices can be interactively viewed ",
+    "and which celltypes are responds to the cell-cell interaction.",
+    "The mode-3 (LR-pair) direction of sum of the core tensor ",
+    "is calculated and visualized as Ligand-Receptor Patterns. ",
+    "Detail of (Ligand-Cell, Receptor-Cell, LR-pair) Patterns ",
+    "are also visualized as below.\n\n",
+    "For more detail, visit the [vignette](https://bioconductor.org",
+    "/packages/devel/bioc/vignettes/scTensor/inst/doc/scTensor.html)",
+    " of [scTensor](https://bioconductor.org/",
+    "packages/release/bioc/html/scTensor.html)"
+    )
+
+# 2. Global statistics and plots
+.BODY2 <- paste0("\n\n# Global statistics and plots\n\n",
+    "The result of scTensor is saved as a R binary file",
+    " (reanalysis.RData).\n",
+    "```{r}\n", # Top
+    "load(\"reanalysis.RData\")\n\n",
+    "# SingleCellExperiment object\n",
+    "sce\n",
+    "# Gene expression matrix\n",
+    "is(input)\n",
+    "dim(input)\n",
+    "input[seq_len(2), seq_len(2)]\n",
+    "# The result of 2D dimensional reduction (e.g. t-SNE)\n",
+    "is(twoD)\n",
+    "dim(twoD)\n",
+    "head(twoD)\n",
+    "# Ligand-Receptor corresponding table",
+    " extracted from LRBase.XXX.eg.db\n",
+    "is(LR)\n",
+    "dim(LR)\n",
+    "head(LR, 2)\n",
+    "# Celltype label and color scheme\n",
+    "is(celltypes)\n",
+    "length(celltypes)\n",
+    "head(celltypes)\n",
+    "# Core tensor values\n",
+    "is(index)\n",
+    "dim(index)\n",
+    "head(index)\n",
+    "is(corevalue)\n",
+    "length(corevalue)\n",
+    "head(corevalue)\n",
+    "# Selected corevalue position with thr threshold \"thr\"\n",
+    "is(selected)\n",
+    "length(selected)\n",
+    "head(selected)\n",
+    "# The result of 2-class clustering\n",
+    "# The result of analysis in each L vector\n",
+    "is(ClusterL)\n",
+    "dim(ClusterL)\n",
+    "# The result of analysis in each R vector\n",
+    "is(ClusterR)\n",
+    "dim(ClusterR)\n",
+    "# The result of analysis in each LR vector\n",
+    "is(out.vecLR)\n",
+    "dim(out.vecLR)\n",
+    "head(out.vecLR)\n",
+    "head(out.vecLR[1,1][[1]])\n",
+    "```\n\n", # Bottom
+    "\n\n## Number of cells in each celltype\n\n",
+    "```{r}\n", # Top
+    "color <- names(celltypes)\n",
+    "colors <- celltypes[sapply(unique(color), ",
+    "function(x){which(color == x)[1]})]\n",
+    "numcells <- sapply(names(colors), function(x){",
+    "length(which(color == x))",
+    "})\n",
+    "numcells <- data.frame(numcells=numcells, ",
+    "celltypes=names(numcells))\n\n",
+    "library(plotly)\n",
+    "plot_ly(numcells, x=~celltypes, y=~numcells, type=\"bar\", ",
+    "marker = list(color = colors))\n",
+    "```\n\n", # Bottom
+    "\n\n## Number of expressed genes in ",
+    "each celltype (Non-zero genes)\n\n",
+    "```{r}\n", # Top
+    "expgenes <- apply(input, 2, ",
+    "function(x){length(which(x != 0))})\n",
+    "expgenes <- data.frame(expgenes=expgenes, ",
+    "celltypes=names(celltypes))\n",
+    "plot_ly(expgenes, y=~expgenes, color=color, ",
+    "colors=colors, type=\"box\")\n",
+    "```\n\n", # Bottom
+    "\n\n## Two dimensional plot of all cells\n\n",
+    "```{r}\n", # Top
+    "plot_ly(x=twoD[,1], y=twoD[,2], ",
+    "color = color, ",
+    "colors = colors, ",
+    "type = \"scatter\", ",
+    "text = rownames(twoD), ",
+    "mode = \"markers\")\n",
+    "```\n\n", # Bottom
+    "\n\n## Distribution of core tensor values\n\n",
+    "```{r}\n", # Top
+    "corenames <- sapply(seq_len(nrow(index)), ",
+    "function(x){paste(index[x,seq_len(3)], collapse=\",\")})\n",
+    "plot_ly(x=seq_along(corevalue), y=corevalue, ",
+    "type=\"bar\", color=names(corevalue), text=corenames, ",
+    "colors = c(\"#999999\", \"#E41A1C\"))\n",
+    "```\n" # Bottom
+    )
+
+# 3. L-Pattern
+.BODY3 <- function(numLPattern){
+    BODY3 <- paste0("\n\n# Ligand-Cell Patterns\n\n",
+    "```{r}\n", # Top
+    "library(\"heatmaply\")\n",
+    "l <- metadata(sce)$sctensor$ligand\n",
+    "rownames(l) <- paste0(\"(\",seq_len(nrow(l)), \",*,*)\")\n",
+    "heatmaply(l,",
+    "xlab=\"Celltype\",",
+    "ylab=\"Pattern\",",
+    "fontsize_col=20,",
+    "fontsize_row=20,",
+    "subplot_widths=c(0.7, 0.1),",
+    "subplot_heights=c(0.2, 0.7),",
+    "labRow = rownames(l),",
+    "labCol = colnames(l)",
+    ")\n",
+    "```\n" # Bottom
+    )
+    BODY3 <- paste0(BODY3,
+        paste(sapply(seq_len(numLPattern), function(i){
+            paste0("![](figures/Pattern_", i, "__.png)")
+        }), collapse=""))
+    BODY3 <- paste0(BODY3, "\n")
+
+}
+
+# 4. R-Pattern
+.BODY4 <- function(numRPattern){
+    BODY4 <- paste0("\n\n# Receptor-Cell Patterns\n\n",
+        "```{r}\n", # Top
+        "r <- metadata(sce)$sctensor$receptor\n",
+        "rownames(r) <- paste0(\"(*,\",seq_len(nrow(r)), \",*)\")\n",
+        "heatmaply(r,",
+        "xlab=\"Celltype\",",
+        "ylab=\"Pattern\",",
+        "fontsize_col=20,",
+        "fontsize_row=20,",
+        "subplot_widths=c(0.7, 0.1),",
+        "subplot_heights=c(0.2, 0.7),",
+        "labRow = rownames(r),",
+        "labCol = colnames(r)",
+        ")\n",
+        "```\n" # Bottom
+        )
+    BODY4 <- paste0(BODY4,
+        paste(sapply(seq_len(numRPattern), function(i){
+            paste0("![](figures/Pattern__", i, "_.png)")
+        }), collapse=""))
+    BODY4 <- paste0(BODY4, "\n")
+}
+
+# 5. LR-Pattern
+.BODY5 <- paste0("\n\n# LR-pair Patterns\n\n",
+"```{r}\n", # Top
+"lr <- metadata(sce)$sctensor$lrpair\n",
+"rownames(lr) <- paste0(\"(*,*,\",seq_len(nrow(lr)), \")\")\n",
+"target <- which(rank(colMaxs(lr)) <= 100)\n",
+"heatmaply(lr[, target],",
+"xlab=\"LP-Pair\",",
+"ylab=\"Pattern\",",
+"fontsize_col=20,",
+"fontsize_row=20,",
+"subplot_widths=c(0.7, 0.1),",
+"subplot_heights=c(0.2, 0.7),",
+"labRow = rownames(lr[, target]),",
+"labCol = colnames(lr[, target])",
+")\n",
+"```\n" # Bottom
+)
+
+# 6. CCI-wise Hypergraph
+.BODY6 <- paste0("\n\n# CCI-wise Hypergraph\n\n",
+    "![](figures/CCIHypergraph.png){ width=100% }\n")
+
+# 7. Gene-wise Hypergraph
+.BODY7 <- paste0(
+    "\n\n# Gene-wise Hypergraph\n\n",
+   "![](figures/GeneHypergraph.png){ width=100% }\n",
+    "[Details of Ligand Gene-centric Overview](ligand.html)\n\n",
+    "[Details of Receptor Gene-centric Overview](receptor.html)\n"
+    )
+
+# 8. (Ligand, Receptor, LR-pair)-Pattern
+.BODY8 <- function(selected, rmdfiles, index, corevalue){
+    if(length(selected) != 0){
+        htmlfiles <- gsub("Rmd", "html", rmdfiles)
+        BODY8 <- sapply(selected, function(x){
+            i <- selected[x]
+            paste0("\n\n## (", paste(index[i, seq_len(3)],
+                collapse=","),
+                ") Pattern : (", round(corevalue[i], 2), " %)\n",
+                "[Details of (", paste(index[i, seq_len(3)],
+                collapse=","),
+                ") Pattern", "](", htmlfiles[i], ")\n")
+            })
+        BODY8 <- paste(BODY8, collapse = "\n")
+        BODY8 <- paste0("# (Ligand-Cell, Receptor-Cell, LR-pair)",
+            " Patterns\n\n", BODY8)
+    }else{
+        BODY8 <- "# (Ligand-Cell, Receptor-Cell, LR-pair) Patterns\n\n"
+    }
+}
+
+# 9. Session Information
+.BODY9 <- paste0("\n\n# Session Information\n\n",
+    "\n```{r}\n",
+    "sessionInfo()\n",
+    "```\n")
+
+# 10. License
+.BODY10 <- paste0("\n\n# License\n\n",
+    "Copyright (c) 2018 Koki Tsuyuzaki and Laboratory for ",
+    "Bioinformatics Research, RIKEN Center for Biosystems Dynamics",
+    " Reseach Released under the ",
+    "[Artistic License 2.0](",
+    "http://www.perlfoundation.org/artistic_license_2_0)\n")
+
+.sapply_pb <- function(X, FUN, ...)
+{
+  env <- environment()
+  pb_Total <- length(X)
+  counter <- 0
+  pb <- txtProgressBar(min = 0, max = pb_Total, style = 3)
+
+  wrapper <- function(...){
+    curVal <- get("counter", envir = env)
+    assign("counter", curVal +1 ,envir=env)
+    setTxtProgressBar(get("pb", envir=env), curVal +1)
+    FUN(...)
+  }
+  res <- sapply(X, wrapper, ...)
+  close(pb)
+  res
+}
+
+.FTT <- function(x){
+    sqrt(x) + sqrt(x + 1)
+}
+
+.ENRICHMENT <- function(all, sig, goannotation, meshannotation, reactomespc){
+    GOENRICHMENT <- function(all, sig, goannotation, category, p=1E-3){
+        if(is.na(goannotation)){
+            list(Term=NULL, Pvalue=NULL)
+        }else{
+            goParams <- new("GOHyperGParams",
+                geneIds=sig,
+                universeGeneIds=all,
+                annotation=goannotation,
+                ontology=category,
+                pvalueCutoff=p,
+                conditional=FALSE,
+                testDirection="over")
+            # Hyper geometric p-value
+            out <- try(summary(hyperGTest(goParams)), silent=TRUE)
+            if(is(out)[1] == "try-error"){
+                list(Term=NULL, Pvalue=NULL)
+            }else{
+                list(Term=out$Term, Pvalue=out$Pvalue)
+            }
+        }
+    }
+
+    MeSHENRICHMENT <- function(all, sig, meshannotation, category, p=1E-3){
+        if(is.na(meshannotation)){
+            list(Term=NULL, Pvalue=NULL)
+        }else{
+            meshParams <- new("MeSHHyperGParams",
+                geneIds = sig,
+                universeGeneIds = all,
+                annotation = meshannotation,
+                category = category,
+                database = "gene2pubmed",
+                pvalueCutoff = p,
+                pAdjust = "none")
+            # Hyper geometric p-value
+            out <- try(summary(meshHyperGTest(meshParams)), silent=TRUE)
+            if(is(out)[1] == "try-error"){
+                list(Term=NULL, Pvalue=NULL)
+            }else{
+                outTerm <- unique(out$MESHTERM)
+                outPvalue <- sapply(outTerm, function(x){
+                    out$Pvalue[which(out$MESHTERM == x)[1]]
+                })
+                list(Term=outTerm, Pvalue=outPvalue)
+            }
+        }
+    }
+
+    ReactomeENRICHMENT <- function(all, sig, reactomespc, p=1E-3){
+        if(is.na(reactomespc)){
+            list(Term=NULL, Pvalue=NULL)
+        }else{
+            out <- try(enrichPathway(gene=sig,
+              organism=reactomespc,
+              pvalueCutoff=p, readable=TRUE), silent=TRUE)
+            if(is(out)[1] == "try-error"){
+                list(Term=NULL, Pvalue=NULL)
+            }else if(is.null(out)){
+                list(Term=NULL, Pvalue=NULL)
+            }else{
+                list(Term=out@result$Description,
+                    Pvalue=out@result$pvalue)
+            }
+        }
+    }
+
+    # GO
+    cat("GO-Enrichment Analysis is running...(1/3)\n")
+    BP <- GOENRICHMENT(all, sig, goannotation, "BP")
+    cat("GO-Enrichment Analysis is running...(2/3)\n")
+    MF <- GOENRICHMENT(all, sig, goannotation, "MF")
+    cat("GO-Enrichment Analysis is running...(3/3)\n")
+    CC <- GOENRICHMENT(all, sig, goannotation, "CC")
+
+    # MeSH
+    cat("MeSH-Enrichment Analysis is running...(1/16)\n")
+    A <- MeSHENRICHMENT(all, sig, meshannotation, "A")
+    cat("MeSH-Enrichment Analysis is running...(2/16)\n")
+    B <- MeSHENRICHMENT(all, sig, meshannotation, "B")
+    cat("MeSH-Enrichment Analysis is running...(3/16)\n")
+    C <- MeSHENRICHMENT(all, sig, meshannotation, "C")
+    cat("MeSH-Enrichment Analysis is running...(4/16)\n")
+    D <- MeSHENRICHMENT(all, sig, meshannotation, "D")
+    cat("MeSH-Enrichment Analysis is running...(5/16)\n")
+    E <- MeSHENRICHMENT(all, sig, meshannotation, "E")
+    cat("MeSH-Enrichment Analysis is running...(6/16)\n")
+    F <- MeSHENRICHMENT(all, sig, meshannotation, "F")
+    cat("MeSH-Enrichment Analysis is running...(7/16)\n")
+    G <- MeSHENRICHMENT(all, sig, meshannotation, "G")
+    cat("MeSH-Enrichment Analysis is running...(8/16)\n")
+    H <- MeSHENRICHMENT(all, sig, meshannotation, "H")
+    cat("MeSH-Enrichment Analysis is running...(9/16)\n")
+    I <- MeSHENRICHMENT(all, sig, meshannotation, "I")
+    cat("MeSH-Enrichment Analysis is running...(10/16)\n")
+    J <- MeSHENRICHMENT(all, sig, meshannotation, "J")
+    cat("MeSH-Enrichment Analysis is running...(11/16)\n")
+    K <- MeSHENRICHMENT(all, sig, meshannotation, "K")
+    cat("MeSH-Enrichment Analysis is running...(12/16)\n")
+    L <- MeSHENRICHMENT(all, sig, meshannotation, "L")
+    cat("MeSH-Enrichment Analysis is running...(13/16)\n")
+    M <- MeSHENRICHMENT(all, sig, meshannotation, "M")
+    cat("MeSH-Enrichment Analysis is running...(14/16)\n")
+    N <- MeSHENRICHMENT(all, sig, meshannotation, "N")
+    cat("MeSH-Enrichment Analysis is running...(15/16)\n")
+    V <- MeSHENRICHMENT(all, sig, meshannotation, "V")
+    cat("MeSH-Enrichment Analysis is running...(16/16)\n")
+    Z <- MeSHENRICHMENT(all, sig, meshannotation, "Z")
+
+    # Reactome
+    cat("Reactome-Enrichment Analysis is running...(1/1)\n")
+    Reactome <- ReactomeENRICHMENT(all, sig, reactomespc)
+
+    # Output
+    out <- list(BP, MF, CC,
+            A, B, C, D, E, F, G, H, I, J, K, L, M, N, V, Z,
+            Reactome)
+    # Exception
+    out <- lapply(out, function(x){
+            if(length(x$Term) == 0 || length(x$Pvalue) == 0){
+                list(Term=NULL, Pvalue=NULL)
+            }else{
+                x
+            }
+        })
+    names(out) <- c(
+        "GO_BP", "GO_MF", "GO_CC",
+        "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D",
+        "MeSH_E", "MeSH_F", "MeSH_G", "MeSH_H",
+        "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
+        "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
+        "Reactome"
+        )
+    out
+}
+
+.eachVecLR <- function(x, e){
+    index <- e$index
+    sce <- e$sce
+    .HCLUST <- e$.HCLUST
+    .OUTLIERS <- e$.OUTLIERS
+    top <- e$top
+    spc <- e$spc
+    .sapply_pb <- e$.sapply_pb
+    GeneInfo <- e$GeneInfo
+    temp <- e$temp
+    .smallTwoDplot <- e$.smallTwoDplot
+    input <- e$input
+    twoD <- e$twoD
+    .hyperLinks <- e$.hyperLinks
+    LR <- e$LR
+    .eachVecLR <- e$.eachVecLR
+    .eachRender <- e$.eachRender
+    .ENRICHMENT <- e$.ENRICHMENT
+    .XYZ_HEADER1 <- e$.XYZ_HEADER1
+    .XYZ_HEADER2 <- e$.XYZ_HEADER2
+
+    # Each LR-Pattern Vector
+    vecLR <- metadata(sce)$sctensor$lrpair[x, ]
+    # Clustering
+    ClusterLR <- .HCLUST(vecLR)
+    # P-value of Grubbs test
+    PvalueLR <- suppressWarnings(.OUTLIERS(vecLR))
+    # FDR control by BH method
+    QvalueLR <- p.adjust(PvalueLR, "BH")
+    # TARGET elements by Clustering
+    TARGET <- which(ClusterLR == "selected")
+    TARGET <- TARGET[order(vecLR[TARGET], decreasing=TRUE)]
+    # TOP elements
+    if(top != "full"){
+        TOP <- min(top, length(TARGET))
+        TARGET <- TARGET[1:TOP]
+    }else{
+        TOP <- "full"
+    }
+    # Enrichment (Too Heavy)
+    all <- unique(unlist(strsplit(names(vecLR), "_")))
+    sig <- unique(unlist(strsplit(names(TARGET), "_")))
+    goannotation <- c("org.Hs.eg.db", "org.Mm.eg.db",
+        "org.At.tair.db", "org.Rn.eg.db", "org.Bt.eg.db",
+        "org.Ce.eg.db", "org.Dm.eg.db", "org.Dr.eg.db",
+        "org.Gg.eg.db", "org.Sc.sgd.db")
+    names(goannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
+        "Bta", "Cel", "Dme", "Dre", "Gga", "Ssc")
+    goannotation <- goannotation[spc]
+    meshannotation <- paste0("MeSH.",
+        c("Hsa", "Mmu", "Ath", "Rno", "Bta", "Cel",
+        "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc"), ".eg.db")
+    names(meshannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
+        "Bta", "Cel", "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc")
+    meshannotation <- meshannotation[spc]
+    reactomespc <- c("anopheles", "arabidopsis", "bovine", "canine", "celegans", "chicken", "chimp", "fly", "gondii", "human", "malaria", "mouse", "pig", "rat", "xenopus", "zebrafish")
+    names(reactomespc) <- c("Aga", "Ath", "Bta", "Cfa", "Cel",
+        "Gga", "Ptr", "Dme", "Tgo", "Hsa",
+        "Pfa", "Mmu", "Ssc", "Rno", "Xla",
+        "Dre")
+    reactomespc <- reactomespc[spc]
+    Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation, meshannotation, reactomespc))
+    # Eigen Value
+    Value <- metadata(sce)$sctensor$lrpair[x, TARGET]
+    Percentage <- Value / sum(metadata(sce)$sctensor$lrpair[x, ]) * 100
+    # Hyper Link (Too Heavy)
+    cat("Hyper-links are embedded...\n")
+    GeneName <- GeneInfo$GeneName
+    LINKS <- .sapply_pb(seq_along(TARGET), function(xx){
+            # IDs
+            Ranking <- xx
+            L_R <- strsplit(names(TARGET[xx]), "_")
+            LigandGeneID <- L_R[[1]][1]
+            ReceptorGeneID <- L_R[[1]][2]
+            LigandGeneName <- GeneName[which(GeneName[,2] == LigandGeneID), 1]
+            ReceptorGeneName <- GeneName[which(GeneName[,2] == ReceptorGeneID), 1]
+            if(length(LigandGeneName) == 0 || LigandGeneName == ""){
+                LigandGeneName <- LigandGeneID
+            }
+            if(length(ReceptorGeneName) == 0 || ReceptorGeneName == ""){
+                ReceptorGeneName <- ReceptorGeneID
+            }
+
+            # Plot (Ligand/Receptor)
+            Ligandfile <- paste0(temp, "/figures/Ligand_", LigandGeneID, ".png")
+            Receptorfile <- paste0(temp, "/figures/Receptor_", ReceptorGeneID, ".png")
+            png(filename=Ligandfile, width=1000, height=1000)
+                .smallTwoDplot(input, LigandGeneID, LigandGeneName, twoD, "Reds")
+            dev.off()
+            png(filename=Receptorfile, width=1000, height=1000)
+            .smallTwoDplot(input, ReceptorGeneID, ReceptorGeneName, twoD, "Blues")
+            dev.off()
+
+            # Return Hyper links
+            .hyperLinks(Ranking, LigandGeneID,
+            ReceptorGeneID, LR, Value[xx],
+            Percentage[xx],
+            spc, GeneInfo, PvalueLR[xx],
+            QvalueLR[xx])
+        })
+    LINKS <- paste(LINKS, collapse="")
+
+    # Output object
+    list(
+        ClusterLR=ClusterLR,
+        PvalueLR=PvalueLR,
+        QvalueLR=QvalueLR,
+        TARGET=TARGET,
+        TOP=TOP,
+        Enrich=Enrich,
+        Value=Value,
+        Percentage=Percentage,
+        LINKS=LINKS
+    )
+}
+
+.eachRender <- function(x, e, SelectedLR){
+    index <- e$index
+    temp <- e$temp
+    out.vecLR <- e$out.vecLR
+    .XYZ_HEADER1 <- e$.XYZ_HEADER1
+    .XYZ_HEADER2 <- e$.XYZ_HEADER2
+    .XYZ_HEADER3 <- e$.XYZ_HEADER3
+    .XYZ_ENRICH <- e$.XYZ_ENRICH
+
+    indexLR <- index[x, "Mode3"]
+    TARGET <- out.vecLR[, paste0("pattern", indexLR)]$TARGET
+    LINKS <- out.vecLR[, paste0("pattern", indexLR)]$LINKS
+
+    # Bottom part of Rmarkdown
+    XYZ_BOTTOM <- paste(
+        c(.XYZ_HEADER2(indexLR, length(TARGET)),
+        LINKS,
+        .XYZ_HEADER3(indexLR),
+        .XYZ_ENRICH(out.vecLR, indexLR)),
+        collapse="")
+
+    # Each (x,y,z)-rmdfile
+    RMDFILE <- paste0(c("pattern", index[x, seq_len(3)]), collapse="_")
+    RMDFILE <- paste0(RMDFILE, ".Rmd")
+    cat("\n")
+    cat(paste0(RMDFILE, " is created...\n"))
+    sink(file = paste0(temp, "/", RMDFILE))
+    cat(paste(
+        c(.XYZ_HEADER1(index, x), XYZ_BOTTOM),
+        collapse=""))
+    sink()
+
+    # Rendering
+    cat(paste0(RMDFILE, " is compiled to ",
+        gsub(".Rmd", ".html", RMDFILE), "\n"))
+    render(paste0(temp, "/", RMDFILE), quiet=TRUE)
+}
+
+.palf <- colorRampPalette(c("#4b61ba", "gray", "#a87963", "red"))
+
+.shrink2 <- function(x){
+    block <- strsplit(x , " ")[[1]]
+    l <- length(block)
+    nc <- sapply(block, nchar)
+    if(l >= 2){
+        out <- block[1]
+        for(i in 2:l){
+            end <- length(out)
+            tmp <- block[i]
+            if(nchar(out[end])+nchar(tmp) <= 25){
+              out[end] <- paste(c(out[end], tmp), collapse=" ")
+            }else{
+              out[end+1] <- tmp
+            }
+        }
+    paste(out, collapse="\n")
+    }else{
+        x
+    }
+}
+
+.eachCircleColor <- c(
+    rep(rgb(0,1,0, 5E-3), 3),
+    rep(rgb(0.5,0,1, 5E-3), 16),
+    rep(rgb(1,0.5,0, 5E-3), 1))
+names(.eachCircleColor) <- c(
+    "GO_BP", "GO_MF", "GO_CC",
+    "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D", "MeSH_E", "MeSH_F",
+    "MeSH_G", "MeSH_H", "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
+    "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
+    "Reactome")
+
+.tagCloud <- function(out.vecLR, temp){
+    sapply(seq_len(ncol(out.vecLR)), function(x){
+        # Pvalue
+        Pvalues <- list(
+            GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Pvalue,
+            GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Pvalue,
+            GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Pvalue,
+            MeSH_A=out.vecLR["Enrich", x][[1]]$MeSH_A$Pvalue,
+            MeSH_B=out.vecLR["Enrich", x][[1]]$MeSH_B$Pvalue,
+            MeSH_C=out.vecLR["Enrich", x][[1]]$MeSH_C$Pvalue,
+            MeSH_D=out.vecLR["Enrich", x][[1]]$MeSH_D$Pvalue,
+            MeSH_E=out.vecLR["Enrich", x][[1]]$MeSH_E$Pvalue,
+            MeSH_F=out.vecLR["Enrich", x][[1]]$MeSH_F$Pvalue,
+            MeSH_G=out.vecLR["Enrich", x][[1]]$MeSH_G$Pvalue,
+            MeSH_H=out.vecLR["Enrich", x][[1]]$MeSH_H$Pvalue,
+            MeSH_I=out.vecLR["Enrich", x][[1]]$MeSH_I$Pvalue,
+            MeSH_J=out.vecLR["Enrich", x][[1]]$MeSH_J$Pvalue,
+            MeSH_K=out.vecLR["Enrich", x][[1]]$MeSH_K$Pvalue,
+            MeSH_L=out.vecLR["Enrich", x][[1]]$MeSH_L$Pvalue,
+            MeSH_M=out.vecLR["Enrich", x][[1]]$MeSH_M$Pvalue,
+            MeSH_N=out.vecLR["Enrich", x][[1]]$MeSH_N$Pvalue,
+            MeSH_V=out.vecLR["Enrich", x][[1]]$MeSH_V$Pvalue,
+            MeSH_Z=out.vecLR["Enrich", x][[1]]$MeSH_Z$Pvalue,
+            Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Pvalue
+            )
+        # Term
+        Terms <- list(
+            GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Term,
+            GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Term,
+            GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Term,
+            MeSH_A=out.vecLR["Enrich", x][[1]]$MeSH_A$Term,
+            MeSH_B=out.vecLR["Enrich", x][[1]]$MeSH_B$Term,
+            MeSH_C=out.vecLR["Enrich", x][[1]]$MeSH_C$Term,
+            MeSH_D=out.vecLR["Enrich", x][[1]]$MeSH_D$Term,
+            MeSH_E=out.vecLR["Enrich", x][[1]]$MeSH_E$Term,
+            MeSH_F=out.vecLR["Enrich", x][[1]]$MeSH_F$Term,
+            MeSH_G=out.vecLR["Enrich", x][[1]]$MeSH_G$Term,
+            MeSH_H=out.vecLR["Enrich", x][[1]]$MeSH_H$Term,
+            MeSH_I=out.vecLR["Enrich", x][[1]]$MeSH_I$Term,
+            MeSH_J=out.vecLR["Enrich", x][[1]]$MeSH_J$Term,
+            MeSH_K=out.vecLR["Enrich", x][[1]]$MeSH_K$Term,
+            MeSH_L=out.vecLR["Enrich", x][[1]]$MeSH_L$Term,
+            MeSH_M=out.vecLR["Enrich", x][[1]]$MeSH_M$Term,
+            MeSH_N=out.vecLR["Enrich", x][[1]]$MeSH_N$Term,
+            MeSH_V=out.vecLR["Enrich", x][[1]]$MeSH_V$Term,
+            MeSH_Z=out.vecLR["Enrich", x][[1]]$MeSH_Z$Term,
+            Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Term
+            )
+        lapply(names(Pvalues), function(xx){
+            # Pvalue
+            p <- eval(parse(text=paste0("Pvalues$", xx)))
+            # Term
+            t <- eval(parse(text=paste0("Terms$", xx)))
+            t <- sapply(t, .shrink2)
+            # Plot
+            png(filename=paste0(temp, "/figures/Tagcloud_", xx,
+                "_", colnames(out.vecLR)[x],
+                ".png"), width=1000, height=1000)
+            if(is.null(p)){
+                .NULLPlot()
+            }else if(length(p) == 1){
+                .SinglePlot(t)
+            }else{
+                # background circle
+                for(i in 1:150){
+                    plot(1,1, cex=(150:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
+                    par(new=TRUE)
+                }
+                negLogPval <- -log10(p+1E-10)
+                target <- seq_len(min(100, length(p)))
+                tagcloud(t[target], weights = negLogPval[target],
+                col = smoothPalette(negLogPval[target], palfunc = .palf),
+                order = "size", algorithm = "oval")
+            }
+            dev.off()
+        })
+    })
+}
+
+.NULLPlot <- function(){
+    plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
+    par(ps=30)
+    text(1, 1, "None")
+}
+
+.SinglePlot <- function(x){
+    plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
+    par(ps=30)
+    text(1, 1, x, col="red")
+}
+
+.geneHyperGraphPlot <- function(out.vecLR, GeneInfo, temp){
+    # Setting
+    convertGeneName <- function(geneid, geneInfo){
+        genename <- geneInfo$GeneName[
+            which(geneInfo$GeneName$entrezgene == geneid),
+            "external_gene_name"][1]
+        if(length(genename) == 0){
+            genename = geneid
+        }
+        genename
+    }
+
+    # Node
+    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
+        names(out.vecLR["TARGET", x][[1]])
+    }, simplify=FALSE)
+    Lnodes <- lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][1]
+        })
+    })
+    Rnodes <-lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][2]
+        })
+    })
+    Lnodes <- lapply(Lnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    Rnodes <- lapply(Rnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    uniqueLnodes <- unique(unlist(Lnodes))
+    uniqueRnodes <- unique(unlist(Rnodes))
+
+    # Empty Graph
+    g <- graph.empty(directed=FALSE)
+    # Add nodes
+    g <- add.vertices(g, nv=length(uniqueLnodes),
+        attr=list(name=uniqueLnodes,
+            type=rep(TRUE, length(uniqueLnodes)),
+            color=rgb(1,0,0,0.5)))
+    g <- add.vertices(g, nv=length(uniqueRnodes),
+        attr=list(name=uniqueRnodes,
+            type=rep(TRUE, length(uniqueRnodes)),
+            color=rgb(0,0,1,0.5)))
+
+    # Nodes Weight
+    freqLnodes <- sapply(uniqueLnodes, function(x){
+        length(which(unlist(Lnodes) == x))
+        })
+    freqRnodes <- sapply(uniqueRnodes, function(x){
+        length(which(unlist(Rnodes) == x))
+        })
+    freq <- c(freqLnodes, freqRnodes)
+    freq <- freq / max(freq) * 10
+
+    # Add edges
+    edgeListVec <- as.vector(t(as.matrix(
+        data.frame(
+            L=unlist(Lnodes),
+            R=unlist(Rnodes)
+    ))))
+    g <- add.edges(g, edgeListVec)
+
+    # Plot
+    cols <- c(
+        brewer.pal(8, "Set1"),
+        brewer.pal(7, "Dark2"),
+        brewer.pal(7, "Set2"),
+        brewer.pal(7, "Pastel2"),
+        brewer.pal(7, "Accent"),
+        brewer.pal(12, "Set3"),
+        brewer.pal(8, "Pastel1")
+        )
+    edge.cols <- unlist(sapply(seq_len(ncol(out.vecLR)), function(x){
+            rep(cols[x], length(out.vecLR["TARGET", x][[1]]))
+        }, simplify=FALSE))
+
+    # Setting
+    V(g)$size <- freq
+    E(g)$color <- edge.cols
+    E(g)$width <- 0.5
+    l <- layout_with_dh(g)
+
+    # All Pattern
+    png(filename=paste0(temp, "/figures/GeneHypergraph.png"),
+        width=2500, height=2500)
+    plot.igraph(g, layout=l)
+    legend("topleft",
+        legend=c("ligand", "receptor",
+            colnames(out.vecLR)),
+        col=c(rgb(1,0,0,0.5), rgb(0,0,1,0.5),
+            cols[seq_len(ncol(out.vecLR))]),
+        pch=16)
+    dev.off()
+
+    # Each Pattern
+    sapply(seq_len(ncol(out.vecLR)), function(x){
+        tmp_edgecolor <- edge.cols
+        tmp_edgecolor[which(tmp_edgecolor != cols[x])] <- rgb(0,0,0,0.1)
+        tmp_nodecolor <- V(g)$color
+        grayout <- setdiff(
+            setdiff(
+                names(V(g)),
+                Lnodes[[x]]
+                ), Rnodes[[x]]
+            )
+        target <- unlist(sapply(grayout, function(xx){
+            which(names(V(g)) == xx)
+        }))
+        tmp_nodecolor[target] <- rgb(0,0,0,0.1)
+
+        # Plot
+        png(filename=paste0(
+            temp, "/figures/GeneHypergraph_",
+            gsub("pattern", "", colnames(out.vecLR)[x]),
+            ".png"),
+            width=2500, height=2500)
+        plot.igraph(g,
+            vertex.color=tmp_nodecolor,
+            edge.color=tmp_edgecolor, layout=l)
+        legend("topleft",
+            legend=c("ligand", "receptor",
+                colnames(out.vecLR)[x]),
+            col=c(rgb(1,0,0,0.5), rgb(0,0,1,0.5),
+                cols[x]),
+            pch=16)
+        dev.off()
+    })
+}
+
+.LIGAND_HEADER <- paste0(
+    "# <font color='#1881c2'>Details of Ligand Gene-centric Overview</font>\n\n",
+    "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "|Rank|Frequency|Ligand Gene|Candidate Partner Receptor Genes|Related CCIs|\n",
+    "|----|----|----|----|----|\n"
+)
+
+.RECEPTOR_HEADER <- paste0(
+    "# <font color='#1881c2'>Details of Receptor Gene-centric Overview</font>\n\n",
+    "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "|Rank|Frequency|Receptor Gene|Candidate Partner Ligand Genes|Related CCIs|\n",
+    "|----|----|----|----|----|\n"
+)
+
+.LIGAND_BODY <- function(out.vecLR, GeneInfo, index, selected){
+    # Setting
+    convertGeneName <- function(geneid, geneInfo){
+        genename <- geneInfo$GeneName[
+            which(geneInfo$GeneName$entrezgene == geneid),
+            "external_gene_name"][1]
+        if(length(genename) == 0){
+            genename = geneid
+        }
+        genename
+    }
+
+    # Node
+    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
+        names(out.vecLR["TARGET", x][[1]])
+    }, simplify=FALSE)
+    Lnodes <- lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][1]
+        })
+    })
+    Rnodes <-lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][2]
+        })
+    })
+    Lnodes <- lapply(Lnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    Rnodes <- lapply(Rnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    uniqueLnodes <-  unique(unlist(Lnodes))
+    uniqueRnodes <-  unique(unlist(Rnodes))
+
+    Freq <- sapply(uniqueLnodes, function(x){
+            length(which(unlist(Lnodes) == x))
+        })
+    Freq <- sort(Freq, decreasing=TRUE)
+    Rank <- rank(-Freq)
+    Ligand <- names(Freq)
+    Receptor <- sapply(Ligand, function(x){
+        unique(unlist(sapply(seq_len(length(Lnodes)), function(xx){
+            Rnodes[[xx]][which(x == Lnodes[[xx]])]
+        })))
+    })
+    Receptor <- unlist(lapply(Receptor, function(x){
+        paste(x, collapse=", ")
+        }))
+    CCI <- sapply(Ligand, function(x){
+        hit <- sapply(seq_len(ncol(out.vecLR)), function(xx){
+            length(which(Lnodes[[xx]] == x))
+            })
+        vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
+        target <- unlist(sapply(vec, function(xx){
+                p <- gsub("pattern", "", colnames(out.vecLR)[xx])
+                which(p == index[selected, "Mode3"])
+            }))
+        out <- index[target, c("Mode1", "Mode2", "Mode3")]
+        # Out
+        if(is.vector(out)){
+            paste0("[See the details of (",
+                paste(out, collapse=","),
+                ")-Pattern](",
+                "pattern_",
+                paste(out, collapse="_"),
+                ".html)")
+        }else{
+            paste(sapply(seq_len(nrow(out)), function(xx){
+                paste0("[See the details of (",
+                    paste(out[xx,], collapse=","),
+                    ")-Pattern](",
+                    "pattern_",
+                    paste(out[xx,], collapse="_"),
+                    ".html)")
+            }), collapse=" ")
+        }
+    })
+    paste0(
+    "|", Rank,
+    "|", Freq,
+    "|", Ligand,
+    "|", Receptor,
+    "|", CCI, "|\n", collapse="")
+}
+
+.RECEPTOR_BODY <- function(out.vecLR, GeneInfo, index, selected){
+    # Setting
+    convertGeneName <- function(geneid, geneInfo){
+        genename <- geneInfo$GeneName[
+            which(geneInfo$GeneName$entrezgene == geneid),
+            "external_gene_name"][1]
+        if(length(genename) == 0){
+            genename = geneid
+        }
+        genename
+    }
+
+    # Node
+    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
+        names(out.vecLR["TARGET", x][[1]])
+    }, simplify=FALSE)
+    Lnodes <- lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][1]
+        })
+    })
+    Rnodes <-lapply(nodes, function(x){
+        sapply(x, function(xx){
+            strsplit(xx, "_")[[1]][2]
+        })
+    })
+    Lnodes <- lapply(Lnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    Rnodes <- lapply(Rnodes, function(x){
+            sapply(x, function(xx){
+                convertGeneName(xx, GeneInfo)
+        })
+    })
+    uniqueLnodes <-  unique(unlist(Lnodes))
+    uniqueRnodes <-  unique(unlist(Rnodes))
+
+    Freq <- sapply(uniqueRnodes, function(x){
+            length(which(unlist(Rnodes) == x))
+        })
+    Freq <- sort(Freq, decreasing=TRUE)
+    Rank <- rank(-Freq)
+    Receptor <- names(Freq)
+    Ligand <- sapply(Receptor, function(x){
+        unique(unlist(sapply(seq_len(length(Rnodes)), function(xx){
+            Lnodes[[xx]][which(x == Rnodes[[xx]])]
+        })))
+    })
+    Ligand <- unlist(lapply(Ligand, function(x){
+        paste(x, collapse=", ")
+        }))
+    CCI <- sapply(Receptor, function(x){
+        hit <- sapply(seq_len(ncol(out.vecLR)), function(xx){
+            length(which(Rnodes[[xx]] == x))
+            })
+        vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
+        target <- unlist(sapply(vec, function(xx){
+                p <- gsub("pattern", "", colnames(out.vecLR)[xx])
+                which(p == index[selected, "Mode3"])
+            }))
+        out <- index[target, c("Mode1", "Mode2", "Mode3")]
+        # Out
+        if(is.vector(out)){
+            paste0("[See the details of (",
+                paste(out, collapse=","),
+                ")-Pattern](",
+                "pattern_",
+                paste(out, collapse="_"),
+                ".html)")
+        }else{
+            paste(sapply(seq_len(nrow(out)), function(xx){
+                paste0("[See the details of (",
+                    paste(out[xx,], collapse=","),
+                    ")-Pattern](",
+                    "pattern_",
+                    paste(out[xx,], collapse="_"),
+                    ".html)")
+            }), collapse=" ")
+        }
+    })
+    paste0(
+    "|", Rank,
+    "|", Freq,
+    "|", Receptor,
+    "|", Ligand,
+    "|", CCI, "|\n", collapse="")
 }

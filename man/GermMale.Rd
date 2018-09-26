@@ -5,7 +5,7 @@
 The matrix which is used as test data of scTensor.
 }
 \description{
-A matrix with 2547 rows (genes) * 852 columns (cells).
+A matrix with 242 rows (genes) * 852 columns (cells).
 }
 \usage{data(GermMale)}
 \details{
@@ -15,7 +15,7 @@ Only male data is extracted and then the gene symbol is converted to
 NCBI Gene ID by Homo.sapiens package.
 
 For saving the package size, the number of genes are strictlly reduced by the
-standard of highlly variable genes with threshold of p-value is 1E-150.
+standard of highlly variable genes with threshold of p-value is 1E-300.
 }
 \references{
 Li L. and Dong J. and Yan L. and Yong J. et al. (2017)

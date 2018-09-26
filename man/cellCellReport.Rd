@@ -12,7 +12,7 @@ The result is saved as HTML report which contains with multiple files.
 \usage{
 cellCellReport(sce, reducedDimNames, out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=1)
+    author="The person who runs this script", thr=80, top="full", cl=NULL)
 }
 
 \arguments{
@@ -38,7 +38,13 @@ The author of HTML report (Default: "The person who runs this script").
 }
 \item{thr}{
 The threshold for selection of top pecentage of core tensor elements
-(Default: 1).
+(Default: 80 (1 to 100)).
+}
+\item{top}{
+top genes in each (*,*,*)-pattern which are selected and summarized in the report (Default: "full")
+}
+\item{cl}{
+Cluster set by snow package. If the cl is set, report is calculated in parallel (Default: NULL)
 }
 }
 

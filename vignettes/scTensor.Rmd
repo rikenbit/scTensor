@@ -28,7 +28,7 @@ Due to the rapid development of single-cell RNA-Seq (scRNA-Seq) technologies, wi
 
 This document supports the third method, which seems the most general strategy without requirement of additional experiments except for scRNA-Seq.
 
-Many studies are  based on the Ligand-Receptor (LR)-pair list of FANTOM5 project^[Jordan A. Ramilowski, A draft network of ligand-receptor-mediated multicellular signalling in human, Nature Communications, 2015] as the evidence of CCI ( http://fantom.gsc.riken.jp/5/suppl/Ramilowski_et_al_2015/data/PairsLigRec.txt ). The project proposed the LR-candidate genes by following two reasons.
+Many studies are  based on the ligand-receptor (LR)-pair list of FANTOM5 project^[Jordan A. Ramilowski, A draft network of ligand-receptor-mediated multicellular signalling in human, Nature Communications, 2015] as the evidence of CCI ( http://fantom.gsc.riken.jp/5/suppl/Ramilowski_et_al_2015/data/PairsLigRec.txt ). The project proposed the LR-candidate genes by following two reasons.
 
 1. **Subcellular Localization**
     1. Known Annotation (UniProtKB and HPRD) : The term **"Secreted"** for candidate ligand genes and **"Plasma Membrane"** for candidate receptor genes
@@ -37,22 +37,20 @@ Many studies are  based on the Ligand-Receptor (LR)-pair list of FANTOM5 project
 
 The project also merged the data with previous LR database such as IUPHAR/DLRP/HPMR and filter out the list without PMIDs.
 
-Here, we extend the similar approarch to the construction of the LR-pair lists of 12 organsisms and implemented as multiple R/_Bioconductor_ annotation packages for sustainable maintainance (`r Biocpkg("LRBaseDbi")` and LRBase.XXX.eg.db-type packages, XXX is the abbreviation of scientific name of organisms such as Hsa: Homo sapiens). Besides, we also developed a tensor decomposition based algorithm for detection and visualization of CCI from scRNA-Seq (`r CRANpkg("scTensor")`). This document provides the way to use `r Biocpkg("LRBaseDbi")`, LRBase.XXX.eg.db-type packages, and `r CRANpkg("scTensor")` package.
+Here, we extend the similar approarch to the construction of the LR-pair lists of 12 organsisms and implemented as multiple R/_Bioconductor_ annotation packages for sustainable maintainance (`r Biocpkg("LRBaseDbi")` and LRBase.XXX.eg.db-type packages (Figure 1). XXX is the abbreviation of scientific name of organisms such as `r Biocpkg("LRBase.Hsa.eg.db")` for ligand-receptor LR database of Homo sapiens). Besides, we also developed a tensor decomposition based algorithm for detection and visualization of CCI from scRNA-Seq (`r CRANpkg("scTensor")`). This document provides the way to use `r Biocpkg("LRBaseDbi")`, LRBase.XXX.eg.db-type packages, and `r CRANpkg("scTensor")` package.
+
+![Figure 1 : Workflow of LR-related packages](Workflow.jpeg)
 
 ## Dependencies of CCI-related Packages
 
-Our CCI-related package is composed of some annotation packages and software packages.
-
-![Dependencies of CCI-related Packages](Depends.png)
+Our CCI-related package is composed of some annotation packages and software packages (Figure 1).
 
 `r Biocpkg("LRBaseDbi")` package defines the class "LRBaseDb" for LRBase.XXX.eg.db-type packages such as `r Biocpkg("LRBase.Hsa.eg.db")` and unify the object's behavior such as column function. `r CRANpkg("nnTensor")` which is a CRAN package, performs non-negative tensor decomposition, and `r Biocpkg("scTensor")` internally imports the nnTensor. `r CRANpkg("scTensor")` constructs CCI-tensor from a LRBase.XXX.eg.db package and scRNA-Seq dataset, decomposes to core tensor and factor matrices, and outputs HTML reports. See the next usage section for the details.
 
 # Usage
 ## LRBase.XXX.eg.db (ligand-receptor database of 12 organisms)
 
-To create the LR-list of 12 organisms, we used the information about the subcelluar localization of proteins from SWISSPROT (knowledge databaase) and TREMBL (computational prediction). We also used the PPI information from STRING database. The proteins which is assigned to the term **"Secreted"** and **"Cellular Membrane"** are retrived as candidate ligand and receptor, respectively. Finally, the LR-pairs which is registed in STRING are extracted as candidate LR-lists.
-
-![Pipeline for construction of LR-list of LRBase.XXX.eg.db](Pipeline.png)
+To create the LR-list of 12 organisms, we used the information about the subcelluar localization of proteins from SWISSPROT (knowledge databaase) and TREMBL (computational prediction). We also used the PPI information from STRING database  (Figure 1). The proteins which is assigned to the term **"Secreted"** and **"Cellular Membrane"** are retrived as candidate ligand and receptor, respectively. Finally, the LR-pairs which is registed in STRING are extracted as candidate LR-lists.
 
 Following 12 organisms are implmented as LRBase.XXX.eg.db-type packages.
 
@@ -91,9 +89,11 @@ head(select(LRBase.Hsa.eg.db, keys=key_HSA[1:2], columns=c("GENEID_L", "GENEID_R
 Other additional functions like `species`, `nomenclature`, and `listDatabases` are available. In each LRBase.XXX.eg.db-type package, `species` function returns the common name and `nomenclature` returns the scientific name. `listDatabases` function returns the source of data. `dbInfo` returns the information of the package. `dbfile` returns the directory where sqlite file is stored. `dbschema` returns the schema of database. `dbconn` returns the connection to the sqlite database.
 
 ```{r LRBase.XXX.eg.db2, echo=TRUE}
+lrPackageName(LRBase.Hsa.eg.db)
+lrNomenclature(LRBase.Hsa.eg.db)
 species(LRBase.Hsa.eg.db)
-nomenclature(LRBase.Hsa.eg.db)
-listDatabases(LRBase.Hsa.eg.db)
+lrListDatabases(LRBase.Hsa.eg.db)
+lrVersion(LRBase.Hsa.eg.db)
 
 dbInfo(LRBase.Hsa.eg.db)
 dbfile(LRBase.Hsa.eg.db)
@@ -123,13 +123,13 @@ Although any package name is acceptable, note that if the organism that the user
 
 Combined with LRBase.XXX.eg.db-type package and user's gene expression matrix of scRNA-Seq, `r Biocpkg("scTensor")` detects CCIs and generates HTML reports for exploratory data inspection. The algorithm of `r Biocpkg("scTensor")` is as follows.
 
-Firstly, `r Biocpkg("scTensor")` sums up the cellular-level scRNA-Seq data as celltype-level matrix, searches the corresponding pair of genes in the rownames of the matrix, and extracted as vector.
+Firstly, `r Biocpkg("scTensor")` calculates the celltype-level mean vectors, searches the corresponding pair of genes in the rownames of the matrix, and extracted as vector.
 
-Next, the all elements of extracted two vectors are summed up with all possible combination (_Kronecker_ sum) and summarized as a matrix. Here, the multiple matrices can be represented as a three-order "tensor" (Ligand-Cell * Receptor-Cell * LR-Pair). `r Biocpkg("scTensor")` decomposes the tensor into a small tensor (core tensor) and three factor matrices. Tensor decomposition is very similar to the matrix decomposition like PCA (principal component analysis). The core tensor is similar to eigenvalue of PCA;  this means that how much the pattern is outstanding. Likewise, three matrices is similar to the PC scores/loadings of PCA; These represent which ligand-cell/receptor-cell/LR-pair are informative. When the matrices have negative values, interpreting which direction (+/-) is important and which is not, is difficult and laboring task. That's why, `r Biocpkg("scTensor")` performs non-negative Tucker decomposition (NTD), which is non-negative version of tensor decomposition (c.f. `r CRANpkg("nnTensor")`).
+Next, the celltype-level mean vectors of ligand expression and that of receptor expression are multiplied as outer product and converted to celltype $\times$ celltype matrix. Here, the multiple matrices can be represented as a three-order "tensor" (Ligand-Cell * Receptor-Cell * LR-Pair). `r Biocpkg("scTensor")` decomposes the tensor into a small tensor (core tensor) and three factor matrices. Tensor decomposition is very similar to the matrix decomposition like PCA (principal component analysis). The core tensor is similar to eigenvalue of PCA;  this means that how much the pattern is outstanding. Likewise, three matrices is similar to the PC scores/loadings of PCA; These represent which ligand-cell/receptor-cell/LR-pair are informative. When the matrices have negative values, interpreting which direction (+/-) is important and which is not, is difficult and laboring task. That's why, `r Biocpkg("scTensor")` performs non-negative Tucker decomposition (NTD), which is non-negative version of tensor decomposition (c.f. `r CRANpkg("nnTensor")`).
 
 Finaly, the result of NTD is summarized as HTML report. Because most of plots are visualized by `r CRANpkg("plotly")` package, the presise information of the plot can be interactively confirmed by user's on-site web browser. The three factor matrices can be interactively viewed and which celltypes and which LR-pairs are likely to be interacted each other. The mode-3 (LR-pair direction) sum of the core tensor is calculated and visualized as Ligand-Receptor Patterns. Detail of (Ligand-Cell, Receptor-Cell, LR-pair) Patterns are also visualized.
 
-![Algorithm of scTensor](Algorithm.png)
+
 
 ### Creating a `SingleCellExperiment` object
 
@@ -166,10 +166,17 @@ cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
 
 ### CCI-tensor construction and decomposition : cellCellDecomp
 
-After `cellCellSetting`, we can perform tensor decomposition by `cellCellDecomp`. Here the parameter `ranks` is specificed as dimension of core tensor. For example, c(3, 3, 2) means The data tensor is decomposed to 3 Ligand-pattern $\times$ 3 Receptor-pattern $\times$ 2 LR-pairs.
+After `cellCellSetting`, we can perform tensor decomposition by `cellCellDecomp`. Here the parameter `ranks` is specificed as dimension of core tensor. For example, c(3, 3, 15) means The data tensor is decomposed to 3 ligand-patterns, 3 receptor-patterns, and 15 LR-pairs-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
-cellCellDecomp(sce, ranks=c(3,3,2))
+cellCellDecomp(sce, ranks=c(3,3,15))
+```
+
+Although the user have to specify the rank to perform cellCellDecomp, we implemented a simple rank estimation function based on the eigenvalues destribution of PCA in the matricised tensor in each mode.
+
+```{r cellCellRank, echo=TRUE}
+rks <- cellCellRanks(sce)
+cellCellDecomp(sce, ranks=rks$selected)
 ```
 
 ### HTML Report : cellCellReport
@@ -180,11 +187,13 @@ If `cellCellDecomp` is properly finished, we can perform `cellCellReport` functi
 # print(tmp <- tempdir())
 # cellCellReport(sce, reducedDimNames="TSNE", out.dir=tmp,
 #     title="Cell-cell interaction within Germline, Male, GSE86146",
-#     author="Koki Tsuyuzaki", thr=5)
+#     author="Koki Tsuyuzaki", thr=10, html.open=TRUE)
 # list.files(tmp)
 ```
 
-After `cellCellReport`, multiple R markdown files, compiled HTML files, figures, R binary file containing the result of analysis are saved to `out.dir`. For more details, open the `index.html` by your web browser. Combined with cloud strage servise such as Amazon Simple Storage Service (S3), it can be simple web application and multiple person can confirm the same report simutaneously.
+After `cellCellReport`, multiple R markdown files, compiled HTML files, figures, and R binary file containing the result of analysis are saved to `out.dir` (Figure 2). For more details, open the `index.html` by your web browser. Combined with cloud strage servise such as Amazon Simple Storage Service (S3), it can be simple web application and multiple person like collaborators can confirm the same report simutaneously.
+
+![Figure2 : cellCellReport function of scTensor](Report.jpeg)
 
 # Session information {.unnumbered}
 
