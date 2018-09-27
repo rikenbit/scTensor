@@ -326,11 +326,8 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         e$LR <- LR
         e$.eachVecLR <- .eachVecLR
         e$.eachRender <- .eachRender
-        e$.ENRICHMENT <- .ENRICHMENT
         e$.XYZ_HEADER1 <- .XYZ_HEADER1
         e$.XYZ_HEADER2 <- .XYZ_HEADER2
-        e$.XYZ_HEADER3 <- .XYZ_HEADER3
-        e$.XYZ_ENRICH <- .XYZ_ENRICH
 
         if (!is.null(cl)) {
             ############ Parallel ############
@@ -342,8 +339,6 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
                 library("plotrix")
                 library("plotly")
                 library("rmarkdown")
-                library("GOstats")
-                library("ReactomePA")
             }))
             clusterExport(cl, "e")
             out.vecLR <- parSapply(cl, SelectedLR,
@@ -359,9 +354,6 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             e$out.vecLR <- out.vecLR
         }
     }
-
-    # Tagcloud
-    invisible(.tagCloud(out.vecLR, temp))
 
     # Plot（CCI Hypergraph）
     png(filename=paste0(temp, "/figures/CCIHypergraph.png"), width=2000, height=950)

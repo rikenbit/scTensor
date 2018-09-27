@@ -943,114 +943,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     "|----|----|----|----|----|----|----|----|----|\n")
 }
 
-.XYZ_HEADER3 <- function(i){
-    paste0("# <font color='#1881c2'>(\\*,\\*,", i,
-        ") Pattern-related Enrichment Analysis</font>\n\n",
-        "```{r}\n", # Top
-        "load(\"reanalysis.RData\")\n",
-        "library(\"plotly\")\n",
-        "```\n\n" # Bottom
-        )
-}
-
-.XYZ_ENRICH <- function(out.vecLR, i){
-    patternName <- paste0("pattern", i)
-    paste0(
-    ################ GO_BP ################
-    "## <font color='#1881c2'>GO-Enrichment Analysis (BP : Biological Process)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_BP$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_BP$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"GO-Enrichment Analysis (BP)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_GO_BP_",
-    patternName,
-    ".png)\n\n",
-    ################ GO_MF ################
-    "## <font color='#1881c2'>GO-Enrichment Analysis (MF : Molecular Function)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_MF$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_MF$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"GO-Enrichment Analysis (MF)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_GO_MF_",
-    patternName,
-    ".png)\n\n",
-    ################ GO_CC ################
-    "## <font color='#1881c2'>GO-Enrichment Analysis (CC : Cellular Component)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_CC$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$GO_CC$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"GO-Enrichment Analysis (CC)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_GO_CC_",
-    patternName,
-    ".png)\n\n",
-    ################ Reactome ################
-    "## <font color='#1881c2'>Reactome Pathway-Enrichment Analysis</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$Reactome$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$Reactome$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"Reactome-Enrichment Analysis\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_Reactome_",
-    patternName,
-    ".png)\n\n",
-    collapse="")
-}
-
 .MAINHEADER <- function(author, title){
     HEADER <- paste0("---\ntitle: XXXXX\n",
         "author: YYYYY\ndate:",
@@ -1349,73 +1241,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     sqrt(x) + sqrt(x + 1)
 }
 
-.ENRICHMENT <- function(all, sig, goannotation, reactomespc){
-    GOENRICHMENT <- function(all, sig, goannotation, category, p=1E-3){
-        if(is.na(goannotation)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            goParams <- new("GOHyperGParams",
-                geneIds=sig,
-                universeGeneIds=all,
-                annotation=goannotation,
-                ontology=category,
-                pvalueCutoff=p,
-                conditional=FALSE,
-                testDirection="over")
-            # Hyper geometric p-value
-            out <- try(summary(hyperGTest(goParams)), silent=TRUE)
-            if(is(out)[1] == "try-error"){
-                list(Term=NULL, Pvalue=NULL)
-            }else{
-                list(Term=out$Term, Pvalue=out$Pvalue)
-            }
-        }
-    }
-
-    ReactomeENRICHMENT <- function(all, sig, reactomespc, p=1E-3){
-        if(is.na(reactomespc)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            out <- try(enrichPathway(gene=sig,
-              organism=reactomespc,
-              pvalueCutoff=p, readable=TRUE), silent=TRUE)
-            if(is(out)[1] == "try-error"){
-                list(Term=NULL, Pvalue=NULL)
-            }else if(is.null(out)){
-                list(Term=NULL, Pvalue=NULL)
-            }else{
-                list(Term=out@result$Description,
-                    Pvalue=out@result$pvalue)
-            }
-        }
-    }
-
-    # GO
-    cat("GO-Enrichment Analysis is running...(1/3)\n")
-    BP <- GOENRICHMENT(all, sig, goannotation, "BP")
-    cat("GO-Enrichment Analysis is running...(2/3)\n")
-    MF <- GOENRICHMENT(all, sig, goannotation, "MF")
-    cat("GO-Enrichment Analysis is running...(3/3)\n")
-    CC <- GOENRICHMENT(all, sig, goannotation, "CC")
-
-    # Reactome
-    cat("Reactome-Enrichment Analysis is running...(1/1)\n")
-    Reactome <- ReactomeENRICHMENT(all, sig, reactomespc)
-
-    # Output
-    out <- list(BP, MF, CC, Reactome)
-    # Exception
-    out <- lapply(out, function(x){
-            if(length(x$Term) == 0 || length(x$Pvalue) == 0){
-                list(Term=NULL, Pvalue=NULL)
-            }else{
-                x
-            }
-        })
-    names(out) <- c("GO_BP", "GO_MF", "GO_CC", "Reactome")
-    out
-}
-
 .eachVecLR <- function(x, e){
     index <- e$index
     sce <- e$sce
@@ -1433,7 +1258,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     LR <- e$LR
     .eachVecLR <- e$.eachVecLR
     .eachRender <- e$.eachRender
-    .ENRICHMENT <- e$.ENRICHMENT
     .XYZ_HEADER1 <- e$.XYZ_HEADER1
     .XYZ_HEADER2 <- e$.XYZ_HEADER2
 
@@ -1455,23 +1279,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }else{
         TOP <- "full"
     }
-    # Enrichment (Too Heavy)
-    all <- unique(unlist(strsplit(names(vecLR), "_")))
-    sig <- unique(unlist(strsplit(names(TARGET), "_")))
-    goannotation <- c("org.Hs.eg.db", "org.Mm.eg.db",
-        "org.At.tair.db", "org.Rn.eg.db", "org.Bt.eg.db",
-        "org.Ce.eg.db", "org.Dm.eg.db", "org.Dr.eg.db",
-        "org.Gg.eg.db", "org.Sc.sgd.db")
-    names(goannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
-        "Bta", "Cel", "Dme", "Dre", "Gga", "Ssc")
-    goannotation <- goannotation[spc]
-    reactomespc <- c("anopheles", "arabidopsis", "bovine", "canine", "celegans", "chicken", "chimp", "fly", "gondii", "human", "malaria", "mouse", "pig", "rat", "xenopus", "zebrafish")
-    names(reactomespc) <- c("Aga", "Ath", "Bta", "Cfa", "Cel",
-        "Gga", "Ptr", "Dme", "Tgo", "Hsa",
-        "Pfa", "Mmu", "Ssc", "Rno", "Xla",
-        "Dre")
-    reactomespc <- reactomespc[spc]
-    Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation, reactomespc))
     # Eigen Value
     Value <- metadata(sce)$sctensor$lrpair[x, TARGET]
     Percentage <- Value / sum(metadata(sce)$sctensor$lrpair[x, ]) * 100
@@ -1519,7 +1326,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         QvalueLR=QvalueLR,
         TARGET=TARGET,
         TOP=TOP,
-        Enrich=Enrich,
         Value=Value,
         Percentage=Percentage,
         LINKS=LINKS
@@ -1532,8 +1338,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     out.vecLR <- e$out.vecLR
     .XYZ_HEADER1 <- e$.XYZ_HEADER1
     .XYZ_HEADER2 <- e$.XYZ_HEADER2
-    .XYZ_HEADER3 <- e$.XYZ_HEADER3
-    .XYZ_ENRICH <- e$.XYZ_ENRICH
 
     indexLR <- index[x, "Mode3"]
     TARGET <- out.vecLR[, paste0("pattern", indexLR)]$TARGET
@@ -1542,9 +1346,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     # Bottom part of Rmarkdown
     XYZ_BOTTOM <- paste(
         c(.XYZ_HEADER2(indexLR, length(TARGET)),
-        LINKS,
-        .XYZ_HEADER3(indexLR),
-        .XYZ_ENRICH(out.vecLR, indexLR)),
+        LINKS),
         collapse="")
 
     # Each (x,y,z)-rmdfile
@@ -1585,72 +1387,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }else{
         x
     }
-}
-
-.eachCircleColor <- c(
-    rep(rgb(0,1,0, 5E-3), 3),
-    rep(rgb(1,0.5,0, 5E-3), 1))
-names(.eachCircleColor) <- c(
-    "GO_BP", "GO_MF", "GO_CC",
-    "Reactome")
-
-.tagCloud <- function(out.vecLR, temp){
-    sapply(seq_len(ncol(out.vecLR)), function(x){
-        # Pvalue
-        Pvalues <- list(
-            GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Pvalue,
-            GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Pvalue,
-            GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Pvalue,
-            Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Pvalue
-            )
-        # Term
-        Terms <- list(
-            GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Term,
-            GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Term,
-            GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Term,
-            Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Term
-            )
-        lapply(names(Pvalues), function(xx){
-            # Pvalue
-            p <- eval(parse(text=paste0("Pvalues$", xx)))
-            # Term
-            t <- eval(parse(text=paste0("Terms$", xx)))
-            t <- sapply(t, .shrink2)
-            # Plot
-            png(filename=paste0(temp, "/figures/Tagcloud_", xx,
-                "_", colnames(out.vecLR)[x],
-                ".png"), width=1000, height=1000)
-            if(is.null(p)){
-                .NULLPlot()
-            }else if(length(p) == 1){
-                .SinglePlot(t)
-            }else{
-                # background circle
-                for(i in 1:150){
-                    plot(1,1, cex=(150:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
-                    par(new=TRUE)
-                }
-                negLogPval <- -log10(p+1E-10)
-                target <- seq_len(min(100, length(p)))
-                tagcloud(t[target], weights = negLogPval[target],
-                col = smoothPalette(negLogPval[target], palfunc = .palf),
-                order = "size", algorithm = "oval")
-            }
-            dev.off()
-        })
-    })
-}
-
-.NULLPlot <- function(){
-    plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
-    par(ps=30)
-    text(1, 1, "None")
-}
-
-.SinglePlot <- function(x){
-    plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
-    par(ps=30)
-    text(1, 1, x, col="red")
 }
 
 .setColor <- function(col){
