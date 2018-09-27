@@ -206,6 +206,8 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     # Output
 }
 
+
+
 #
 # cellCellReport
 #
@@ -337,11 +339,10 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
                 library("outliers")
                 library("S4Vectors")
                 library("tagcloud")
-                library("RColorBrewer")
                 library("plotrix")
                 library("plotly")
                 library("rmarkdown")
-                library("meshr")
+                # library("meshr")
                 library("GOstats")
                 library("ReactomePA")
             }))
@@ -392,8 +393,8 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     vecR <- metadata(sce)$sctensor$receptor
     numLPattern <- nrow(vecL)
     numRPattern <- nrow(vecR)
-    col.ligand <- brewer.pal(9, "Reds")
-    col.receptor <- brewer.pal(9, "Blues")
+    col.ligand <- .setColor("reds")
+    col.receptor <- .setColor("blues")
     # Clustering
     ClusterL <- t(apply(vecL, 1, .HCLUST))
     ClusterR <- t(apply(vecR, 1, .HCLUST))

@@ -143,7 +143,6 @@ To improve the interpretability of following HTML report, we highly recommend th
 ```{r cellCellSetting, fig.cap="Germline, Male, GSE86146", echo=TRUE, fig.width=10, fig.height=10}
 suppressPackageStartupMessages(library("scTensor"))
 suppressPackageStartupMessages(library("SingleCellExperiment"))
-suppressPackageStartupMessages(library("RColorBrewer"))
 
 data(GermMale)
 data(labelGermMale)
@@ -153,7 +152,8 @@ sce <- SingleCellExperiment(assays=list(counts = GermMale))
 reducedDims(sce) <- SimpleList(TSNE=tsneGermMale$Y)
 plot(reducedDims(sce)[[1]], col=labelGermMale, pch=16, cex=2,
      xlab="Dim1", ylab="Dim2", main="Germline, Male, GSE86146")
-legend("topleft", legend=c(paste0("FGC_", 1:3), paste0("Soma_", 1:4)), col=brewer.pal(11, "Spectral")[c(1:3, 8:11)], pch=16)
+legend("topleft", legend=c(paste0("FGC_", 1:3), paste0("Soma_", 1:4)),
+       col=c("#9E0142", "#D53E4F", "#F46D43", "#ABDDA4", "#66C2A5", "#3288BD", "#5E4FA2"), pch=16)
 ```
 
 ### Parameter setting : cellCellSetting

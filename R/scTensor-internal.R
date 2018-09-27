@@ -413,7 +413,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     weight <- E(g)$weight
     E(g)$weight <- weight / max(weight) * 20
     mycolor <- smoothPalette(E(g)$weight,
-        palfunc=colorRampPalette(brewer.pal(9, "Greens"), alpha=TRUE))
+        palfunc=colorRampPalette(.setColor("greens"), alpha=TRUE))
     if(!is.null(emph)){
         target <- intersect(
             which(get.edgelist(g)[, 1] == paste0("L", emph[1])),
@@ -442,7 +442,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     # Gradient
     gradient.rect(xleft, ybottom, xright, ytop,
         col=smoothPalette(sort(weight),
-        palfunc=colorRampPalette(brewer.pal(9, "Greens"), alpha=TRUE)),
+        palfunc=colorRampPalette(.setColor("greens"), alpha=TRUE)),
         gradient="y")
     text(2.2, ybottom+(ytop-ybottom)*0/4, round(quantile(weight)[1]))
     text(2.2, ybottom+(ytop-ybottom)*1/4, round(quantile(weight)[2]))
@@ -463,7 +463,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             # Step.2 : Ligand Plot
             #
             # Color
-            col.ligand <- brewer.pal(9, "Reds")
+            col.ligand <- .setColor("reds")
             # Constant
             LOMA_1 = 48.85
             LOMA_2 = 42
@@ -485,7 +485,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             # Step.3 : Receptor Plot
             #
             # Color
-            col.receptor <- brewer.pal(9, "Blues")
+            col.receptor <- .setColor("blues")
             # Constant
             ROMA_1 = 4
             ROMA_2 = 42
@@ -526,7 +526,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     target <- which(rownames(input) == geneid)
     exp <- log10(input[target, ]+1)
     label <- smoothPalette(exp,
-        palfunc=colorRampPalette(brewer.pal(9, color), alpha=TRUE))
+        palfunc=colorRampPalette(.setColor(color), alpha=TRUE))
     # Plot
     par(ps=25)
     par(oma=c(2,2,2,2))
@@ -538,7 +538,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     xright = max(twoD[,1])+2
     ytop=quantile(twoD[,2])[4]
     gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(sort(exp),
-        palfunc=colorRampPalette(brewer.pal(9, color),
+        palfunc=colorRampPalette(.setColor(color),
         alpha=TRUE)), gradient="y")
     text(xleft-1, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1]))
     text(xleft-1, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2]))
@@ -701,9 +701,12 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         genename <- geneInfo$GeneName[
             which(geneInfo$GeneName$entrezgene == geneid),
             "external_gene_name"][1]
-        if(is.na(genename)){
+        if(is.null(genename)){
             genename = geneid
         }else{
+            if(is.na(genename)){
+                genename = geneid
+            }
             if(length(genename) == 0 || genename == ""){
                 genename = geneid
             }
@@ -1020,374 +1023,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     "   legend=list(name=\"\"))\n",
     "```\n\n", # Bottom
     "![](figures/Tagcloud_GO_CC_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_A ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (A : Anatomy)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_A$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_A$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (A)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_A_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_B ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (B : Organisms)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_B$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_B$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (B)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_B_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_C ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (C : Diseases)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_C$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_C$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (C)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_C_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_D ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (D : Drugs)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_D$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_D$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (D)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_D_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_E ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (E : Analytical, Diagnostic and Therapeutic Techniques and Equipment)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_E$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_E$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (E)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_E_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_F ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (F : Psychiatry and Psychology)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_F$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_F$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (F)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_F_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_G ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (G : Phenomena and Processes)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_G$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_G$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (G)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_G_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_H ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (H : Disciplines and Occupations)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_H$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_H$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (H)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_H_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_I ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (I : Anthropology, Education, Sociology and Social Phenomena)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_I$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_I$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (I)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_I_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_J ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (J : Technology and Food and Beverages)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_J$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_J$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (J)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_J_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_K ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (K : Humanities)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_K$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_K$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (K)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_K_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_L ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (L : Information Science)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_L$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_L$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (L)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_L_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_M ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (M : Persons)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_M$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_M$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (M)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_M_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_N ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (N : Health Care)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_N$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_N$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (N)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_N_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_V ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (V : Publication Type)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_V$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_V$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (V)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_V_",
-    patternName,
-    ".png)\n\n",
-    ################ MeSH_Z ################
-    "## <font color='#1881c2'>MeSH-Enrichment Analysis (Z : Geographical Locations)</font>\n\n",
-    "```{r}\n", # Top
-    "negLogPval <- -log10(out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_Z$Pvalue + 1E-10)\n",
-    "term <- out.vecLR[\"Enrich\", \"",
-    patternName,
-    "\"][[1]]$MeSH_Z$Term\n",
-    "target <- seq_len(min(100, length(negLogPval)))\n",
-    "negLogPval <- negLogPval[target]\n",
-    "term <- term[target]\n",
-    "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
-    "type=\"bar\", color=~negLogPval, text=term,\n",
-    "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"MeSH-Enrichment Analysis (Z)\",\n",
-    "   xaxis=list(title=\"Term\"),\n",
-    "   yaxis=list(title=\"-Log(P-value)\"),\n",
-    "   legend=list(name=\"\"))\n",
-    "```\n\n", # Bottom
-    "![](figures/Tagcloud_MeSH_Z_",
     patternName,
     ".png)\n\n",
     ################ Reactome ################
@@ -1714,7 +1349,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     sqrt(x) + sqrt(x + 1)
 }
 
-.ENRICHMENT <- function(all, sig, goannotation, meshannotation, reactomespc){
+.ENRICHMENT <- function(all, sig, goannotation, reactomespc){
     GOENRICHMENT <- function(all, sig, goannotation, category, p=1E-3){
         if(is.na(goannotation)){
             list(Term=NULL, Pvalue=NULL)
@@ -1733,32 +1368,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
                 list(Term=NULL, Pvalue=NULL)
             }else{
                 list(Term=out$Term, Pvalue=out$Pvalue)
-            }
-        }
-    }
-
-    MeSHENRICHMENT <- function(all, sig, meshannotation, category, p=1E-3){
-        if(is.na(meshannotation)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            meshParams <- new("MeSHHyperGParams",
-                geneIds = sig,
-                universeGeneIds = all,
-                annotation = meshannotation,
-                category = category,
-                database = "gene2pubmed",
-                pvalueCutoff = p,
-                pAdjust = "none")
-            # Hyper geometric p-value
-            out <- try(summary(meshHyperGTest(meshParams)), silent=TRUE)
-            if(is(out)[1] == "try-error"){
-                list(Term=NULL, Pvalue=NULL)
-            }else{
-                outTerm <- unique(out$MESHTERM)
-                outPvalue <- sapply(outTerm, function(x){
-                    out$Pvalue[which(out$MESHTERM == x)[1]]
-                })
-                list(Term=outTerm, Pvalue=outPvalue)
             }
         }
     }
@@ -1789,48 +1398,12 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     cat("GO-Enrichment Analysis is running...(3/3)\n")
     CC <- GOENRICHMENT(all, sig, goannotation, "CC")
 
-    # MeSH
-    cat("MeSH-Enrichment Analysis is running...(1/16)\n")
-    A <- MeSHENRICHMENT(all, sig, meshannotation, "A")
-    cat("MeSH-Enrichment Analysis is running...(2/16)\n")
-    B <- MeSHENRICHMENT(all, sig, meshannotation, "B")
-    cat("MeSH-Enrichment Analysis is running...(3/16)\n")
-    C <- MeSHENRICHMENT(all, sig, meshannotation, "C")
-    cat("MeSH-Enrichment Analysis is running...(4/16)\n")
-    D <- MeSHENRICHMENT(all, sig, meshannotation, "D")
-    cat("MeSH-Enrichment Analysis is running...(5/16)\n")
-    E <- MeSHENRICHMENT(all, sig, meshannotation, "E")
-    cat("MeSH-Enrichment Analysis is running...(6/16)\n")
-    F <- MeSHENRICHMENT(all, sig, meshannotation, "F")
-    cat("MeSH-Enrichment Analysis is running...(7/16)\n")
-    G <- MeSHENRICHMENT(all, sig, meshannotation, "G")
-    cat("MeSH-Enrichment Analysis is running...(8/16)\n")
-    H <- MeSHENRICHMENT(all, sig, meshannotation, "H")
-    cat("MeSH-Enrichment Analysis is running...(9/16)\n")
-    I <- MeSHENRICHMENT(all, sig, meshannotation, "I")
-    cat("MeSH-Enrichment Analysis is running...(10/16)\n")
-    J <- MeSHENRICHMENT(all, sig, meshannotation, "J")
-    cat("MeSH-Enrichment Analysis is running...(11/16)\n")
-    K <- MeSHENRICHMENT(all, sig, meshannotation, "K")
-    cat("MeSH-Enrichment Analysis is running...(12/16)\n")
-    L <- MeSHENRICHMENT(all, sig, meshannotation, "L")
-    cat("MeSH-Enrichment Analysis is running...(13/16)\n")
-    M <- MeSHENRICHMENT(all, sig, meshannotation, "M")
-    cat("MeSH-Enrichment Analysis is running...(14/16)\n")
-    N <- MeSHENRICHMENT(all, sig, meshannotation, "N")
-    cat("MeSH-Enrichment Analysis is running...(15/16)\n")
-    V <- MeSHENRICHMENT(all, sig, meshannotation, "V")
-    cat("MeSH-Enrichment Analysis is running...(16/16)\n")
-    Z <- MeSHENRICHMENT(all, sig, meshannotation, "Z")
-
     # Reactome
     cat("Reactome-Enrichment Analysis is running...(1/1)\n")
     Reactome <- ReactomeENRICHMENT(all, sig, reactomespc)
 
     # Output
-    out <- list(BP, MF, CC,
-            A, B, C, D, E, F, G, H, I, J, K, L, M, N, V, Z,
-            Reactome)
+    out <- list(BP, MF, CC, Reactome)
     # Exception
     out <- lapply(out, function(x){
             if(length(x$Term) == 0 || length(x$Pvalue) == 0){
@@ -1839,14 +1412,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
                 x
             }
         })
-    names(out) <- c(
-        "GO_BP", "GO_MF", "GO_CC",
-        "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D",
-        "MeSH_E", "MeSH_F", "MeSH_G", "MeSH_H",
-        "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
-        "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
-        "Reactome"
-        )
+    names(out) <- c("GO_BP", "GO_MF", "GO_CC", "Reactome")
     out
 }
 
@@ -1899,19 +1465,13 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     names(goannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
         "Bta", "Cel", "Dme", "Dre", "Gga", "Ssc")
     goannotation <- goannotation[spc]
-    meshannotation <- paste0("MeSH.",
-        c("Hsa", "Mmu", "Ath", "Rno", "Bta", "Cel",
-        "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc"), ".eg.db")
-    names(meshannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
-        "Bta", "Cel", "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc")
-    meshannotation <- meshannotation[spc]
     reactomespc <- c("anopheles", "arabidopsis", "bovine", "canine", "celegans", "chicken", "chimp", "fly", "gondii", "human", "malaria", "mouse", "pig", "rat", "xenopus", "zebrafish")
     names(reactomespc) <- c("Aga", "Ath", "Bta", "Cfa", "Cel",
         "Gga", "Ptr", "Dme", "Tgo", "Hsa",
         "Pfa", "Mmu", "Ssc", "Rno", "Xla",
         "Dre")
     reactomespc <- reactomespc[spc]
-    Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation, meshannotation, reactomespc))
+    Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation, reactomespc))
     # Eigen Value
     Value <- metadata(sce)$sctensor$lrpair[x, TARGET]
     Percentage <- Value / sum(metadata(sce)$sctensor$lrpair[x, ]) * 100
@@ -1937,10 +1497,10 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             Ligandfile <- paste0(temp, "/figures/Ligand_", LigandGeneID, ".png")
             Receptorfile <- paste0(temp, "/figures/Receptor_", ReceptorGeneID, ".png")
             png(filename=Ligandfile, width=1000, height=1000)
-                .smallTwoDplot(input, LigandGeneID, LigandGeneName, twoD, "Reds")
+                .smallTwoDplot(input, LigandGeneID, LigandGeneName, twoD, "reds")
             dev.off()
             png(filename=Receptorfile, width=1000, height=1000)
-            .smallTwoDplot(input, ReceptorGeneID, ReceptorGeneName, twoD, "Blues")
+            .smallTwoDplot(input, ReceptorGeneID, ReceptorGeneName, twoD, "blues")
             dev.off()
 
             # Return Hyper links
@@ -2029,13 +1589,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 
 .eachCircleColor <- c(
     rep(rgb(0,1,0, 5E-3), 3),
-    rep(rgb(0.5,0,1, 5E-3), 16),
     rep(rgb(1,0.5,0, 5E-3), 1))
 names(.eachCircleColor) <- c(
     "GO_BP", "GO_MF", "GO_CC",
-    "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D", "MeSH_E", "MeSH_F",
-    "MeSH_G", "MeSH_H", "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
-    "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
     "Reactome")
 
 .tagCloud <- function(out.vecLR, temp){
@@ -2045,22 +1601,6 @@ names(.eachCircleColor) <- c(
             GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Pvalue,
             GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Pvalue,
             GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Pvalue,
-            MeSH_A=out.vecLR["Enrich", x][[1]]$MeSH_A$Pvalue,
-            MeSH_B=out.vecLR["Enrich", x][[1]]$MeSH_B$Pvalue,
-            MeSH_C=out.vecLR["Enrich", x][[1]]$MeSH_C$Pvalue,
-            MeSH_D=out.vecLR["Enrich", x][[1]]$MeSH_D$Pvalue,
-            MeSH_E=out.vecLR["Enrich", x][[1]]$MeSH_E$Pvalue,
-            MeSH_F=out.vecLR["Enrich", x][[1]]$MeSH_F$Pvalue,
-            MeSH_G=out.vecLR["Enrich", x][[1]]$MeSH_G$Pvalue,
-            MeSH_H=out.vecLR["Enrich", x][[1]]$MeSH_H$Pvalue,
-            MeSH_I=out.vecLR["Enrich", x][[1]]$MeSH_I$Pvalue,
-            MeSH_J=out.vecLR["Enrich", x][[1]]$MeSH_J$Pvalue,
-            MeSH_K=out.vecLR["Enrich", x][[1]]$MeSH_K$Pvalue,
-            MeSH_L=out.vecLR["Enrich", x][[1]]$MeSH_L$Pvalue,
-            MeSH_M=out.vecLR["Enrich", x][[1]]$MeSH_M$Pvalue,
-            MeSH_N=out.vecLR["Enrich", x][[1]]$MeSH_N$Pvalue,
-            MeSH_V=out.vecLR["Enrich", x][[1]]$MeSH_V$Pvalue,
-            MeSH_Z=out.vecLR["Enrich", x][[1]]$MeSH_Z$Pvalue,
             Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Pvalue
             )
         # Term
@@ -2068,22 +1608,6 @@ names(.eachCircleColor) <- c(
             GO_BP=out.vecLR["Enrich", x][[1]]$GO_BP$Term,
             GO_MF=out.vecLR["Enrich", x][[1]]$GO_MF$Term,
             GO_CC=out.vecLR["Enrich", x][[1]]$GO_CC$Term,
-            MeSH_A=out.vecLR["Enrich", x][[1]]$MeSH_A$Term,
-            MeSH_B=out.vecLR["Enrich", x][[1]]$MeSH_B$Term,
-            MeSH_C=out.vecLR["Enrich", x][[1]]$MeSH_C$Term,
-            MeSH_D=out.vecLR["Enrich", x][[1]]$MeSH_D$Term,
-            MeSH_E=out.vecLR["Enrich", x][[1]]$MeSH_E$Term,
-            MeSH_F=out.vecLR["Enrich", x][[1]]$MeSH_F$Term,
-            MeSH_G=out.vecLR["Enrich", x][[1]]$MeSH_G$Term,
-            MeSH_H=out.vecLR["Enrich", x][[1]]$MeSH_H$Term,
-            MeSH_I=out.vecLR["Enrich", x][[1]]$MeSH_I$Term,
-            MeSH_J=out.vecLR["Enrich", x][[1]]$MeSH_J$Term,
-            MeSH_K=out.vecLR["Enrich", x][[1]]$MeSH_K$Term,
-            MeSH_L=out.vecLR["Enrich", x][[1]]$MeSH_L$Term,
-            MeSH_M=out.vecLR["Enrich", x][[1]]$MeSH_M$Term,
-            MeSH_N=out.vecLR["Enrich", x][[1]]$MeSH_N$Term,
-            MeSH_V=out.vecLR["Enrich", x][[1]]$MeSH_V$Term,
-            MeSH_Z=out.vecLR["Enrich", x][[1]]$MeSH_Z$Term,
             Reactome=out.vecLR["Enrich", x][[1]]$Reactome$Term
             )
         lapply(names(Pvalues), function(xx){
@@ -2127,6 +1651,20 @@ names(.eachCircleColor) <- c(
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=30)
     text(1, 1, x, col="red")
+}
+
+.setColor <- function(col){
+    if(col == "reds"){
+        c("#FFF5F0", "#FEE0D2", "#FCBBA1", "#FC9272", "#FB6A4A", "#EF3B2C", "#CB181D", "#A50F15", "#67000D")
+    }else if(col == "blues"){
+        c("#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6", "#4292C6", "#2171B5", "#08519C", "#08306B")
+    }else if(col == "greens"){
+        c("#F7FCF5", "#E5F5E0", "#C7E9C0", "#A1D99B", "#74C476", "#41AB5D", "#238B45", "#006D2C", "#00441B")
+    }else if(col == "many"){
+        c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854", "#FFD92F", "#E5C494", "#B3E2CD", "#FDCDAC", "#CBD5E8", "#F4CAE4", "#E6F5C9", "#FFF2AE", "#F1E2CC", "#7FC97F", "#BEAED4", "#FDC086", "#FFFF99", "#386CB0", "#F0027F", "#BF5B17", "#8DD3C7", "#FFFFB3", "#BEBADA", "#FB8072", "#80B1D3", "#FDB462", "#B3DE69", "#FCCDE5", "#D9D9D9", "#BC80BD", "#CCEBC5", "#FFED6F", "#FBB4AE", "#B3CDE3", "#CCEBC5", "#DECBE4", "#FED9A6", "#FFFFCC", "#E5D8BD", "#FDDAEC")
+    }else{
+        stop("Wrong col is specified in .setColor")
+    }
 }
 
 .geneHyperGraphPlot <- function(out.vecLR, GeneInfo, temp){
@@ -2199,15 +1737,7 @@ names(.eachCircleColor) <- c(
     g <- add.edges(g, edgeListVec)
 
     # Plot
-    cols <- c(
-        brewer.pal(8, "Set1"),
-        brewer.pal(7, "Dark2"),
-        brewer.pal(7, "Set2"),
-        brewer.pal(7, "Pastel2"),
-        brewer.pal(7, "Accent"),
-        brewer.pal(12, "Set3"),
-        brewer.pal(8, "Pastel1")
-        )
+    cols <- .setColor("many")
     edge.cols <- unlist(sapply(seq_len(ncol(out.vecLR)), function(x){
             rep(cols[x], length(out.vecLR["TARGET", x][[1]]))
         }, simplify=FALSE))
