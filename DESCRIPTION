@@ -1,7 +1,7 @@
 Package: scTensor
 Type: Package
 Title: Detection and visualization of cell-cell interaction within single-cell RNA-Seq data
-Version: 0.99.3
+Version: 0.99.4
 Date: 2018-09-25
 Author: Koki Tsuyuzaki
 Maintainer: Koki Tsuyuzaki <k.t.the-answer@hotmail.co.jp>

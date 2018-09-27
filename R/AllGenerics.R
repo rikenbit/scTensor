@@ -342,7 +342,6 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
                 library("plotrix")
                 library("plotly")
                 library("rmarkdown")
-                # library("meshr")
                 library("GOstats")
                 library("ReactomePA")
             }))
