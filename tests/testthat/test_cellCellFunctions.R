@@ -22,18 +22,18 @@ expect_false(is.null(metadata(sce)$lrbase))
 expect_false(is.null(metadata(sce)$color))
 expect_false(is.null(metadata(sce)$label))
 
-# ranks
-rks <- cellCellRanks(sce)
-expect_true(length(rks$selected) == 3)
-expect_true(is.vector(rks$mode1))
-expect_true(is.vector(rks$mode2))
-expect_true(is.vector(rks$mode3))
+# # ranks
+# rks <- cellCellRanks(sce)
+# expect_true(length(rks$selected) == 3)
+# expect_true(is.vector(rks$mode1))
+# expect_true(is.vector(rks$mode2))
+# expect_true(is.vector(rks$mode3))
 
-# Decomposition
-cellCellDecomp(sce, ranks=rks$selected)
-expect_equivalent(names(metadata(sce)),
-    c("lrbase", "color", "label", "algorithm", "sctensor"))
-expect_equivalent(metadata(sce)$algorithm, "ntd")
+# # Decomposition
+# cellCellDecomp(sce, ranks=rks$selected)
+# expect_equivalent(names(metadata(sce)),
+#     c("lrbase", "color", "label", "algorithm", "sctensor"))
+# expect_equivalent(metadata(sce)$algorithm, "ntd")
 
 # # Report
 # tmp <- tempdir()

@@ -169,14 +169,14 @@ cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
 After `cellCellSetting`, we can perform tensor decomposition by `cellCellDecomp`. Here the parameter `ranks` is specificed as dimension of core tensor. For example, c(3, 3, 15) means The data tensor is decomposed to 3 ligand-patterns, 3 receptor-patterns, and 15 LR-pairs-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
-cellCellDecomp(sce, ranks=c(3,3,15))
+# cellCellDecomp(sce, ranks=c(3,3,15))
 ```
 
 Although the user have to specify the rank to perform cellCellDecomp, we implemented a simple rank estimation function based on the eigenvalues destribution of PCA in the matricised tensor in each mode.
 
 ```{r cellCellRank, echo=TRUE}
-rks <- cellCellRanks(sce)
-cellCellDecomp(sce, ranks=rks$selected)
+# rks <- cellCellRanks(sce)
+# cellCellDecomp(sce, ranks=rks$selected)
 ```
 
 ### HTML Report : cellCellReport
