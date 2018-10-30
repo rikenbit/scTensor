@@ -10,7 +10,9 @@ Rank estimation of the CCI-tensor
 SVD is performed in each mode.
 }
 \usage{
-cellCellRanks(sce, centering=TRUE, mergeas="mean", outer="*", comb="random", num.sampling=100, ftt=TRUE, thr1=0.8, thr2=0.8, thr3=0.8)
+cellCellRanks(sce, centering=TRUE,
+    mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
+    num.sampling=100, ftt=TRUE, thr1=0.8, thr2=0.8, thr3=0.8)
 }
 
 \arguments{
@@ -22,12 +24,11 @@ When the value is TRUE, input matrix is summarized as celltype-level vectors
 (Default: TRUE).
 }
 \item{mergeas}{
-When the centering is TRUE, "sum" (celltype-level sum vector)
-or "mean" (celltype-level average vector) is calculated (Default: "sum").
+When the centering is TRUE, "mean" (celltype-level mean vector)
+or "sum" (celltype-level sum vector) is calculated (Default: "mean").
 }
 \item{outer}{
-When the centering is TRUE, "+" (Kronecker sum) or "*" (Kronecker product)
-is calculated (Default: "+").
+When the centering is TRUE, "*" (Kronecker product) or "+" (Kronecker sum) or is calculated (Default: "+").
 }
 \item{comb}{
 When the centering is FALSE, "random" (random cell-cell pairing)

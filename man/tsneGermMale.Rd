@@ -21,7 +21,7 @@ Analysis Maps Development of Human Germline Cells and Gonadal Niche
 Interactions. \emph{Cell Stem Cell}, \bold{20(6)}: 858-873
 }
 \seealso{
-       \code{\link{labelGermMale}}, \code{\link{GermMale}}.
+    \code{\link{labelGermMale}}, \code{\link{GermMale}}.
 }
 \examples{
 data(tsneGermMale)

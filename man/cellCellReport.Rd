@@ -10,7 +10,8 @@ HTML report of the result of scTensor
 The result is saved as HTML report which contains with multiple files.
 }
 \usage{
-cellCellReport(sce, reducedDimNames, out.dir=NULL, html.open=FALSE,
+cellCellReport(sce, reducedDimNames,
+    out.dir=NULL, html.open=FALSE,
     title="The result of scTensor",
     author="The person who runs this script", thr=80, top="full", cl=NULL)
 }

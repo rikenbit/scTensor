@@ -10,7 +10,11 @@ Performing scTensor
 All parameters is saved to metadata slot of SingleCellExperiment object.
 }
 \usage{
-cellCellDecomp(sce, algorithm="ntd", ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25, centering=TRUE, mergeas="mean", outer="*", comb="random", num.sampling=100, decomp=TRUE, ftt=TRUE)
+cellCellDecomp(sce, algorithm=c("ntd", "nmf", "pearson",
+    "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
+    "pcomb"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
+    centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
+    comb=c("random", "all"), num.sampling=100, decomp=TRUE, ftt=TRUE)
 }
 
 \arguments{

@@ -2,8 +2,6 @@ import(methods)
 import(SingleCellExperiment)
 import(BiocStyle)
 import(knitr)
-import(MeSH.Hsa.eg.db)
-import(LRBase.Hsa.eg.db)
 
 importFrom(AnnotationDbi, toTable)
 importFrom(igraph, graph.empty, add.vertices, add.edges, "E<-", "V<-", V, E, layout_with_dh, plot.igraph, get.edgelist)
