@@ -59,7 +59,24 @@ The result is saved as HTML report which contains with multiple files.
 \author{Koki Tsuyuzaki}
 
 \examples{
-showMethods("cellCellReport")
+	if(interactive()){
+	library("SingleCellExperiment")
+	library("LRBase.Hsa.eg.db")
+	library("MeSH.Hsa.eg.db")
+	source("scTensor/R/scTensor-internal.R")
+
+	data(GermMale)
+	data(labelGermMale)
+	data(tsneGermMale)
+	sce <- SingleCellExperiment(assays=list(counts = GermMale))
+	reducedDims(sce) <- SimpleList(TSNE=tsneGermMale$Y)
+	cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
+	rks <- cellCellRanks(sce)
+	cellCellDecomp(sce, ranks=rks$selected)
+	cellCellReport(sce, reducedDimNames="TSNE",
+	    title="Cell-cell interaction within Germline_Male, GSE86146",
+	    author="Koki Tsuyuzaki", thr=15, html.open=TRUE)
+    }
 }
 
 \keyword{methods}

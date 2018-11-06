@@ -321,14 +321,9 @@ rks$selected
 ### HTML Report : cellCellReport
 
 If `cellCellDecomp` is properly finished, we can perform `cellCellReport`
-function to output the HTML report like belows.
-
-```{r cellCellReport, echo=TRUE}
-cellCellReport(sce, reducedDimNames="TSNE",
-    title="Cell-cell interaction within Germline_Male, GSE86146",
-    author="Koki Tsuyuzaki", thr=5, top=2, html.open=FALSE)
-```
-
+function to output the HTML report like belows. Please type
+`example(cellCellReport)` and the report will be generated in the temporary
+directory (it costs 5 to 10 minutes).
 After `cellCellReport`, multiple R markdown files, compiled HTML files,
 figures, and R binary file containing the result of analysis are saved to
 `out.dir` (Figure 2). For more details, open the `index.html` by your web
