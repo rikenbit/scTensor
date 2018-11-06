@@ -1,7 +1,7 @@
 Package: scTensor
 Type: Package
 Title: Detection of cell-cell interaction within single-cell RNA-Seq data
-Version: 0.99.8
+Version: 0.99.9
 Date: 2018-09-25
 Authors@R: person("Koki", "Tsuyuzaki", role = c("aut", "cre"), email = "k.t.the-answer@hotmail.co.jp")
 Depends: R (>= 3.5.0)

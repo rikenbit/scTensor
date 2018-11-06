@@ -306,7 +306,7 @@ core tensor. For example, c(3, 3, 15) means The data tensor is decomposed to
 3 ligand-patterns, 3 receptor-patterns, and 15 L-R-pairs-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
-cellCellDecomp(sce, ranks=c(3,3,15))
+cellCellDecomp(sce, ranks=c(3,2,19))
 ```
 
 Although the user have to specify the rank to perform cellCellDecomp,
@@ -315,7 +315,7 @@ destribution of PCA in the matricised tensor in each mode.
 
 ```{r cellCellRank, echo=TRUE}
 rks <- cellCellRanks(sce)
-cellCellDecomp(sce, ranks=rks$selected)
+rks$selected
 ```
 
 ### HTML Report : cellCellReport
@@ -326,7 +326,7 @@ function to output the HTML report like belows.
 ```{r cellCellReport, echo=TRUE}
 cellCellReport(sce, reducedDimNames="TSNE",
     title="Cell-cell interaction within Germline_Male, GSE86146",
-    author="Koki Tsuyuzaki", thr=15, top=2, html.open=FALSE)
+    author="Koki Tsuyuzaki", thr=5, top=2, html.open=FALSE)
 ```
 
 After `cellCellReport`, multiple R markdown files, compiled HTML files,
