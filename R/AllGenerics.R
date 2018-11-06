@@ -39,13 +39,13 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
 #
 setGeneric("cellCellRanks", function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, ftt=TRUE, thr1=0.8, thr2=0.8, thr3=0.8){
+    num.sampling=100, ftt=TRUE, thr1=0.9, thr2=0.9, thr3=0.9){
     standardGeneric("cellCellRanks")})
 setMethod("cellCellRanks",
     signature(sce="SingleCellExperiment"),
     function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, ftt=TRUE, thr1=0.8, thr2=0.8, thr3=0.8){
+    num.sampling=100, ftt=TRUE, thr1=0.9, thr2=0.9, thr3=0.9){
         # Argument Check
         mergeas <- match.arg(mergeas)
         outer <- match.arg(outer)
@@ -70,9 +70,9 @@ setMethod("cellCellRanks",
     names(celltypes) <- metadata(sce)$label
 
     # Tensor is generated, and then matricised
-    tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(3,3,3),
-        centering, mergeas, outer, comb, num.sampling,
-        decomp=FALSE)$cellcelllrpairpattern
+    tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(1,1,1),
+        rank=1, centering, mergeas, outer, comb, num.sampling, decomp=FALSE,
+        thr1, thr2)$cellcelllrpairpattern
     d1 <- svd(rs_unfold(tnsr, m=1)@data)$d
     d2 <- svd(rs_unfold(tnsr, m=2)@data)$d
     d3 <- svd(rs_unfold(tnsr, m=3)@data)$d
@@ -80,12 +80,19 @@ setMethod("cellCellRanks",
     cumd2 <- cumsum(d2) / sum(d2)
     cumd3 <- cumsum(d3) / sum(d3)
     # Output
-    selected = c(
-        length(which(cumd1 <= thr1)),
-        length(which(cumd2 <= thr2)),
-        length(which(cumd3 <= thr3))
-        )
-
+    rank1 <- length(which(cumd1 <= thr1))
+    rank2 <- length(which(cumd2 <= thr2))
+    rank3 <- length(which(cumd3 <= thr3))
+    if(rank1 == 0){
+        rank1 = 1
+    }
+    if(rank2 == 0){
+        rank2 = 1
+    }
+    if(rank3 == 0){
+        rank3 = 1
+    }
+    selected = c(rank1, rank2, rank3)
     list(selected=selected,
         mode1=d1,
         mode2=d2,
@@ -180,9 +187,9 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 # cellCellReport
 #
 setGeneric("cellCellReport", function(sce, reducedDimNames,
-    out.dir=NULL, html.open=FALSE,
+    out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=80, top="full", cl=NULL){
+    author="The person who runs this script", thr=40, top="full", cl=NULL){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
@@ -190,9 +197,9 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         .cellCellReport(reducedDimNames, out.dir,
             html.open, title, author, thr, top, cl, sce)})
 .cellCellReport <- function(reducedDimNames,
-    out.dir=NULL, html.open=FALSE,
+    out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=80, top="full", cl=NULL, ...){
+    author="The person who runs this script", thr=40, top="full", cl=NULL, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -200,15 +207,6 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         stop(paste0("cellCellReport can be performed by the result of",
             " cellCellDecomp in which the algorithm is ",
             "specified as 'ntd' for now."))
-    }
-    # out.dir-check
-    if(is.null(out.dir)){
-        stop(paste0("Please specify the output directory for ",
-            "saving your analysis result"))
-    }else{
-        if(!file.exists(out.dir)){
-            dir.create(out.dir, showWarnings = FALSE, recursive = TRUE)
-        }
     }
 
     # Data matrix
@@ -241,7 +239,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     # Thresholding of the elements of core tensor
     selected <- which(cumsum(corevalue) <= thr)
     if(length(selected) == 0){
-        message(paste0("None of core tensor element is selected.\n",
+        stop(paste0("None of core tensor element is selected.\n",
         "Please specify the larger thr or perform cellCellDecomp\n",
         "with smaller ranks such as c(3,3,3)."))
     }
@@ -250,89 +248,84 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         length=length(corevalue) - length(selected)))
 
     # Tempolary Directory for saving the analytical result
-    temp <- tempdir()
-    dir.create(paste0(temp, "/figures"),
+    dir.create(paste0(out.dir, "/figures"),
         showWarnings = FALSE, recursive = TRUE)
 
-    # Table
-    if(length(selected) != 0){
-        # Plot (Each <L,R,*>)
-        vapply(seq_along(selected), function(i){
-            filenames <- paste0(temp,
-                "/figures/CCIHypergraph_", index[i, 1],
-                "_", index[i, 2], ".png")
-            png(filename=filenames, width=2000, height=950)
-            .CCIhyperGraphPlot(metadata(sce)$sctensor,
-                twoDplot=twoD,
-                label=celltypes,
-                emph=index[i, seq_len(2)])
-            dev.off()
-        }, 0L)
-        # <*,*,LR>
-        SelectedLR <- sort(unique(index[selected, "Mode3"]))
+    # Plot (Each <L,R,*>)
+    vapply(seq_along(selected), function(i){
+        filenames <- paste0(out.dir,
+            "/figures/CCIHypergraph_", index[i, 1],
+            "_", index[i, 2], ".png")
+        png(filename=filenames, width=2000, height=950)
+        .CCIhyperGraphPlot(metadata(sce)$sctensor,
+            twoDplot=twoD,
+            label=celltypes,
+            emph=index[i, seq_len(2)])
+        dev.off()
+    }, 0L)
+    # <*,*,LR>
+    SelectedLR <- sort(unique(index[selected, "Mode3"]))
 
-        # Setting for Parallel Computing
-        message(paste0(length(SelectedLR),
-            " LR vectors will be calculated :"))
-        e <<- new.env()
-        e$index <- index
-        e$sce <- sce
-        e$.HCLUST <- .HCLUST
-        e$.OUTLIERS <- .OUTLIERS
-        e$top <- top
-        e$spc <- spc
-        e$.sapply_pb <- .sapply_pb
-        e$GeneInfo <- GeneInfo
-        e$temp <- temp
-        e$.smallTwoDplot <- .smallTwoDplot
-        e$input <- input
-        e$twoD <- twoD
-        e$.hyperLinks <- .hyperLinks
-        e$LR <- LR
-        e$.eachVecLR <- .eachVecLR
-        e$.eachRender <- .eachRender
-        e$.XYZ_HEADER1 <- .XYZ_HEADER1
-        e$.XYZ_HEADER2 <- .XYZ_HEADER2
+    # Setting for Parallel Computing
+    message(paste0(length(SelectedLR),
+        " LR vectors will be calculated :"))
+    e <<- new.env()
+    e$index <- index
+    e$sce <- sce
+    e$.HCLUST <- .HCLUST
+    e$.OUTLIERS <- .OUTLIERS
+    e$top <- top
+    e$spc <- spc
+    e$GeneInfo <- GeneInfo
+    e$out.dir <- out.dir
+    e$.smallTwoDplot <- .smallTwoDplot
+    e$input <- input
+    e$twoD <- twoD
+    e$.hyperLinks <- .hyperLinks
+    e$LR <- LR
+    e$.eachVecLR <- .eachVecLR
+    e$.eachRender <- .eachRender
+    e$.XYZ_HEADER1 <- .XYZ_HEADER1
+    e$.XYZ_HEADER2 <- .XYZ_HEADER2
 
-        if (!is.null(cl)) {
-            ############ Parallel ############
-            # Package Loading in each node
-            invisible(clusterEvalQ(cl, {
-                requireNamespace("outliers")
-                requireNamespace("S4Vectors")
-                requireNamespace("tagcloud")
-                requireNamespace("plotrix")
-                requireNamespace("plotly")
-                requireNamespace("rmarkdown")
-            }))
-            clusterExport(cl, "e")
-            out.vecLR <- parSapply(cl, SelectedLR,
-                function(x, e){.eachVecLR(x, e)}, e=e)
-            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
-            e$out.vecLR <- out.vecLR
-            clusterExport(cl, "e")
-            ############ Parallel ############
-        }else{
-            out.vecLR <- vapply(SelectedLR,
-                function(x, e){.eachVecLR(x, e)}, FUN.VALUE=rep(list(0L), 8),
-            e=e)
-            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
-            e$out.vecLR <- out.vecLR
-        }
+    if (!is.null(cl)) {
+        ############ Parallel ############
+        # Package Loading in each node
+        invisible(clusterEvalQ(cl, {
+            requireNamespace("outliers")
+            requireNamespace("S4Vectors")
+            requireNamespace("tagcloud")
+            requireNamespace("plotrix")
+            requireNamespace("plotly")
+            requireNamespace("rmarkdown")
+        }))
+        clusterExport(cl, "e")
+        out.vecLR <- parSapply(cl, SelectedLR,
+            function(x, e){.eachVecLR(x, e)}, e=e)
+        colnames(out.vecLR) <- paste0("pattern", SelectedLR)
+        e$out.vecLR <- out.vecLR
+        clusterExport(cl, "e")
+        ############ Parallel ############
+    }else{
+        out.vecLR <- vapply(SelectedLR,
+            function(x, e){.eachVecLR(x, e)},
+            FUN.VALUE=rep(list(0L), 8), e=e)
+        colnames(out.vecLR) <- paste0("pattern", SelectedLR)
+        e$out.vecLR <- out.vecLR
     }
 
     # Plot（CCI Hypergraph）
-    png(filename=paste0(temp, "/figures/CCIHypergraph.png"),
+    png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
         width=2000, height=950)
     .CCIhyperGraphPlot(metadata(sce)$sctensor, twoDplot=twoD, label=celltypes)
     dev.off()
 
     # Plot（Gene-wise Hypergraph）
-    .geneHyperGraphPlot(out.vecLR, GeneInfo, temp)
+    .geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir)
 
     # Rmd（ligand）
     message("ligand.Rmd is created...")
-    outLg <- file(paste0(temp, "/ligand.Rmd"), "w")
+    outLg <- file(paste0(out.dir, "/ligand.Rmd"), "w")
     writeLines(.LIGAND_HEADER, outLg, sep="\n")
     writeLines(.LIGAND_BODY(out.vecLR, GeneInfo, index, selected),
         outLg, sep="\n")
@@ -340,7 +333,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 
     # Rmd（receptor）
     message("receptor.Rmd is created...")
-    outRp <- file(paste0(temp, "/receptor.Rmd"), "w")
+    outRp <- file(paste0(out.dir, "/receptor.Rmd"), "w")
     writeLines(.RECEPTOR_HEADER, outRp, sep="\n")
     writeLines(.RECEPTOR_BODY(out.vecLR, GeneInfo, index, selected),
         outRp, sep="\n")
@@ -359,16 +352,15 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 
     # Ligand Pattern
     vapply(seq_len(numLPattern), function(i){
-        label.ligand <- unlist(sapply(names(celltypes),
-            function(x){
-                metadata(sce)$sctensor$ligand[paste0("Dim", i), x]}))
+        label.ligand <- unlist(vapply(names(celltypes), function(x){
+                metadata(sce)$sctensor$ligand[paste0("Dim", i), x]}, 0.0))
         label.ligand[] <- smoothPalette(label.ligand,
             palfunc=colorRampPalette(col.ligand, alpha=TRUE))
         ClusterNameL <- paste(names(which(ClusterL[i,] == "selected")),
             collapse=" & ")
         titleL <- paste0("(", i, ",*,*)-Pattern", " = ", ClusterNameL)
         titleL <- .shrink(titleL)
-        LPatternfile <- paste0(temp, "/figures/Pattern_", i, "__", ".png")
+        LPatternfile <- paste0(out.dir, "/figures/Pattern_", i, "__", ".png")
         png(filename=LPatternfile, width=1000, height=1000)
         par(ps=20)
         plot(twoD, col=label.ligand, pch=16, cex=2, bty="n",
@@ -379,15 +371,15 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 
     # Receptor Pattern
     vapply(seq_len(numRPattern), function(i){
-        label.receptor <- unlist(sapply(names(celltypes),
-            function(x){metadata(sce)$sctensor$receptor[paste0("Dim", i), x]}))
+        label.receptor <- unlist(vapply(names(celltypes), function(x){
+                metadata(sce)$sctensor$receptor[paste0("Dim", i), x]}, 0.0))
         label.receptor[] <- smoothPalette(label.receptor,
             palfunc=colorRampPalette(col.receptor, alpha=TRUE))
         ClusterNameR <- paste(names(which(ClusterR[i,] == "selected")),
             collapse=" & ")
         titleR <- paste0("(*,", i, ",*)-Pattern", " = ", ClusterNameR)
         titleR <- .shrink(titleR)
-        RPatternfile = paste0(temp, "/figures/Pattern__", i, "_", ".png")
+        RPatternfile = paste0(out.dir, "/figures/Pattern__", i, "_", ".png")
         png(filename=RPatternfile, width=1000, height=1000)
         par(ps=20)
         plot(twoD, col=label.receptor, pch=16, cex=2, bty="n",
@@ -399,13 +391,13 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     # Save the result of scTensor
     save(sce, input, twoD, LR, celltypes, index, corevalue,
         selected, ClusterL, ClusterR, out.vecLR,
-        file=paste0(temp, "/reanalysis.RData"))
+        file=paste0(out.dir, "/reanalysis.RData"))
 
     # Rendering
     message("ligand.Rmd is compiled to index.html...")
-    render(paste0(temp, "/ligand.Rmd"), quiet=TRUE)
+    render(paste0(out.dir, "/ligand.Rmd"), quiet=TRUE)
     message("receptor.Rmd is compiled to index.html...")
-    render(paste0(temp, "/receptor.Rmd"), quiet=TRUE)
+    render(paste0(out.dir, "/receptor.Rmd"), quiet=TRUE)
     if (!is.null(cl)) {
         message(paste0(length(selected),
             " pattern_X_Y_Z.Rmd files will be created :"))
@@ -423,7 +415,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     # File copy
     file.copy(
         from = system.file("extdata", "Workflow.jpeg", package = "scTensor"),
-        to = paste0(temp, "/Workflow.jpeg"),
+        to = paste0(out.dir, "/Workflow.jpeg"),
         overwrite = TRUE)
 
     # Output index.html
@@ -442,7 +434,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         RMDFILES <- paste0(RMDFILES, ".Rmd")
     }
     message("index.Rmd is created...")
-    outIdx <- file(paste0(temp, "/index.Rmd"), "w")
+    outIdx <- file(paste0(out.dir, "/index.Rmd"), "w")
     writeLines(.MAINHEADER(author, title), outIdx, sep="\n")
     writeLines(.BODY1, outIdx, sep="\n")
     writeLines(.BODY2, outIdx, sep="\n")
@@ -461,14 +453,10 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 
     # Rendering
     message("index.Rmd is compiled to index.html...")
-    render(paste0(temp, "/index.Rmd"), quiet=TRUE)
+    render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
 
-    # File Copy from Tempolary Directory
-    if(temp != out.dir){
-        file.copy(from = temp, to = out.dir,
-            overwrite = TRUE, recursive = TRUE)
-    }else{
-        out.dir = temp
+    if(out.dir == tempdir()){
+        message(paste0("\nData files are saved in\n\n", out.dir))
     }
 
     # HTML Open

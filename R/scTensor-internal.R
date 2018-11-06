@@ -1,67 +1,3 @@
-.flist <- list(
-    # 3-Order = NTD
-    "ntd" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        # ranks-check
-        max.rank <- length(unique(celltypes))
-        if(ranks[1] > max.rank || ranks[2] > max.rank){
-            stop("ranks must be defined less than number of celltypes")
-        }
-        .cellCellDecomp.Third(input, LR, celltypes, ranks, centering,
-            mergeas, outer, comb, num.sampling, decomp)
-    },
-    # 2-Order = NMF
-    "nmf" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        # ranks-check
-        max.rank <- length(unique(celltypes))
-        if(rank > max.rank){
-            stop("ranks must be defined less than number of celltypes")
-        }
-        .cellCellDecomp.Second(input, LR, celltypes, rank, centering,
-            mergeas, outer, comb, num.sampling, decomp)
-    },
-    # Other method (Possible Combination)
-    "pcomb" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        if(thr1 <= 0 || thr2 <= 0){
-            warning("None of cell-cell interaction will be detected.")
-        }
-        .cellCellDecomp.PossibleCombination(input, LR, celltypes,
-            thr1=thr1, thr2=thr2)
-    },
-    # Other method (Pearson's Correlation Coefficient without LR pair)
-    "pearson" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Pearson(input, celltypes)
-    },
-    # Other method (Spearman's Correlation Coefficient without LR pair)
-    "spearman" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Spearman(input, celltypes)
-    },
-    # Other method (Euclidian Distance without LR pair)
-    "distance" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Distance(input, celltypes)
-    },
-    # Other method (Pearson's Correlation Coefficient with LR pair)
-    "pearson.lr" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Pearson.LR(input, LR, celltypes)
-    },
-    # Other method (Spearman's Correlation Coefficient with LR pair)
-    "spearman.lr" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Spearman.LR(input, LR, celltypes)
-    },
-    # Other method (Euclidian Distance with LR pair)
-    "distance.lr" = function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
-        .cellCellDecomp.Distance.LR(input, LR, celltypes)
-    }
-)
-
 .cellType <- function(input, celltypes, mergeas="mean"){
     all.celltypes = unique(names(celltypes))
     if(mergeas == "mean"){
@@ -90,8 +26,8 @@
 .cellCellReconst <- function(A1, A2, A3, index,
     type="matrix", names, collapse=FALSE){
     if(type == "matrix"){
-        out <- sapply(seq_len(ncol(A1)), function(x){
-            base::outer(A1[, x], A2[, x])}, simplify=FALSE)
+        out <- lapply(seq_len(ncol(A1)), function(x){
+            base::outer(A1[, x], A2[, x])})
     }else if(type == "tensor"){
         out <- list()
         counter <- 1
@@ -169,8 +105,8 @@
             pre_tnsr <- array(0, dim=c(length(unique(names(celltypes))),
                 length(unique(names(celltypes))), 1))
             for(j in seq_len(num.sampling)){
-                target <- sapply(unique(names(celltypes)), function(x){
-                    sample(which(names(celltypes) == x), 1)})
+                target <- vapply(unique(names(celltypes)), function(x){
+                    sample(which(names(celltypes) == x), 1)}, 0L)
                 pre_tnsr[,,1] <- pre_tnsr[,,1] +
                 base::outer(as.vector(L[l, target]),
                 as.vector(R[r, target]), outer)
@@ -214,8 +150,13 @@
     list(tnsr=tnsr, pairname=Pair.name)
 }
 
-.cellCellDecomp.Third <- function(input, LR, celltypes, ranks, centering,
-    mergeas, outer, comb, num.sampling, decomp){
+.cellCellDecomp.Third <- function(input, LR, celltypes, ranks, rank, centering,
+        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+    # ranks-check
+    max.rank <- length(unique(celltypes))
+    if(ranks[1] > max.rank || ranks[2] > max.rank){
+        stop("ranks must be defined less than number of celltypes")
+    }
     if(centering){
         fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outer)
     }else{
@@ -264,8 +205,13 @@
 }
 
 .cellCellDecomp.Second <-
-function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
-    num.sampling, decomp){
+function(input, LR, celltypes, ranks, rank, centering,
+        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+    # ranks-check
+    max.rank <- length(unique(celltypes))
+    if(rank > max.rank){
+        stop("ranks must be defined less than number of celltypes")
+    }
     if(centering){
         fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outer)
     }else{
@@ -299,21 +245,27 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }
 }
 
-.cellCellDecomp.Pearson <- function(input, celltypes){
+.cellCellDecomp.Pearson <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outer, comb, num.sampling, decomp,
+    thr1, thr2){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="pearson")
     out <- as.matrix(out)
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Spearman <- function(input, celltypes){
+.cellCellDecomp.Spearman <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outer, comb, num.sampling, decomp,
+    thr1, thr2){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="spearman")
     out <- as.matrix(out)
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Distance <- function(input, celltypes){
+.cellCellDecomp.Distance <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outer, comb, num.sampling, decomp,
+    thr1, thr2){
     out <- .cellType(input, celltypes)
     out <- 1 / dist(t(out))
     out <- as.matrix(out)
@@ -321,7 +273,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Pearson.LR <- function(input, LR, celltypes){
+.cellCellDecomp.Pearson.LR <- function(input, LR, celltypes, ranks,
+        rank, centering, mergeas, outer, comb, num.sampling, decomp,
+        thr1, thr2){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -340,7 +294,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Spearman.LR <- function(input, LR, celltypes){
+.cellCellDecomp.Spearman.LR <- function(input, LR, celltypes, ranks,
+        rank, centering, mergeas, outer, comb, num.sampling, decomp,
+        thr1, thr2){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -359,7 +315,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Distance.LR <- function(input, LR, celltypes){
+.cellCellDecomp.Distance.LR <- function(input, LR, celltypes, ranks,
+        rank, centering, mergeas, outer, comb, num.sampling, decomp,
+        thr1, thr2){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -381,6 +339,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 
 .cellCellDecomp.PossibleCombination <- function(input, LR, celltypes,
     thr1=2^5, thr2=25){
+    if(thr1 <= 0 || thr2 <= 0){
+        warning("None of cell-cell interaction will be detected.")
+    }
     lr <- .divLR(input, LR)
     L <- as.matrix(lr[[1]])
     R <- as.matrix(lr[[2]])
@@ -421,6 +382,27 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr_bin))
 }
 
+.flist <- list(
+    # 3-Order = NTD
+    "ntd" = .cellCellDecomp.Third,
+    # 2-Order = NMF
+    "nmf" = .cellCellDecomp.Second,
+    # Other method (Possible Combination)
+    "pcomb" = .cellCellDecomp.PossibleCombination,
+    # Other method (Pearson's Correlation Coefficient without LR pair)
+    "pearson" = .cellCellDecomp.Pearson,
+    # Other method (Spearman's Correlation Coefficient without LR pair)
+    "spearman" = .cellCellDecomp.Spearman,
+    # Other method (Euclidian Distance without LR pair)
+    "distance" = .cellCellDecomp.Distance,
+    # Other method (Pearson's Correlation Coefficient with LR pair)
+    "pearson.lr" = .cellCellDecomp.Pearson.LR,
+    # Other method (Spearman's Correlation Coefficient with LR pair)
+    "spearman.lr" = .cellCellDecomp.Spearman.LR,
+    # Other method (Euclidian Distance with LR pair)
+    "distance.lr" = .cellCellDecomp.Distance.LR
+)
+
 .CCIhyperGraphPlot <- function(outobj, twoDplot=NULL, vertex.size=18,
     xleft=1.75, ybottom=-0.5, xright=1.85, ytop=0.5, label="", emph=NULL){
     # Number of Patterns
@@ -430,9 +412,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     #
     # Step.1 : Background Network
     #
-    edgewd_L <- unlist(vapply(seq_len(numLPattern), function(x){
+    edgewd_L <- as.vector(vapply(seq_len(numLPattern), function(x){
         rep(x, numRPattern)
-        }, 0L))
+        }, rep(0L, numRPattern)))
     edgewd_R <- rep(seq_len(numRPattern), numLPattern)
     edgewd_Strength <- vapply(
         seq_len(numLPattern*numRPattern), function(x){
@@ -696,7 +678,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
         message(paste0("Related Reactome IDs are retrieved from ",
             "reactome.db package..."))
         Reactome <- toTable(reactomeEXTID2PATHID)
-        targetReactome <- unlist(sapply(targetGeneID,
+        targetReactome <- unlist(lapply(targetGeneID,
             function(x){which(Reactome$gene_id == x)}))
         Reactome <- Reactome[targetReactome, ]
     }else{
@@ -1309,24 +1291,6 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     "[Artistic License 2.0](",
     "http://www.perlfoundation.org/artistic_license_2_0)\n")
 
-.sapply_pb <- function(X, FUN, ...)
-{
-    env <- environment()
-    pb_Total <- length(X)
-    counter <- 0
-    pb <- txtProgressBar(min = 0, max = pb_Total, style = 3)
-
-    wrapper <- function(...){
-        curVal <- get("counter", envir = env)
-        assign("counter", curVal +1 ,envir=env)
-        setTxtProgressBar(get("pb", envir=env), curVal +1)
-        FUN(...)
-    }
-    res <- sapply(X, wrapper, ...)
-    close(pb)
-    res
-}
-
 .FTT <- function(x){
     sqrt(x) + sqrt(x + 1)
 }
@@ -1338,9 +1302,8 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     .OUTLIERS <- e$.OUTLIERS
     top <- e$top
     spc <- e$spc
-    .sapply_pb <- e$.sapply_pb
     GeneInfo <- e$GeneInfo
-    temp <- e$temp
+    out.dir <- e$out.dir
     .smallTwoDplot <- e$.smallTwoDplot
     input <- e$input
     twoD <- e$twoD
@@ -1375,7 +1338,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     # Hyper Link (Too Heavy)
     message("Hyper-links are embedded...")
     GeneName <- GeneInfo$GeneName
-    LINKS <- .sapply_pb(seq_along(TARGET), function(xx){
+    LINKS <- vapply(seq_along(TARGET), function(xx){
             # IDs
             Ranking <- xx
             L_R <- strsplit(names(TARGET[xx]), "_")
@@ -1393,9 +1356,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             }
 
             # Plot (Ligand/Receptor)
-            Ligandfile <- paste0(temp, "/figures/Ligand_",
+            Ligandfile <- paste0(out.dir, "/figures/Ligand_",
                 LigandGeneID, ".png")
-            Receptorfile <- paste0(temp, "/figures/Receptor_",
+            Receptorfile <- paste0(out.dir, "/figures/Receptor_",
                 ReceptorGeneID, ".png")
             png(filename=Ligandfile, width=1000, height=1000)
             .smallTwoDplot(input, LigandGeneID, LigandGeneName,
@@ -1412,7 +1375,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             Percentage[xx],
             spc, GeneInfo, PvalueLR[xx],
             QvalueLR[xx])
-        })
+        }, "")
     LINKS <- paste(LINKS, collapse="")
 
     # Output object
@@ -1430,7 +1393,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 
 .eachRender <- function(x, e, SelectedLR){
     index <- e$index
-    temp <- e$temp
+    out.dir <- e$out.dir
     out.vecLR <- e$out.vecLR
     .XYZ_HEADER1 <- e$.XYZ_HEADER1
     .XYZ_HEADER2 <- e$.XYZ_HEADER2
@@ -1448,7 +1411,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     # Each (x,y,z)-rmdfile
     RMDFILE <- paste0(c("pattern", index[x, seq_len(3)]), collapse="_")
     RMDFILE <- paste0(RMDFILE, ".Rmd")
-    outRmd <- file(paste0(temp, "/", RMDFILE), "w")
+    outRmd <- file(paste0(out.dir, "/", RMDFILE), "w")
     writeLines(paste(
         c(.XYZ_HEADER1(index, x), XYZ_BOTTOM),
         collapse=""), outRmd, sep="\n")
@@ -1457,7 +1420,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     # Rendering
     message(paste0(RMDFILE, " is compiled to ",
         gsub(".Rmd", ".html", RMDFILE)))
-    render(paste0(temp, "/", RMDFILE), quiet=TRUE)
+    render(paste0(out.dir, "/", RMDFILE), quiet=TRUE)
 }
 
 .palf <- colorRampPalette(c("#4b61ba", "gray", "#a87963", "red"))
@@ -1509,7 +1472,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }
 }
 
-.geneHyperGraphPlot <- function(out.vecLR, GeneInfo, temp){
+.geneHyperGraphPlot <- function(out.vecLR, GeneInfo, out.dir){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
@@ -1522,9 +1485,8 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }
 
     # Node
-    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
-        names(out.vecLR["TARGET", x][[1]])
-    }, simplify=FALSE)
+    nodes <- lapply(seq_len(ncol(out.vecLR)), function(x){
+        names(out.vecLR["TARGET", x][[1]])})
     Lnodes <- lapply(nodes, function(x){
         vapply(x, function(xx){
             strsplit(xx, "_")[[1]][1]
@@ -1561,12 +1523,12 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             color=rgb(0,0,1,0.5)))
 
     # Nodes Weight
-    freqLnodes <- sapply(uniqueLnodes, function(x){
+    freqLnodes <- vapply(uniqueLnodes, function(x){
         length(which(unlist(Lnodes) == x))
-        })
-    freqRnodes <- sapply(uniqueRnodes, function(x){
+        }, 0L)
+    freqRnodes <- vapply(uniqueRnodes, function(x){
         length(which(unlist(Rnodes) == x))
-        })
+        }, 0L)
     freq <- c(freqLnodes, freqRnodes)
     freq <- freq / max(freq) * 10
 
@@ -1580,9 +1542,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
 
     # Plot
     cols <- .setColor("many")
-    edge.cols <- unlist(sapply(seq_len(ncol(out.vecLR)), function(x){
+    edge.cols <- unlist(lapply(seq_len(ncol(out.vecLR)), function(x){
             rep(cols[x], length(out.vecLR["TARGET", x][[1]]))
-        }, simplify=FALSE))
+        }))
 
     # Setting
     V(g)$size <- freq
@@ -1591,7 +1553,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     l <- layout_with_dh(g)
 
     # All Pattern
-    png(filename=paste0(temp, "/figures/GeneHypergraph.png"),
+    png(filename=paste0(out.dir, "/figures/GeneHypergraph.png"),
         width=2500, height=2500)
     plot.igraph(g, layout=l)
     legend("topleft",
@@ -1613,14 +1575,14 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
                 Lnodes[[x]]
                 ), Rnodes[[x]]
             )
-        target <- unlist(sapply(grayout, function(xx){
+        target <- unlist(lapply(grayout, function(xx){
             which(names(V(g)) == xx)
         }))
         tmp_nodecolor[target] <- rgb(0,0,0,0.1)
 
         # Plot
         png(filename=paste0(
-            temp, "/figures/GeneHypergraph_",
+            out.dir, "/figures/GeneHypergraph_",
             gsub("pattern", "", colnames(out.vecLR)[x]),
             ".png"),
             width=2500, height=2500)
@@ -1643,7 +1605,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     "![](figures/GeneHypergraph.png){ width=100% }\n\n",
     "|Rank|Frequency|Ligand Gene|Candidate Partner Receptor Genes|",
     "Related CCIs|\n",
-    "|----|----|----|----|----|\n"
+    "|----|----|----|----|----|"
 )
 
 .RECEPTOR_HEADER <- paste0(
@@ -1652,7 +1614,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     "![](figures/GeneHypergraph.png){ width=100% }\n\n",
     "|Rank|Frequency|Receptor Gene|Candidate Partner Ligand Genes|",
     "Related CCIs|\n",
-    "|----|----|----|----|----|\n"
+    "|----|----|----|----|----|"
 )
 
 .LIGAND_BODY <- function(out.vecLR, GeneInfo, index, selected){
@@ -1668,9 +1630,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }
 
     # Node
-    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
+    nodes <- lapply(seq_len(ncol(out.vecLR)), function(x){
         names(out.vecLR["TARGET", x][[1]])
-    }, simplify=FALSE)
+    })
     Lnodes <- lapply(nodes, function(x){
         vapply(x, function(xx){
             strsplit(xx, "_")[[1]][1]
@@ -1700,10 +1662,10 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     Freq <- sort(Freq, decreasing=TRUE)
     Rank <- rank(-Freq)
     Ligand <- names(Freq)
-    Receptor <- sapply(Ligand, function(x){
+    Receptor <- lapply(Ligand, function(x){
         unique(
             unlist(
-                sapply(seq_len(length(Lnodes)), function(xx){
+                lapply(seq_len(length(Lnodes)), function(xx){
                     Rnodes[[xx]][which(x == Lnodes[[xx]])]
                 })
             )
@@ -1717,7 +1679,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             length(which(Lnodes[[xx]] == x))
         }, 0L)
         vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
-        target <- unlist(sapply(vec, function(xx){
+        target <- unlist(lapply(vec, function(xx){
                 p <- gsub("pattern", "", colnames(out.vecLR)[xx])
                 which(p == index[selected, "Mode3"])
             }))
@@ -1762,9 +1724,9 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     }
 
     # Node
-    nodes <- sapply(seq_len(ncol(out.vecLR)), function(x){
+    nodes <- lapply(seq_len(ncol(out.vecLR)), function(x){
         names(out.vecLR["TARGET", x][[1]])
-    }, simplify=FALSE)
+    })
     Lnodes <- lapply(nodes, function(x){
         vapply(x, function(xx){
             strsplit(xx, "_")[[1]][1]
@@ -1794,10 +1756,10 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
     Freq <- sort(Freq, decreasing=TRUE)
     Rank <- rank(-Freq)
     Receptor <- names(Freq)
-    Ligand <- sapply(Receptor, function(x){
+    Ligand <- lapply(Receptor, function(x){
         unique(
             unlist(
-                sapply(seq_len(length(Rnodes)), function(xx){
+                lapply(seq_len(length(Rnodes)), function(xx){
                     Lnodes[[xx]][which(x == Rnodes[[xx]])]
                 })
             )
@@ -1811,7 +1773,7 @@ function(input, LR, celltypes, rank, centering, mergeas, outer, comb,
             length(which(Rnodes[[xx]] == x))
         }, 0L)
         vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
-        target <- unlist(sapply(vec, function(xx){
+        target <- unlist(lapply(vec, function(xx){
                 p <- gsub("pattern", "", colnames(out.vecLR)[xx])
                 which(p == index[selected, "Mode3"])
             }))

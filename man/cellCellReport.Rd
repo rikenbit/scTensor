@@ -11,9 +11,9 @@ The result is saved as HTML report which contains with multiple files.
 }
 \usage{
 cellCellReport(sce, reducedDimNames,
-    out.dir=NULL, html.open=FALSE,
+    out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=80, top="full", cl=NULL)
+    author="The person who runs this script", thr=40, top="full", cl=NULL)
 }
 
 \arguments{
@@ -25,7 +25,7 @@ The name of two-dimentional data saved in reducedDimNames slot of
 SingleCellExperiment object.
 }
 \item{out.dir}{
-The output directory for saving HTML report (out.dir: NULL).
+The output directory for saving HTML report (out.dir: tempdir()).
 }
 \item{html.open}{
 Whether the result of HTML report is opened when the calculation is finished
@@ -39,7 +39,7 @@ The author of HTML report (Default: "The person who runs this script").
 }
 \item{thr}{
 The threshold for selection of top pecentage of core tensor elements
-(Default: 80 (1 to 100)).
+(Default: 40 (1 to 100)).
 }
 \item{top}{
 top genes in each (*,*,*)-pattern which are selected and summarized in the report (Default: "full")
