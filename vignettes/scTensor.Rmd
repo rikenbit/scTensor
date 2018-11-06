@@ -326,7 +326,7 @@ function to output the HTML report like belows.
 ```{r cellCellReport, echo=TRUE}
 cellCellReport(sce, reducedDimNames="TSNE",
     title="Cell-cell interaction within Germline_Male, GSE86146",
-    author="Koki Tsuyuzaki", thr=30, top=10, html.open=FALSE)
+    author="Koki Tsuyuzaki", thr=15, top=2, html.open=FALSE)
 ```
 
 After `cellCellReport`, multiple R markdown files, compiled HTML files,

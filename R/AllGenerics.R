@@ -208,30 +208,10 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             " cellCellDecomp in which the algorithm is ",
             "specified as 'ntd' for now."))
     }
+    # Tempolary Directory for saving the analytical result
+    dir.create(paste0(out.dir, "/figures"),
+        showWarnings = FALSE, recursive = TRUE)
 
-    # Data matrix
-    input <- assay(sce)
-    # Low dimensional data
-    twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
-    # Ligand-Receptor, PMID
-    LR <- LRBaseDbi::select(metadata(sce)$lrbase,
-        columns=c("GENEID_L", "GENEID_R", "SOURCEID"),
-        keytype="GENEID_L",
-        keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
-    # Species
-    lrname <- LRBaseDbi::lrPackageName(metadata(sce)$lrbase)
-    spc <- substr(lrname, nchar(lrname) - 8, nchar(lrname))
-    spc <- gsub(".eg.db", "", spc)
-
-    # biomaRt Setting
-    ens <- .ensembl[[spc]]()
-
-    # GeneName, Description, GO, Reactome, MeSH
-    GeneInfo <- .geneinformation(sce, ens, spc, LR)
-
-    # Cell Label
-    celltypes <- metadata(sce)$color
-    names(celltypes) <- metadata(sce)$label
     # Core Tensor
     index <- metadata(sce)$sctensor$index
     corevalue <- index[, "Value"]
@@ -247,9 +227,26 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         rep("not selected",
         length=length(corevalue) - length(selected)))
 
-    # Tempolary Directory for saving the analytical result
-    dir.create(paste0(out.dir, "/figures"),
-        showWarnings = FALSE, recursive = TRUE)
+    # Data matrix
+    input <- assay(sce)
+    # Low dimensional data
+    twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
+    # Ligand-Receptor, PMID
+    LR <- LRBaseDbi::select(metadata(sce)$lrbase,
+        columns=c("GENEID_L", "GENEID_R", "SOURCEID"),
+        keytype="GENEID_L",
+        keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
+    # Species
+    lrname <- LRBaseDbi::lrPackageName(metadata(sce)$lrbase)
+    spc <- substr(lrname, nchar(lrname) - 8, nchar(lrname))
+    spc <- gsub(".eg.db", "", spc)
+    # biomaRt Setting
+    ens <- .ensembl[[spc]]()
+    # GeneName, Description, GO, Reactome, MeSH
+    GeneInfo <- .geneinformation(sce, ens, spc, LR)
+    # Cell Label
+    celltypes <- metadata(sce)$color
+    names(celltypes) <- metadata(sce)$label
 
     # Plot (Each <L,R,*>)
     vapply(seq_along(selected), function(i){
@@ -456,7 +453,9 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
 
     if(out.dir == tempdir()){
-        message(paste0("\nData files are saved in\n\n", out.dir))
+        message(paste0("################################################\n",
+            "Data files are saved in\n",
+            out.dir, "\n################################################\n"))
     }
 
     # HTML Open
