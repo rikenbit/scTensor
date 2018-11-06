@@ -189,17 +189,17 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", cl=NULL){
+    author="The person who runs this script", thr=40, top="full"){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
-        thr, top, cl){
+        thr, top){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, thr, top, cl, sce)})
+            html.open, title, author, thr, top, sce)})
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", cl=NULL, ...){
+    author="The person who runs this script", thr=40, top="full", ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -283,32 +283,11 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         e$.eachRender <- .eachRender
         e$.XYZ_HEADER1 <- .XYZ_HEADER1
         e$.XYZ_HEADER2 <- .XYZ_HEADER2
-
-        if (!is.null(cl)) {
-            ############ Parallel ############
-            # Package Loading in each node
-            invisible(clusterEvalQ(cl, {
-                requireNamespace("outliers")
-                requireNamespace("S4Vectors")
-                requireNamespace("tagcloud")
-                requireNamespace("plotrix")
-                requireNamespace("plotly")
-                requireNamespace("rmarkdown")
-            }))
-            clusterExport(cl, "e")
-            out.vecLR <- parSapply(cl, SelectedLR,
-                function(x, e){.eachVecLR(x, e)}, e=e)
-            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
-            e$out.vecLR <- out.vecLR
-            clusterExport(cl, "e")
-            ############ Parallel ############
-        }else{
-            out.vecLR <- vapply(SelectedLR,
-                function(x, e){.eachVecLR(x, e)},
-                FUN.VALUE=rep(list(0L), 8), e=e)
-            colnames(out.vecLR) <- paste0("pattern", SelectedLR)
-            e$out.vecLR <- out.vecLR
-        }
+        out.vecLR <- vapply(SelectedLR,
+            function(x, e){.eachVecLR(x)},
+            FUN.VALUE=rep(list(0L), 8), e=e)
+        colnames(out.vecLR) <- paste0("pattern", SelectedLR)
+        e$out.vecLR <- out.vecLR
 
         # Plot（CCI Hypergraph）
         png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
@@ -394,19 +373,11 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         render(paste0(out.dir, "/ligand.Rmd"), quiet=TRUE)
         message("receptor.Rmd is compiled to index.html...")
         render(paste0(out.dir, "/receptor.Rmd"), quiet=TRUE)
-        if (!is.null(cl)) {
-            message(paste0(length(selected),
-                " pattern_X_Y_Z.Rmd files will be created :"))
-            parSapply(cl, selected,
-                function(x, e, SelectedLR){.eachRender(x, e, SelectedLR)},
-                e=e, SelectedLR=SelectedLR)
-        }else{
-            message(paste0(length(selected),
-                " pattern_X_Y_Z.Rmd files will be created :"))
-            vapply(selected,
-                function(x, e, SelectedLR){
-                    .eachRender(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
-        }
+        message(paste0(length(selected),
+            " pattern_X_Y_Z.Rmd files will be created :"))
+        vapply(selected,
+            function(x, e, SelectedLR){
+                .eachRender(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
 
         # File copy
         file.copy(
@@ -415,20 +386,18 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             overwrite = TRUE)
 
         # Output index.html
-        if(length(selected) != 0){
-            if(length(selected) == 1){
-                RMDFILES <- apply(t(index[selected, seq_len(3)]), 1,
-                    function(x){
-                    paste0(c("pattern", x), collapse="_")
-                })
-            }else{
-                RMDFILES <- apply(index[selected, seq_len(3)], 1,
-                    function(x){
-                    paste0(c("pattern", x), collapse="_")
-                })
-            }
-            RMDFILES <- paste0(RMDFILES, ".Rmd")
+        if(length(selected) == 1){
+            RMDFILES <- apply(t(index[selected, seq_len(3)]), 1,
+                function(x){
+                paste0(c("pattern", x), collapse="_")
+            })
+        }else{
+            RMDFILES <- apply(index[selected, seq_len(3)], 1,
+                function(x){
+                paste0(c("pattern", x), collapse="_")
+            })
         }
+        RMDFILES <- paste0(RMDFILES, ".Rmd")
         message("index.Rmd is created...")
         outIdx <- file(paste0(out.dir, "/index.Rmd"), "w")
         writeLines(.MAINHEADER(author, title), outIdx, sep="\n")

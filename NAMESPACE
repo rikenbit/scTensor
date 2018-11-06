@@ -25,7 +25,6 @@ importFrom(stats, cor, dist, na.omit, quantile, p.adjust, hclust, cutree)
 importFrom(utils, browseURL, txtProgressBar, setTxtProgressBar)
 importFrom(outliers, grubbs.test, chisq.out.test)
 importFrom(nnTensor, NMF, NTD, recTensor)
-importFrom(snow, clusterExport, parSapply, clusterEvalQ)
 importFrom(Category, hyperGTest)
 
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport)
