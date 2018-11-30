@@ -13,7 +13,7 @@ The result is saved as HTML report which contains with multiple files.
 cellCellReport(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full")
+    author="The person who runs this script", thr=40, top="full", p=0.05)
 }
 
 \arguments{
@@ -44,6 +44,9 @@ The threshold for selection of top pecentage of core tensor elements
 \item{top}{
 top genes in each (*,*,*)-pattern which are selected and summarized in the report (Default: "full")
 }
+\item{p}{
+The threshold of p-value of the enrichment analysis (Default: 1E-2)
+}
 }
 
 \value{
@@ -72,7 +75,7 @@ The result is saved as HTML report which contains with multiple files.
 	cellCellDecomp(sce, ranks=rks$selected)
 	cellCellReport(sce, reducedDimNames="TSNE",
 	    title="Cell-cell interaction within Germline_Male, GSE86146",
-	    author="Koki Tsuyuzaki", thr=15, html.open=TRUE)
+	    author="Koki Tsuyuzaki", thr=30, html.open=TRUE)
     }
 }
 

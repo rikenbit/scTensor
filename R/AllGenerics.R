@@ -30,7 +30,7 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
             in color and label as same")
     }
     # Overwrite
-    metadata(sce) <- list(lrbase=lrbase, color=color, label=label)
+    metadata(sce) <- list(lrbase=lrbase$conn@dbname, color=color, label=label)
     assign(userobjects, sce, envir=.GlobalEnv)
 }
 
@@ -62,10 +62,10 @@ setMethod("cellCellRanks",
     }else{
         input <- assay(sce)
     }
-    LR <- LRBaseDbi::select(metadata(sce)$lrbase,
-        columns=c("GENEID_L", "GENEID_R"),
-        keytype="GENEID_L",
-        keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
+    con = dbConnect(SQLite(), metadata(sce)$lrbase)
+    LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
+    LR <- unique(LR)
+    dbDisconnect(con)
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
 
@@ -133,10 +133,10 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     }else{
         input <- assay(sce)
     }
-    LR <- LRBaseDbi::select(metadata(sce)$lrbase,
-        columns=c("GENEID_L", "GENEID_R"),
-        keytype="GENEID_L",
-        keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
+    con = dbConnect(SQLite(), metadata(sce)$lrbase)
+    LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
+    LR <- unique(LR)
+    dbDisconnect(con)
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
 
@@ -181,25 +181,23 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     # Output
 }
 
-
-
 #
 # cellCellReport
 #
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full"){
+    author="The person who runs this script", thr=40, top="full", p=0.05){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
-        thr, top){
+        thr, top, p){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, thr, top, sce)})
+            html.open, title, author, thr, top, p, sce)})
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", ...){
+    author="The person who runs this script", thr=40, top="full", p=0.05, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -208,9 +206,20 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             " cellCellDecomp in which the algorithm is ",
             "specified as 'ntd' for now."))
     }
-    # Tempolary Directory for saving the analytical result
+    # The Directory for saving the analytical result
     dir.create(paste0(out.dir, "/figures"),
         showWarnings = FALSE, recursive = TRUE)
+    dir.create(paste0(out.dir, "/figures/Ligand"),
+        showWarnings = FALSE, recursive = TRUE)
+    dir.create(paste0(out.dir, "/figures/Receptor"),
+        showWarnings = FALSE, recursive = TRUE)
+    dir.create(paste0(out.dir, "/figures/Tagcloud"),
+        showWarnings = FALSE, recursive = TRUE)
+    # File copy
+    file.copy(
+        from = system.file("extdata", "Workflow.jpeg", package = "scTensor"),
+        to = paste0(out.dir, "/Workflow.jpeg"),
+        overwrite = TRUE)
 
     # Core Tensor
     index <- metadata(sce)$sctensor$index
@@ -231,14 +240,14 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         # Low dimensional data
         twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
         # Ligand-Receptor, PMID
-        LR <- LRBaseDbi::select(metadata(sce)$lrbase,
-            columns=c("GENEID_L", "GENEID_R", "SOURCEID"),
-            keytype="GENEID_L",
-            keys=LRBaseDbi::keys(metadata(sce)$lrbase, keytype="GENEID_L"))
+        con = dbConnect(SQLite(), metadata(sce)$lrbase)
+        LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
+            c("GENEID_L", "GENEID_R", "SOURCEID")]
+        LR <- unique(LR)
+        dbDisconnect(con)
         # Species
-        lrname <- LRBaseDbi::lrPackageName(metadata(sce)$lrbase)
-        spc <- substr(lrname, nchar(lrname) - 8, nchar(lrname))
-        spc <- gsub(".eg.db", "", spc)
+        spc <- gsub(".eg.db.sqlite", "",
+            strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
         # biomaRt Setting
         ens <- .ensembl[[spc]]()
         # GeneName, Description, GO, Reactome, MeSH
@@ -247,16 +256,18 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
 
+        # Plot Ligand/Receptor Genes
+        invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
         # Plot (Each <L,R,*>)
         vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
                 "/figures/CCIHypergraph_", index[i, 1],
                 "_", index[i, 2], ".png")
             png(filename=filenames, width=2000, height=950)
-            .CCIhyperGraphPlot(metadata(sce)$sctensor,
+            invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
                 twoDplot=twoD,
                 label=celltypes,
-                emph=index[i, seq_len(2)])
+                emph=index[i, seq_len(2)]))
             dev.off()
         }, 0L)
         # <*,*,LR>
@@ -266,6 +277,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         message(paste0(length(SelectedLR),
             " LR vectors will be calculated :"))
         e <<- new.env()
+        e$p <- p
         e$index <- index
         e$sce <- sce
         e$.HCLUST <- .HCLUST
@@ -283,36 +295,55 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         e$.eachRender <- .eachRender
         e$.XYZ_HEADER1 <- .XYZ_HEADER1
         e$.XYZ_HEADER2 <- .XYZ_HEADER2
+        e$.XYZ_HEADER3 <- .XYZ_HEADER3
+        e$.XYZ_ENRICH <- .XYZ_ENRICH
+
+        # EachVec（Heavy...）
         out.vecLR <- vapply(SelectedLR,
-            function(x, e){.eachVecLR(x)},
-            FUN.VALUE=rep(list(0L), 8), e=e)
+            function(x, e){.eachVecLR(x, e)},
+            FUN.VALUE=rep(list(0L), 9), e=e)
         colnames(out.vecLR) <- paste0("pattern", SelectedLR)
         e$out.vecLR <- out.vecLR
 
+        # Tagcloud
+        invisible(.tagCloud(out.vecLR, out.dir))
         # Plot（CCI Hypergraph）
         png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
             width=2000, height=950)
-        .CCIhyperGraphPlot(metadata(sce)$sctensor, twoDplot=twoD, label=celltypes)
+        invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
+            twoDplot=twoD, label=celltypes))
         dev.off()
-
         # Plot（Gene-wise Hypergraph）
-        .geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir)
+        invisible(.geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
 
-        # Rmd（ligand）
+        # Rmd（ligand, selected）
         message("ligand.Rmd is created...")
         outLg <- file(paste0(out.dir, "/ligand.Rmd"), "w")
         writeLines(.LIGAND_HEADER, outLg, sep="\n")
         writeLines(.LIGAND_BODY(out.vecLR, GeneInfo, index, selected),
             outLg, sep="\n")
         close(outLg)
-
-        # Rmd（receptor）
+        # Rmd（receptor, selected）
         message("receptor.Rmd is created...")
         outRp <- file(paste0(out.dir, "/receptor.Rmd"), "w")
         writeLines(.RECEPTOR_HEADER, outRp, sep="\n")
         writeLines(.RECEPTOR_BODY(out.vecLR, GeneInfo, index, selected),
             outRp, sep="\n")
         close(outRp)
+        # Rmd（ligand, all）
+        message("ligand_all.Rmd is created...")
+        outLg_all <- file(paste0(out.dir, "/ligand_all.Rmd"), "w")
+        writeLines(.LIGANDALL_HEADER, outLg_all, sep="\n")
+        writeLines(.LIGANDALL_BODY(GeneInfo, LR, input),
+            outLg_all, sep="\n")
+        close(outLg_all)
+        # Rmd（receptor, all）
+        message("receptor_all.Rmd is created...")
+        outRp_all <- file(paste0(out.dir, "/receptor_all.Rmd"), "w")
+        writeLines(.RECEPTORALL_HEADER, outRp_all, sep="\n")
+        writeLines(.RECEPTORALL_BODY(GeneInfo, LR, input),
+            outRp_all, sep="\n")
+        close(outRp_all)
 
         # Number of Patterns
         vecL <- metadata(sce)$sctensor$ligand
@@ -324,87 +355,43 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         # Clustering
         ClusterL <- t(apply(vecL, 1, .HCLUST))
         ClusterR <- t(apply(vecR, 1, .HCLUST))
-
         # Ligand Pattern
-        vapply(seq_len(numLPattern), function(i){
-            label.ligand <- unlist(vapply(names(celltypes), function(x){
-                    metadata(sce)$sctensor$ligand[paste0("Dim", i), x]}, 0.0))
-            label.ligand[] <- smoothPalette(label.ligand,
-                palfunc=colorRampPalette(col.ligand, alpha=TRUE))
-            ClusterNameL <- paste(names(which(ClusterL[i,] == "selected")),
-                collapse=" & ")
-            titleL <- paste0("(", i, ",*,*)-Pattern", " = ", ClusterNameL)
-            titleL <- .shrink(titleL)
-            LPatternfile <- paste0(out.dir, "/figures/Pattern_", i, "__", ".png")
-            png(filename=LPatternfile, width=1000, height=1000)
-            par(ps=20)
-            plot(twoD, col=label.ligand, pch=16, cex=2, bty="n",
-                xaxt="n", yaxt="n", xlab="", ylab="",
-                main=titleL)
-            dev.off()
-        }, 0L)
-
+        invisible(.ligandPatternPlot(numLPattern, celltypes, sce, col.ligand, ClusterL, out.dir, twoD))
         # Receptor Pattern
-        vapply(seq_len(numRPattern), function(i){
-            label.receptor <- unlist(vapply(names(celltypes), function(x){
-                    metadata(sce)$sctensor$receptor[paste0("Dim", i), x]}, 0.0))
-            label.receptor[] <- smoothPalette(label.receptor,
-                palfunc=colorRampPalette(col.receptor, alpha=TRUE))
-            ClusterNameR <- paste(names(which(ClusterR[i,] == "selected")),
-                collapse=" & ")
-            titleR <- paste0("(*,", i, ",*)-Pattern", " = ", ClusterNameR)
-            titleR <- .shrink(titleR)
-            RPatternfile = paste0(out.dir, "/figures/Pattern__", i, "_", ".png")
-            png(filename=RPatternfile, width=1000, height=1000)
-            par(ps=20)
-            plot(twoD, col=label.receptor, pch=16, cex=2, bty="n",
-                xaxt="n", yaxt="n", xlab="", ylab="",
-                main=titleR)
-            dev.off()
-        }, 0L)
-
+        invisible(.receptorPatternPlot(numRPattern, celltypes, sce,
+            col.receptor, ClusterR, out.dir, twoD))
         # Save the result of scTensor
         save(sce, input, twoD, LR, celltypes, index, corevalue,
             selected, ClusterL, ClusterR, out.vecLR,
             file=paste0(out.dir, "/reanalysis.RData"))
 
         # Rendering
-        message("ligand.Rmd is compiled to index.html...")
+        message("ligand.Rmd is compiled to ligand.html...")
         render(paste0(out.dir, "/ligand.Rmd"), quiet=TRUE)
-        message("receptor.Rmd is compiled to index.html...")
+        message("ligand_all.Rmd is compiled to ligand_all.html...")
+        render(paste0(out.dir, "/ligand_all.Rmd"), quiet=TRUE)
+        message("receptor.Rmd is compiled to receptor.html...")
         render(paste0(out.dir, "/receptor.Rmd"), quiet=TRUE)
+        message("receptor_all.Rmd is compiled to receptor_all.html...")
+        render(paste0(out.dir, "/receptor_all.Rmd"), quiet=TRUE)
         message(paste0(length(selected),
-            " pattern_X_Y_Z.Rmd files will be created :"))
+            " pattern_X_Y_Z.Rmd files are compiled to pattern_X_Y_Z.html :"))
         vapply(selected,
             function(x, e, SelectedLR){
                 .eachRender(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
 
-        # File copy
-        file.copy(
-            from = system.file("extdata", "Workflow.jpeg", package = "scTensor"),
-            to = paste0(out.dir, "/Workflow.jpeg"),
-            overwrite = TRUE)
-
         # Output index.html
-        if(length(selected) == 1){
-            RMDFILES <- apply(t(index[selected, seq_len(3)]), 1,
-                function(x){
-                paste0(c("pattern", x), collapse="_")
-            })
-        }else{
-            RMDFILES <- apply(index[selected, seq_len(3)], 1,
-                function(x){
-                paste0(c("pattern", x), collapse="_")
-            })
-        }
-        RMDFILES <- paste0(RMDFILES, ".Rmd")
+        RMDFILES <- vapply(selected, function(x){
+            paste0(paste(c("pattern", index[x, seq_len(3)]),
+                collapse="_"), ".Rmd")
+        }, "")
         message("index.Rmd is created...")
         outIdx <- file(paste0(out.dir, "/index.Rmd"), "w")
         writeLines(.MAINHEADER(author, title), outIdx, sep="\n")
         writeLines(.BODY1, outIdx, sep="\n")
         writeLines(.BODY2, outIdx, sep="\n")
-        writeLines(.BODY3(numLPattern), outIdx, sep="\n")
-        writeLines(.BODY4(numRPattern), outIdx, sep="\n")
+        writeLines(.BODY3(numLPattern, ClusterL), outIdx, sep="\n")
+        writeLines(.BODY4(numRPattern, ClusterR), outIdx, sep="\n")
         writeLines(.BODY5, outIdx, sep="\n")
         writeLines(.BODY6, outIdx, sep="\n")
         writeLines(.BODY7, outIdx, sep="\n")
@@ -419,13 +406,11 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         # Rendering
         message("index.Rmd is compiled to index.html...")
         render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
-
         if(out.dir == tempdir()){
             message(paste0("################################################\n",
                 "Data files are saved in\n",
                 out.dir, "\n################################################\n"))
         }
-
         # HTML Open
         if(html.open){
             browseURL(paste0(out.dir, "/index.html"))
