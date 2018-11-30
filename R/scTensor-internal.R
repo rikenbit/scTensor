@@ -604,6 +604,10 @@ function(input, LR, celltypes, ranks, rank, centering,
     "Mmu" = function(){
         useMart("ensembl", dataset="mmusculus_gene_ensembl")
     },
+    "Ath" = function(){
+        useMart("plants_mart", host="plants.ensembl.org",
+            dataset="athaliana_eg_gene")
+    },
     "Rno" = function(){
         useMart("ensembl", dataset="rnorvegicus_gene_ensembl")
     },
@@ -2106,6 +2110,8 @@ function(input, LR, celltypes, ranks, rank, centering,
     LigandGeneID <- unique(LR$GENEID_L)
     LigandGeneName <- vapply(LigandGeneID, function(x){
         GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+    naposition <- which(vapply(LigandGeneName, is.na, TRUE))
+    LigandGeneName[naposition] <- LigandGeneID[naposition]
     # Sort by Alphabet of the ligand genes
     orderLigand <- order(LigandGeneName)
     LigandGeneID <- LigandGeneID[orderLigand]
@@ -2128,10 +2134,12 @@ function(input, LR, celltypes, ranks, rank, centering,
     # Receptor Link
     Receptor <- vapply(seq_along(LigandGeneID), function(x){
         target <- which(LR$GENEID_L == LigandGeneID[x])
-        ReceptorGeneID <- LR$GENEID_R[target]
+        ReceptorGeneID <- unique(LR$GENEID_R[target])
         ReceptorGeneName <- vapply(ReceptorGeneID, function(xx){
             GeneName[which(GeneName[,2] == xx)[1], 1]
         }, "")
+        naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
+        ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
         paste(paste0("[", ReceptorGeneName,
             "](https://www.ncbi.nlm.nih.gov/gene/",
             ReceptorGeneID, ")"),
@@ -2148,6 +2156,8 @@ function(input, LR, celltypes, ranks, rank, centering,
     ReceptorGeneID <- unique(LR$GENEID_R)
     ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
         GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+    naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
+    ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
     # Sort by Alphabet of the Receptor genes
     orderReceptor <- order(ReceptorGeneName)
     ReceptorGeneID <- ReceptorGeneID[orderReceptor]
@@ -2170,10 +2180,12 @@ function(input, LR, celltypes, ranks, rank, centering,
     # Ligand Link
     Ligand <- vapply(seq_along(ReceptorGeneID), function(x){
         target <- which(LR$GENEID_R == ReceptorGeneID[x])
-        LigandGeneID <- LR$GENEID_L[target]
+        LigandGeneID <- unique(LR$GENEID_L[target])
         LigandGeneName <- vapply(LigandGeneID, function(xx){
             GeneName[which(GeneName[,2] == xx)[1], 1]
         }, "")
+        naposition <- which(vapply(LigandGeneName, is.na, TRUE))
+        LigandGeneName[naposition] <- LigandGeneID[naposition]
         paste(paste0("[", LigandGeneName,
             "](https://www.ncbi.nlm.nih.gov/gene/",
             LigandGeneID, ")"),
