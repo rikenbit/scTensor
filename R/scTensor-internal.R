@@ -1907,7 +1907,6 @@ function(input, LR, celltypes, ranks, rank, centering,
     nodes <- lapply(seq_len(ncol(out.vecLR)), function(x){
         names(out.vecLR["TARGET", x][[1]])
     })
-    # 101883610（cxcl11.6）はない
     LnodesGeneID <- lapply(nodes, function(x){
         vapply(x, function(xx){
             strsplit(xx, "_")[[1]][1]
@@ -1918,9 +1917,6 @@ function(input, LR, celltypes, ranks, rank, centering,
             strsplit(xx, "_")[[1]][2]
         }, "")
     })
-    # cxcl11.6がなぜかある（101883679がcxcl11.6とcxcl11.7両方あるため）
-    # LnodesGeneName[[2]][which(LnodesGeneName[[2]] == "cxcl11.6")]
-    # LnodesGeneName[[4]][which(LnodesGeneName[[4]] == "cxcl11.6")]
     LnodesGeneName <- lapply(LnodesGeneID, function(x){
         vapply(x, function(xx){
             convertGeneName(xx, GeneInfo)
@@ -1987,7 +1983,6 @@ function(input, LR, celltypes, ranks, rank, centering,
         }
     }, ""))
     Ligand <- vapply(Ligand, function(x){
-        # ここでcxcl11.6 → 101883610を探そうとしてバグる
         LigandGeneID <- GeneInfo$GeneName[
             which(GeneInfo$GeneName[,1] == x)[1], 2]
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
