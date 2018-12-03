@@ -167,6 +167,19 @@
             fout <- .slowPossibleCombination(input, LR, celltypes, outer)
         }
     }
+    # rank check
+    check1 <- dim(fout$tnsr)[2] * dim(fout$tnsr)[3] < ranks[1]
+    check2 <- dim(fout$tnsr)[3] * dim(fout$tnsr)[1] < ranks[2]
+    check3 <- dim(fout$tnsr)[1] * dim(fout$tnsr)[2] < ranks[3]
+    if(check1){
+        stop("Please specify the ranks[1] as an smaller value")
+    }
+    if(check2){
+        stop("Please specify the ranks[2] as an smaller value")
+    }
+    if(check3){
+        stop("Please specify the ranks[3] as an smaller value")
+    }
     if(dim(fout$tnsr)[1] >= 100 || dim(fout$tnsr)[2] >= 100){
         stop(paste0("Extreamly Large tensor will be generated!\n",
             "This problem will be solved by the next version of scTensor."))
@@ -175,9 +188,9 @@
     Pair.name <- fout$pairname
     if(decomp){
         message(paste0(paste(dim(tnsr), collapse=" * "), " Tensor is created"))
-        out <- try(NTD(X=tnsr, rank=ranks, num.iter=300, algorithm="KL"))
+        out <- try(NTD(X=tnsr, rank=ranks, num.iter=1000, algorithm="KL"))
         if(is(out)[1] == "try-error"){
-            out <- NTD(X=tnsr, rank=ranks, num.iter=300, algorithm="KL")
+            out <- NTD(X=tnsr, rank=ranks, num.iter=1000, algorithm="KL")
         }
         A1 <- out$A[[1]]
         A2 <- out$A[[2]]
@@ -1879,10 +1892,13 @@ function(input, LR, celltypes, ranks, rank, centering,
     # Setting
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName[,2] == geneid), 1]
         if(length(genename) == 0){
             genename = geneid
+        }
+        if(length(genename) != 1){
+            # Black list
+            genename = setdiff(genename, "cxcl11.6")[1]
         }
         genename
     }
@@ -1891,6 +1907,7 @@ function(input, LR, celltypes, ranks, rank, centering,
     nodes <- lapply(seq_len(ncol(out.vecLR)), function(x){
         names(out.vecLR["TARGET", x][[1]])
     })
+    # 101883610（cxcl11.6）はない
     LnodesGeneID <- lapply(nodes, function(x){
         vapply(x, function(xx){
             strsplit(xx, "_")[[1]][1]
@@ -1901,6 +1918,9 @@ function(input, LR, celltypes, ranks, rank, centering,
             strsplit(xx, "_")[[1]][2]
         }, "")
     })
+    # cxcl11.6がなぜかある（101883679がcxcl11.6とcxcl11.7両方あるため）
+    # LnodesGeneName[[2]][which(LnodesGeneName[[2]] == "cxcl11.6")]
+    # LnodesGeneName[[4]][which(LnodesGeneName[[4]] == "cxcl11.6")]
     LnodesGeneName <- lapply(LnodesGeneID, function(x){
         vapply(x, function(xx){
             convertGeneName(xx, GeneInfo)
@@ -1927,10 +1947,8 @@ function(input, LR, celltypes, ranks, rank, centering,
             )
         )
         ReceptorGeneID <- unlist(lapply(ReceptorGeneName, function(y){
-            vapply(y, function(yy){
-                target <- which(GeneInfo$GeneName[,1] == yy)
-                GeneInfo$GeneName[target, 2]
-            }, 0L)
+            target <- which(GeneInfo$GeneName[,1] == y)
+            GeneInfo$GeneName[target, 2][1]
         }))
         paste(
             paste0("[", ReceptorGeneName,
@@ -1969,6 +1987,7 @@ function(input, LR, celltypes, ranks, rank, centering,
         }
     }, ""))
     Ligand <- vapply(Ligand, function(x){
+        # ここでcxcl11.6 → 101883610を探そうとしてバグる
         LigandGeneID <- GeneInfo$GeneName[
             which(GeneInfo$GeneName[,1] == x)[1], 2]
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
@@ -1988,9 +2007,13 @@ function(input, LR, celltypes, ranks, rank, centering,
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
             which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            "external_gene_name"]
         if(length(genename) == 0){
             genename = geneid
+        }
+        if(length(genename) != 1){
+            # Black list
+            genename = setdiff(genename, "cxcl11.6")[1]
         }
         genename
     }
@@ -2035,10 +2058,8 @@ function(input, LR, celltypes, ranks, rank, centering,
             )
         )
         LigandGeneID <- unlist(lapply(LigandGeneName, function(y){
-            vapply(y, function(yy){
-                target <- which(GeneInfo$GeneName[,1] == yy)
-                GeneInfo$GeneName[target, 2]
-            }, 0L)
+            target <- which(GeneInfo$GeneName[,1] == y)
+            GeneInfo$GeneName[target, 2][1]
         }))
         paste(
             paste0("[", LigandGeneName,
@@ -3008,7 +3029,7 @@ names(.eachCircleColor) <- c(
     "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
     "type=\"bar\", color=~negLogPval, text=term,\n",
     "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"DO-Enrichment Analysis\",\n",
+    "layout(p, title=\"NCG-Enrichment Analysis\",\n",
     "   xaxis=list(title=\"Term\"),\n",
     "   yaxis=list(title=\"-Log(P-value)\"),\n",
     "   legend=list(name=\"\"))\n",
@@ -3031,7 +3052,7 @@ names(.eachCircleColor) <- c(
     "p <- plot_ly(x=seq_along(negLogPval), y=~negLogPval,\n",
     "type=\"bar\", color=~negLogPval, text=term,\n",
     "colors=c(\"#4b61ba\", \"gray\", \"#a87963\", \"red\"))\n",
-    "layout(p, title=\"DO-Enrichment Analysis\",\n",
+    "layout(p, title=\"DGN-Enrichment Analysis\",\n",
     "   xaxis=list(title=\"Term\"),\n",
     "   yaxis=list(title=\"-Log(P-value)\"),\n",
     "   legend=list(name=\"\"))\n",
@@ -3062,7 +3083,7 @@ names(.eachCircleColor) <- c(
         GeneName[which(GeneName[,2] == x)[1], 1]}, "")
 
     # Plot (Ligand)
-    vapply(seq_along(LigandGeneID), function(x){
+    lapply(seq_along(LigandGeneID), function(x){
         Ligandfile <- paste0(out.dir, "/figures/Ligand/",
             LigandGeneID[x], ".png")
         target <- which(rownames(input) == LigandGeneID[x])
@@ -3072,11 +3093,10 @@ names(.eachCircleColor) <- c(
                 LigandGeneName[x], twoD, "reds")
             dev.off()
         }
-        0L
-    }, 0L)
+    })
 
     # Plot (Receptor)
-    vapply(seq_along(ReceptorGeneID), function(x){
+    lapply(seq_along(ReceptorGeneID), function(x){
         Receptorfile <- paste0(out.dir, "/figures/Receptor/",
             ReceptorGeneID[x], ".png")
         target <- which(rownames(input) == ReceptorGeneID[x])
@@ -3086,8 +3106,7 @@ names(.eachCircleColor) <- c(
                 ReceptorGeneName[x], twoD, "blues")
             dev.off()
         }
-        0L
-    }, 0L)
+    })
 }
 
 .ligandPatternPlot <- function(numLPattern, celltypes, sce, col.ligand, ClusterL, out.dir, twoD){

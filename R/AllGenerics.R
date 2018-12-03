@@ -178,7 +178,6 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
         algorithm=algorithm, sctensor=res.sctensor, ranks=ranks,
         datasize=datasize, recerror=recerror, relchange=relchange)
     assign(userobjects, sce, envir=.GlobalEnv)
-    # Output
 }
 
 #
