@@ -1,10 +1,14 @@
+VERSION 0.99.21
+------------------------
+   o Some bugs are fixed
+
 VERSION 0.99.18
 ------------------------
-   o Enrichment Analysis is added in cellCellReport
+   o Enrichment Analysis is added in cellCellReport()
 
 VERSION 0.99.15
 ------------------------
-   o Accepted
+   o Accepted in BioC 3.9
 
 VERSION 0.99.6 to 0.99.14
 ------------------------

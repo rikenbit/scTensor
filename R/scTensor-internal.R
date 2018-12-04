@@ -1972,16 +1972,16 @@ function(input, LR, celltypes, ranks, rank, centering,
             ReceptorGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Ligand, function(x){
+    CCI <- vapply(Ligand, function(x){
         hit <- vapply(seq_len(ncol(out.vecLR)), function(xx){
             length(which(LnodesGeneName[[xx]] == x))
         }, 0L)
         vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
         target <- unlist(lapply(vec, function(xx){
                 p <- gsub("pattern", "", colnames(out.vecLR)[xx])
-                which(p == index[selected, "Mode3"])
+                which(index[selected, "Mode3"] == p)
             }))
-        out <- index[target, c("Mode1", "Mode2", "Mode3")]
+        out <- index[target, paste0("Mode", seq_len(3))]
         # Out
         if(is.vector(out)){
             paste0("[See the details of (",
@@ -2000,7 +2000,7 @@ function(input, LR, celltypes, ranks, rank, centering,
                     ".html)")
             }, ""), collapse=" ")
         }
-    }, ""))
+    }, "")
     Ligand <- vapply(Ligand, function(x){
         LigandGeneID <- GeneInfo$GeneName[
             which(GeneInfo$GeneName[,1] == x)[1], 2]
@@ -2082,14 +2082,14 @@ function(input, LR, celltypes, ranks, rank, centering,
             LigandGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Receptor, function(x){
+    CCI <- vapply(Receptor, function(x){
         hit <- vapply(seq_len(ncol(out.vecLR)), function(xx){
             length(which(RnodesGeneName[[xx]] == x))
         }, 0L)
         vec <- seq_len(ncol(out.vecLR))[which(hit != 0)]
         target <- unlist(lapply(vec, function(xx){
                 p <- gsub("pattern", "", colnames(out.vecLR)[xx])
-                which(p == index[selected, "Mode3"])
+                which(index[selected, "Mode3"] == p)
             }))
         out <- index[target, c("Mode1", "Mode2", "Mode3")]
         # Out
@@ -2110,7 +2110,7 @@ function(input, LR, celltypes, ranks, rank, centering,
                     ".html)")
             }, ""), collapse=" ")
         }
-    }, ""))
+    }, "")
     Receptor <- vapply(Receptor, function(x){
         ReceptorGeneID <- GeneInfo$GeneName[
             which(GeneInfo$GeneName[,1] == x)[1], 2]
