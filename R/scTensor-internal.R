@@ -588,26 +588,43 @@ function(input, LR, celltypes, ranks, rank, centering,
 .smallTwoDplot <- function(input, geneid, genename, twoD, color){
     target <- which(rownames(input) == geneid)
     exp <- log10(input[target, ]+1)
-    label <- smoothPalette(exp,
-        palfunc=colorRampPalette(.setColor(color), alpha=TRUE))
+    if(!all(exp %in% 0)){
+        label <- smoothPalette(exp,
+            palfunc=colorRampPalette(.setColor(color), alpha=TRUE))
+    }else{
+        label <- rep(
+            colorRampPalette(
+            .setColor(color), alpha=TRUE)(1),
+            length(exp))
+    }
     # Plot
     par(ps=25)
     par(oma=c(2,2,2,2))
     plot(twoD, col=label, pch=16, cex=3, bty="n", xaxt="n", yaxt="n",
         xlab="", ylab="", main=genename)
     # Gradient
-    xleft = max(twoD[,1])+1
-    ybottom=quantile(twoD[,2])[2]
-    xright = max(twoD[,1])+2
-    ytop=quantile(twoD[,2])[4]
-    gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(sort(exp),
-        palfunc=colorRampPalette(.setColor(color),
-        alpha=TRUE)), gradient="y")
-    text(xleft-1, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1]))
-    text(xleft-1, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2]))
-    text(xleft-1, ybottom+(ytop-ybottom)*2/4, round(quantile(exp)[3]))
-    text(xleft-1, ybottom+(ytop-ybottom)*3/4, round(quantile(exp)[4]))
-    text(xleft-1, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5]))
+    par(new=TRUE)
+    plot(1, xlab="", ylab="", axes=FALSE, col=rgb(0,0,0,0))
+    par(new=TRUE)
+    xleft=1.42
+    ybottom=0.8
+    xright=1.45
+    ytop=1.2
+    if(!all(exp %in% 0)){
+        gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(sort(exp),
+            palfunc=colorRampPalette(.setColor(color),
+            alpha=TRUE)), gradient="y")
+    }else{
+        gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(0,
+            palfunc=colorRampPalette(
+            .setColor(color)[1], alpha=TRUE)),
+            gradient="y")
+    }
+    text(xleft-0.05, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1], 1))
+    text(xleft-0.05, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2], 1))
+    text(xleft-0.05, ybottom+(ytop-ybottom)*2/4, round(quantile(exp)[3], 1))
+    text(xleft-0.05, ybottom+(ytop-ybottom)*3/4, round(quantile(exp)[4], 1))
+    text(xleft-0.05, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5], 1))
 }
 
 .ensembl <- list(
