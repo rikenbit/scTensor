@@ -1279,9 +1279,11 @@ function(input, LR, celltypes, ranks, rank, centering,
     "# Reduced data size\n",
     "metadata(sce)$ranks\n",
     "# Reconstruction Error of NTD\n",
-    "metadata(sce)$recerror\n",
+    "head(metadata(sce)$recerror)\n",
+    "tail(metadata(sce)$recerror)\n",
     "# Relative Change of NTD\n",
-    "metadata(sce)$relchange\n",
+    "head(metadata(sce)$relchange)\n",
+    "tail(metadata(sce)$relchange)\n",
     "# Gene expression matrix\n",
     "is(input)\n",
     "dim(input)\n",
@@ -2411,14 +2413,15 @@ function(input, LR, celltypes, ranks, rank, centering,
     rep(rgb(0, 1, 0, 5E-3), 3),
     rep(rgb(0.5, 0, 1, 5E-3), 16),
     rgb(1, 0.2, 0.4, 5E-3),
-    rep(rgb(1, 0.8, 0.1, 5E-3), 3))
+    rep(rgb(1, 1, 0, 1E-2), 3))
 
 names(.eachCircleColor) <- c(
     "GO_BP", "GO_MF", "GO_CC",
     "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D", "MeSH_E", "MeSH_F",
     "MeSH_G", "MeSH_H", "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
     "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
-    "Reactome", "DO", "NCG", "DGN")
+    "Reactome",
+    "DO", "NCG", "DGN")
 
 .tagCloud <- function(out.vecLR, out.dir){
     sapply(seq_len(ncol(out.vecLR)), function(x){
@@ -2486,6 +2489,11 @@ names(.eachCircleColor) <- c(
             if(is.null(pval)){
                 .NULLPlot()
             }else if(length(pval) == 1){
+                # background circle
+                for(i in 1:120){
+                    plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
+                    par(new=TRUE)
+                }
                 t <- sapply(t, function(x){.shrink2(x, thr=7)})
                 .SinglePlot(t)
             }else{
