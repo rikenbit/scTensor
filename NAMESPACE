@@ -32,4 +32,10 @@ import(GOstats)
 importFrom(ReactomePA, enrichPathway)
 importFrom(DOSE, enrichDGN, enrichDO, enrichNCG)
 
-exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport)
+importFrom(crayon, bold, blue, green)
+importFrom(checkmate, assertClass, assertList)
+importFrom("stats", "rbinom", "rnbinom", "var")
+importFrom("utils", "data")
+
+exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
+export(cellCellSimulate, newCCSParams)

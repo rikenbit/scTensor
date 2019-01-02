@@ -217,9 +217,8 @@
     }
 }
 
-.cellCellDecomp.Second <-
-function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+.cellCellDecomp.Second <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(rank > max.rank){
@@ -395,6 +394,54 @@ function(input, LR, celltypes, ranks, rank, centering,
     return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr_bin))
 }
 
+.celltypemergedtensor2 <- function(input, LR, celltypes, mergeas){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    base::outer(as.vector(L), as.vector(R), "+")
+}
+
+.labelpermutation <- function(observed, input, l, r, num.perm,
+    celltypes, mergeas){
+    perm <- array(0, dim=c(dim(observed), 0))
+    for(j in seq_len(num.perm)){
+        tmp <- .celltypemergedtensor2(input,
+            data.frame(GENEID_L=l, GENEID_R=r),
+            sample(celltypes), mergeas)
+        tmp <- observed - tmp
+        tmp[which(tmp >= 0)] <- 0
+        tmp[which(tmp < 0)] <- 1
+        perm <- abind(perm, tmp)
+    }
+    modeSum(as.tensor(perm), m=3, drop=TRUE)@data / num.perm
+}
+
+.cellCellDecomp.LabelPerm.LR <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outer, comb, num.sampling, decomp,
+    thr1, thr2){
+    fout <- .celltypemergedtensor(input, LR, celltypes,
+        mergeas="mean", outer="+")
+    tnsr <- as.tensor(fout$tnsr)
+    Pair.name <- fout$pairname
+    pval <- array(0, dim=c(dim(tnsr)[1:2], 0))
+    for(i in seq_along(Pair.name)){
+        cat(paste0(i, " / ", length(Pair.name), "\r"))
+        l <- strsplit(Pair.name[i], "_")[[1]][1]
+        r <- strsplit(Pair.name[i], "_")[[1]][2]
+        tmp <- .labelpermutation(tnsr[,,i]@data, input,
+            l, r, num.perm=1000, celltypes, mergeas="mean")
+        pval <- abind(pval, tmp)
+    }
+    dimnames(pval) <- list(unique(names(celltypes)),
+        unique(names(celltypes)), Pair.name)
+    tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
+    dimnames(tnsr_cc) <- list(unique(names(celltypes)),
+        unique(names(celltypes)))
+    return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr,
+        pval=pval))
+}
+
 .flist <- list(
     # 3-Order = NTD
     "ntd" = .cellCellDecomp.Third,
@@ -413,7 +460,9 @@ function(input, LR, celltypes, ranks, rank, centering,
     # Other method (Spearman's Correlation Coefficient with LR pair)
     "spearman.lr" = .cellCellDecomp.Spearman.LR,
     # Other method (Euclidian Distance with LR pair)
-    "distance.lr" = .cellCellDecomp.Distance.LR
+    "distance.lr" = .cellCellDecomp.Distance.LR,
+    # Other method (Celltype Label Permutation with LR pair)
+    "label.permutation" = .cellCellDecomp.LabelPerm.LR
 )
 
 .CCIhyperGraphPlot <- function(outobj, twoDplot=NULL, vertex.size=18,
@@ -781,11 +830,11 @@ function(input, LR, celltypes, ranks, rank, centering,
     embedLink <- function(spc, genename1, geneid1, description1,
                 go1, reactome1, mesh1,
                 uni1, string1, refex1,
-                ea1, sea1, scdb1, panglao1,
+                ea1, sea1, scdb1, panglao1, cmap1,
                 genename2, geneid2, description2,
                 go2, reactome2, mesh2,
                 uni2, string2, refex2,
-                ea2, sea2, scdb2, panglao2){
+                ea2, sea2, scdb2, panglao2, cmap2){
             paste0(
                 "[", genename1,
                 "](https://www.ncbi.nlm.nih.gov/gene/",
@@ -800,6 +849,7 @@ function(input, LR, celltypes, ranks, rank, centering,
                 "Single Cell Expression Atlas: [", genename1, "](", sea1, ")<br>",
                 "scRNASeqDB: [", genename1, "](", scdb1, ")<br>",
                 "PanglaoDB: [", genename1, "](", panglao1, ")<br>",
+                "CMap: [", genename1, "](", cmap1, ")<br>",
                 "MeSH: ", mesh1,
                 "|",
                 "[", genename2,
@@ -815,6 +865,7 @@ function(input, LR, celltypes, ranks, rank, centering,
                 "Single Cell Expression Atlas: [", genename2, "](", sea2, ")<br>",
                 "scRNASeqDB: [", genename2, "](", scdb2, ")<br>",
                 "PanglaoDB: [", genename2, "](", panglao2, ")<br>",
+                "CMap: [", genename2, "](", cmap2, ")<br>",
                 "MeSH: ", mesh2,
                 "|"
             )
@@ -1030,6 +1081,22 @@ function(input, LR, celltypes, ranks, rank, centering,
         }
     }
 
+    convertCMAP <- function(geneid, geneInfo, spc){
+        genename <- geneInfo$GeneName[
+            which(geneInfo$GeneName$entrezgene == geneid),
+            "external_gene_name"][1]
+        if(length(genename) != 0){
+            ref <- "https://clue.io/command?q="
+            if(spc == "Hsa"){
+                paste0(ref, genename)
+            }else{
+                ""
+            }
+        }else{
+            ""
+        }
+    }
+
     convertPubMed <- function(geneid1, geneid2, lr){
         target <- intersect(
             which(lr$GENEID_L == geneid1),
@@ -1106,6 +1173,10 @@ function(input, LR, celltypes, ranks, rank, centering,
     PANGLAO_L <- convertPANGLAO(ligandGeneID, geneInfo, spc)
     # PANGLAO（Receptor）
     PANGLAO_R <- convertPANGLAO(receptorGeneID, geneInfo, spc)
+    # CMAP（Ligand）
+    CMAP_L <- convertCMAP(ligandGeneID, geneInfo, spc)
+    # CMAP（Receptor）
+    CMAP_R <- convertCMAP(receptorGeneID, geneInfo, spc)
     # PubMed (L and R)
     PubMed <- convertPubMed(ligandGeneID, receptorGeneID, lr)
 
@@ -1115,11 +1186,11 @@ function(input, LR, celltypes, ranks, rank, centering,
             GeneName_L, ligandGeneID, Description_L,
             GO_L, Reactome_L, MeSH_L,
             UniProtKB_L, STRING_L, RefEx_L,
-            EA_L, SEA_L, SCDB_L, PANGLAO_L,
+            EA_L, SEA_L, SCDB_L, PANGLAO_L, CMAP_L,
             GeneName_R, receptorGeneID, Description_R,
             GO_R, Reactome_R, MeSH_R,
             UniProtKB_R, STRING_R, RefEx_R,
-            EA_R, SEA_R, SCDB_R, PANGLAO_R
+            EA_R, SEA_R, SCDB_R, PANGLAO_R, CMAP_R
             ),
         "![](figures/Ligand/", ligandGeneID, ".png)", "|",
         "![](figures/Receptor/", receptorGeneID, ".png)", "|",
@@ -3161,3 +3232,180 @@ names(.eachCircleColor) <- c(
     }, 0L)
 }
 
+.GenerateFC <- function (x, thr){
+    if (thr == "E1") {
+        a <- 0.3213536
+        b <- 0.1211649
+    }
+    else if (thr == "E2") {
+        a <- 0.7019536
+        b <- 0.3638012
+    }
+    else if (thr == "E5") {
+        a <- 1.9079161
+        b <- 0.6665197
+    }
+    else if (thr == "E10") {
+        a <- 4.4291731
+        b <- 0.8141489
+    }
+    else if (thr == "E50") {
+        a <- 21.430831
+        b <- 1.161132
+    }
+    else if (thr == "E100") {
+        a <- 30.733509
+        b <- 1.131347
+    }
+    else if (is.numeric(thr)) {
+        stop("Wrong thr!!!")
+    }
+    10^(a * exp(-b * log10(x + 1)))
+}
+
+
+# Random Matrix
+.matRnbinom <- function(m, disp, rn.index, num.Cell){
+    t(vapply(rn.index, function(x) {
+        rnbinom(n = num.Cell, mu = m[x], size = 1/disp[x])
+    }, 1.0*seq_len(num.Cell)))
+}
+
+# Setting DEG
+.matFC <- function(nDEG, num.Gene, num.Cell, CCI, m, row.index, rn.index){
+    # Set FC
+    fc.matrix <- matrix(1, nrow=num.Gene, ncol=length(num.Cell))
+    for(x in seq_along(CCI)){
+        lp <- which(CCI[[x]]$LPattern == 1)
+        r <- row.index[[x]]
+        fc.matrix[r, lp] <- .GenerateFC(m[rn.index][r], CCI[[x]]$fc)
+    }
+    for(x in seq_along(CCI)){
+        lp <- which(CCI[[x]]$RPattern == 1)
+        r <- row.index[[x]] + sum(nDEG)
+        fc.matrix[r, lp] <- .GenerateFC(m[rn.index][r], CCI[[x]]$fc)
+    }
+    fc.matrix
+}
+
+# Assign DEG
+.setDEG <- function(original.matrix, fc.matrix, num.Cell, rn.index, row.index, m, disp){
+    for (i in seq_along(num.Cell)) {
+        deg.index <- which(fc.matrix[, i] != 1)
+        col.index <- sum(num.Cell[1:i - 1]) + 1:sum(num.Cell[i])
+        original.matrix[deg.index, col.index] <- t(sapply(deg.index,
+            function(x){
+                rnbinom(n = num.Cell[i],
+                    mu = fc.matrix[x, i] * m[rn.index[x]],
+                    size = 1/disp[rn.index[x]])
+        }))
+    }
+    original.matrix
+}
+
+# Dropout Matrix
+.matDrop <- function(original.matrix, lambda, nCell){
+    mean.vector <- apply(original.matrix, 1, mean)
+    var.vector <- apply(original.matrix, 1, var)
+    droprate <- exp(-lambda * mean.vector^2)
+    droprate.matrix <- vapply(seq_len(sum(nCell)), function(y){
+        unlist(lapply(droprate, function(x){
+            rbinom(1, 1, prob = (1 - x))
+        }))
+    }, seq_len(nrow(original.matrix)))
+}
+
+.simulateDropoutCounts <- function(nGene, nCell, cciInfo, lambda, seed){
+    # Set Parameters
+    CCI <- lapply(grep("CCI", names(cciInfo)), function(x){
+        cciInfo[[x]]
+    })
+    LPattern <- lapply(grep("CCI", names(cciInfo)), function(x){
+        cciInfo[[x]]$LPattern
+    })
+    RPattern <- lapply(grep("CCI", names(cciInfo)), function(x){
+        cciInfo[[x]]$RPattern
+    })
+    nDEG <- unlist(lapply(grep("CCI", names(cciInfo)), function(x){
+        cciInfo[[x]]$nGene
+    }))
+    fc <- unlist(lapply(grep("CCI", names(cciInfo)), function(x){
+        cciInfo[[x]]$fc
+    }))
+    set.seed(seed)
+    data("m")
+    data("v")
+    disp <- (.v - .m)/.m^2
+    rn.index <- sample(which(disp > 0), nGene, replace = TRUE)
+    row.index <- list()
+    start <- 1
+    for(i in seq_along(nDEG)){
+        if(i == 1){
+            row.index[[i]] <- 1:nDEG[i]
+        }else{
+            row.index[[i]] <- start:(start+nDEG[i]-1)
+        }
+        start <- start + nDEG[i]
+    }
+
+    # Check
+    if(sum(nDEG) > cciInfo$nPair){
+        stop("Please specify larger cciInfo$nPair!")
+    }
+    if(length(nCell) != length(cciInfo$CCI1$LPattern)){
+        stop(paste0("Please specify the length of nCell is",
+            " same as cciInfo$CCI*$LPattern ",
+            "and cciInfo$CCI*$RPattern!"))
+    }
+
+    # Original matrix
+    original.matrix <- .matRnbinom(.m, disp, rn.index, sum(nCell))
+
+    # Setting DEG
+    fc.matrix <- .matFC(nDEG, nGene, nCell, CCI, .m, row.index, rn.index)
+    original.matrix <- .setDEG(original.matrix, fc.matrix,
+        nCell, rn.index, row.index, .m, disp)
+
+    # Setting Dropout
+    droprate.matrix <- .matDrop(original.matrix, lambda, nCell)
+    testdata.matrix <- original.matrix * droprate.matrix
+
+    # Naming
+    rownames(testdata.matrix) <- paste0("Gene", seq_len(nrow(testdata.matrix)))
+    colnames(testdata.matrix) <- paste0("Cell", seq_len(ncol(testdata.matrix)))
+    celltypes <- colnames(testdata.matrix)
+    names(celltypes) <- unlist(lapply(seq_along(nCell), function(x){
+        paste0("Celltype", rep(x, length=nCell[x]))
+    }))
+
+    # L-R list
+    rn <- rownames(testdata.matrix)
+    start1 <- sum(nDEG)+1
+    end1 <- 2*sum(nDEG)
+    start2 <- end1 + 1
+    end2 <- end1 + cciInfo$nPair - end1/2
+    start3 <- end2 + 1
+    end3 <- end2 + cciInfo$nPair - end1/2
+    LR <- rbind(
+              cbind(rn[seq_len(sum(nDEG))], rn[start1:end1]),
+              cbind(rn[start2:end2], rn[start3:end3]))
+    LR <- as.data.frame(LR)
+    colnames(LR) <- c("GENEID_L", "GENEID_R")
+
+    # LR <-> CCI relationship
+    LR_CCI <- seq_len(cciInfo$nPair)
+    names(LR_CCI) <- c(
+        unlist(lapply(seq_along(nDEG), function(x){
+            rep(paste0("CCI", x), nDEG[x])
+        })),
+        rep("nonDEG", cciInfo$nPair - sum(nDEG)))
+
+    # Set random seed as default mode
+    set.seed(NULL)
+
+    # Output
+    return(
+        list(simcount = testdata.matrix,
+        LR=LR,
+        celltypes=celltypes, LR_CCI=LR_CCI))
+}

@@ -1,3 +1,8 @@
+VERSION 0.99.22
+------------------------
+   o newCCSParams, getParam, setParam, and cellCellSimulate are added
+   o The hyperlinks to CMap (Connectivity Map) are embedded in the HTML report
+
 VERSION 0.99.21
 ------------------------
    o Some bugs are fixed

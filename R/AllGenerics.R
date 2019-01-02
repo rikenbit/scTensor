@@ -104,13 +104,13 @@ setMethod("cellCellRanks",
 #
 setGeneric("cellCellDecomp", function(sce, algorithm=c("ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
+    "pcomb", "label.permutation"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
     centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
     comb=c("random", "all"), num.sampling=100, decomp=TRUE, ftt=TRUE){
     standardGeneric("cellCellDecomp")})
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     function(sce, algorithm=c("ntd", "nmf", "pearson", "spearman", "distance",
-        "pearson.lr", "spearman.lr", "distance.lr", "pcomb"), ranks=c(3,3,3),
+        "pearson.lr", "spearman.lr", "distance.lr", "pcomb", "label.permutation"), ranks=c(3,3,3),
         rank=3, thr1=log2(5), thr2=25, centering=TRUE,
         mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
         num.sampling=100, decomp=TRUE, ftt=TRUE){
@@ -415,4 +415,42 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             browseURL(paste0(out.dir, "/index.html"))
         }
     }
+}
+
+#
+# cellCellSimulate-related functions
+#
+setGeneric("getParam", function(object, name){
+    standardGeneric("getParam")})
+setGeneric("setParam<-", function(object, name, value){
+    standardGeneric("setParam<-")})
+setGeneric("show", function(object){
+    standardGeneric("show")})
+
+#
+# cellCellSimulate
+#
+cellCellSimulate <- function(params = newCCSParams(), verbose = TRUE){
+    # Class Check
+    assertClass(params, classes = "CCSParams")
+    # Get the parameters
+    if(verbose){message("Getting the values of params...")}
+    nGene <- getParam(params, "nGene")
+    nCell <- getParam(params, "nCell")
+    cciInfo <- getParam(params, "cciInfo")
+    lambda <- getParam(params, "lambda")
+    # Set random seed
+    if(verbose){message("Setting random seed...")}
+    seed <- getParam(params, "seed")
+    # Simulation data
+    if(verbose){message("Generating simulation data...")}
+    # Generate Simulation data
+    out <- .simulateDropoutCounts(nGene, nCell, cciInfo, lambda, seed)
+    input <- out$simcount
+    LR <- out$LR
+    celltypes <- out$celltypes
+    LR_CCI <- out$LR_CCI
+    # Output
+    if(verbose){message("Done!")}
+    list(input=input, LR=LR, celltypes=celltypes, LR_CCI=LR_CCI)
 }
