@@ -47,16 +47,13 @@ BiocManager::install("LRBaseDbi", suppressUpdates=TRUE)
 Installation
 ======
 ~~~~
-git clone https://github.com/rikenbit/LRBaseDbi/
 git clone https://github.com/rikenbit/scTensor/
-R CMD INSTALL LRBaseDbi
 R CMD INSTALL scTensor
 ~~~~
 or type the code below in the R console window
 ~~~~
 install.packages("devtools", repos="http://cran.r-project.org")
 library(devtools)
-devtools::install_github("rikenbit/LRBaseDbi")
 devtools::install_github("rikenbit/scTensor")
 ~~~~
 
