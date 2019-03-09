@@ -5,6 +5,8 @@
 Installation of Dependent Packages
 ======
 ~~~~
+# CRAN
+install.packages("RSQLite", repos="http://cran.r-project.org")
 install.packages("igraph", repos="http://cran.r-project.org")
 install.packages("plotly", repos="http://cran.r-project.org")
 install.packages("nnTensor", repos="http://cran.r-project.org")
@@ -13,26 +15,33 @@ install.packages("abind", repos="http://cran.r-project.org")
 install.packages("plotrix", repos="http://cran.r-project.org")
 install.packages("heatmaply", repos="http://cran.r-project.org")
 install.packages("tagcloud", repos="http://cran.r-project.org")
-install.packages("RColorBrewer", repos="http://cran.r-project.org")
 install.packages("rmarkdown", repos="http://cran.r-project.org")
+install.packages("knitr", repos="http://cran.r-project.org")
+install.packages("outliers", repos="http://cran.r-project.org")
+install.packages("crayon", repos="http://cran.r-project.org")
+install.packages("checkmate", repos="http://cran.r-project.org")
+install.packages("testthat", repos="http://cran.r-project.org")
 
+# Bioconductor
 install.packages("BiocManager")
+BiocManager::install("S4Vectors", suppressUpdates=TRUE)
+BiocManager::install("reactome.db", suppressUpdates=TRUE)
+BiocManager::install("AnnotationDbi", suppressUpdates=TRUE)
+BiocManager::install("SummarizedExperiment", suppressUpdates=TRUE)
+BiocManager::install("SingleCellExperiment", suppressUpdates=TRUE)
 BiocManager::install("BiocStyle", suppressUpdates=TRUE)
 BiocManager::install("biomaRt", suppressUpdates=TRUE)
-BiocManager::install("reactome.db", suppressUpdates=TRUE)
 BiocManager::install("MeSHDbi", suppressUpdates=TRUE)
+BiocManager::install("Category", suppressUpdates=TRUE)
+BiocManager::install("meshr", suppressUpdates=TRUE)
+BiocManager::install("GOstats", suppressUpdates=TRUE)
+BiocManager::install("ReactomePA", suppressUpdates=TRUE)
+BiocManager::install("DOSE", suppressUpdates=TRUE)
+BiocManager::install("LRBase.Hsa.eg.db", suppressUpdates=TRUE)
 BiocManager::install("MeSH.Hsa.eg.db", suppressUpdates=TRUE)
+BiocManager::install("LRBase.Mmu.eg.db", suppressUpdates=TRUE)
 BiocManager::install("MeSH.Mmu.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Ath.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Rno.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Bta.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Cel.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Dme.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Dre.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Gga.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Pab.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Xtr.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Ssc.eg.db", suppressUpdates=TRUE)
+BiocManager::install("LRBaseDbi", suppressUpdates=TRUE)
 ~~~~
 
 Installation
@@ -45,6 +54,7 @@ R CMD INSTALL scTensor
 ~~~~
 or type the code below in the R console window
 ~~~~
+install.packages("devtools", repos="http://cran.r-project.org")
 library(devtools)
 devtools::install_github("rikenbit/LRBaseDbi")
 devtools::install_github("rikenbit/scTensor")
