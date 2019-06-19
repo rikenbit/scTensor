@@ -38,4 +38,4 @@ importFrom("stats", "rbinom", "rnbinom", "var")
 importFrom("utils", "data")
 
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
-export(cellCellSimulate, newCCSParams)
+export(cellCellSimulate, newCCSParams, convertToNCBIGeneID)

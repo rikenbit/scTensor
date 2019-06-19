@@ -63,7 +63,6 @@ The result is saved as HTML report which contains with multiple files.
 	library("SingleCellExperiment")
 	library("LRBase.Hsa.eg.db")
 	library("MeSH.Hsa.eg.db")
-	source("scTensor/R/scTensor-internal.R")
 
 	data(GermMale)
 	data(labelGermMale)

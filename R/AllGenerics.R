@@ -29,6 +29,29 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
         stop("Please specify the kind of elements containing
             in color and label as same")
     }
+    # Rowname-check
+    rn <- rownames(assay(sce))
+    if(length(rn) != length(unique(rn))){
+        stop("Please specify the row names of the input matrix is unique")
+    }
+    # Only matrix is accepted
+    if(!is.matrix(assay(sce))){
+        message("The input data is coverted to matrix format by as.matrix")
+        assay(sce) <- as.matrix(assay(sce))
+    }
+    # NA-check
+    NA1 <- length(which(is.na(colnames(assay(sce)))))
+    NA2 <- length(which(is.na(label)))
+    NA3 <- length(which(is.na(color)))
+    if(NA1 != 0){
+        stop("At least one NA element is in colnames(assay(sce))\nPlease remove it.")
+    }
+    if(NA2 != 0){
+        stop("At least one NA element is in label\nPlease remove it.")
+    }
+    if(NA3 != 0){
+        stop("At least one NA element is in color\nPlease remove it.")
+    }
     # Overwrite
     metadata(sce) <- list(lrbase=lrbase$conn@dbname, color=color, label=label)
     assign(userobjects, sce, envir=.GlobalEnv)
@@ -249,6 +272,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
         # biomaRt Setting
         ens <- .ensembl[[spc]]()
+        Sys.sleep(10)
         # GeneName, Description, GO, Reactome, MeSH
         GeneInfo <- .geneinformation(sce, ens, spc, LR)
         # Cell Label
@@ -453,4 +477,57 @@ cellCellSimulate <- function(params = newCCSParams(), verbose = TRUE){
     # Output
     if(verbose){message("Done!")}
     list(input=input, LR=LR, celltypes=celltypes, LR_CCI=LR_CCI)
+}
+
+#
+# convertToNCBIGeneID
+#
+convertToNCBIGeneID <- function(input, rowID, LefttoRight){
+    # Argument check
+    if(dim(input)[1] != length(rowID)){
+        stop("The number of rows of input and the length of rowID must be same.")
+    }
+    # NA check
+    nr <- nrow(input)
+    nc <- ncol(input)
+    notNA <- which(!is.na(rowID))
+    input <- input[notNA,]
+    rowID <- rowID[notNA]
+    LefttoRight <- LefttoRight[which(!is.na(LefttoRight[,1])), ]
+    LefttoRight <- LefttoRight[which(!is.na(LefttoRight[,2])), ]
+    # Statistics of input matrix
+    original.var <- apply(input, 1, var)
+    original.mean <- apply(input, 1, mean)
+    score <- original.var * original.mean
+    # Common ID
+    names(original.var) <- rowID
+    search.ID <- intersect(unique(rowID), unique(LefttoRight[,1]))
+    if(length(search.ID) == 0){
+        stop("There are none of common ID in rowID and LefttoRight[,1].")
+    }
+    # ID Conversion
+    targetGeneID <- unlist(lapply(search.ID, function(x){
+        target <- which(LefttoRight[,1] == x)[1]
+        LefttoRight[target, 2]
+    }))
+    names(targetGeneID) <- search.ID
+    position.input <- unlist(lapply(seq_along(targetGeneID), function(x){
+        target <- which(rowID == names(targetGeneID)[x])
+        if(length(target) != 1){
+            targetID <- target[which(score[target] == max(score[target]))]
+        }else{
+            targetID <- target
+        }
+        targetID
+    }))
+    input <- input[position.input, ]
+    rownames(input) <- targetGeneID
+    input <- as.matrix(input)
+    # Before <-> After
+    dif <- nr - nrow(input)
+    if(dif > 0){
+        message(paste0(dif, " of genes are removed from input matrix (",
+            nr, "*", nc, ")"))
+    }
+    input
 }

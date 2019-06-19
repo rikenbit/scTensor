@@ -1,5 +1,5 @@
-\name{.v}
-\alias{.v}
+\name{v}
+\alias{v}
 \docType{data}
 \title{
 The gene-wise variance vector of Quartz-Seq data.

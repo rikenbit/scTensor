@@ -1,0 +1,112 @@
+---
+title: "How to perform CCI simulation by `cellCellSimulate` function"
+author:
+- name: Koki Tsuyuzaki
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+- name: Manabu Ishii
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+- name: Itoshi Nikaido
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+  email: k.t.the-answer@hotmail.co.jp
+package: scTensor
+output:
+  BiocStyle::html_document
+vignette: |
+  %\VignetteIndexEntry{scTensor: Simulation of CCI}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Introduction
+
+Here, we explain the way to generate CCI simulation data.
+`r Biocpkg("scTensor")` has a function `cellCellSimulate`
+to generate the simulation data.
+
+The simplest way to generate such data is `cellCellSimulate` with default parameters.
+
+```{r cellCellSimulate_Default, echo=TRUE}
+suppressPackageStartupMessages(library("scTensor"))
+sim <- cellCellSimulate()
+```
+
+This function internally generate the parameter sets by `newCCSParams`,
+and the values of the parameter can be changed, and specified as the input of `cellCellSimulate` by users as follows.
+
+```{r cellCellSimulate_Setting, echo=TRUE}
+# Default parameters
+params <- newCCSParams()
+str(params)
+
+# Setting different parameters
+# No. of genes : 1000
+setParam(params, "nGene") <- 1000
+# 3 cell types, 20 cells in each cell type
+setParam(params, "nCell") <- c(20, 20, 20)
+# Setting for Ligand-Receptor pair list
+setParam(params, "cciInfo") <- list(
+    nPair=500, # Total number of L-R pairs
+    # 1st CCI
+    CCI1=list(
+        LPattern=c(1,0,0), # Only 1st cell type has this pattern
+        RPattern=c(0,1,0), # Only 2nd cell type has this pattern
+        nGene=50, # 50 pairs are generated as CCI1
+        fc="E10"), # Degree of differential expression (Fold Change)
+    # 2nd CCI
+    CCI2=list(
+        LPattern=c(0,1,0),
+        RPattern=c(0,0,1),
+        nGene=30,
+        fc="E100")
+    )
+# Degree of Dropout
+setParam(params, "lambda") <- 10
+# Random number seed
+setParam(params, "seed") <- 123
+
+# Simulation data
+sim <- cellCellSimulate(params)
+```
+
+The output object **sim** has some attributes as follows.
+
+Firstly, **sim$input** contains a synthetic gene expression matrix.
+The size can be changed by **nGene** and **nCell** parameters described above.
+
+```{r input, echo=TRUE}
+dim(sim$input)
+sim$input[1:2,1:3]
+```
+
+Next, **sim$LR** contains a ligand-receptor (L-R) pair list.
+The size can be changed by **nPair** parameter of **cciInfo**,
+and the differentially expressed (DE) L-R pairs
+are saved in the upper side of this matrix.
+Here, two DE L-R patterns are specified as **cciInfo**,
+and each number of pairs is 50 and 30, respectively.
+
+```{r LR, echo=TRUE}
+dim(sim$LR)
+sim$LR[1:10,]
+sim$LR[46:55,]
+sim$LR[491:500,]
+```
+
+Finally, **sim$celltypes** contains a cell type vector.
+Since **nCell** is specified as "c(20, 20, 20)" described above,
+three cell types are generated.
+
+```{r celltypes, echo=TRUE}
+length(sim$celltypes)
+head(sim$celltypes)
+table(names(sim$celltypes))
+```
+
+# Session information {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```

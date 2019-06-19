@@ -1,5 +1,5 @@
-\name{.m}
-\alias{.m}
+\name{m}
+\alias{m}
 \docType{data}
 \title{
 The gene-wise mean vector of Quartz-Seq data.

@@ -1,3 +1,5 @@
+context("CCSParamsFunctions")
+
 # newCCSParams
 params <- newCCSParams()
 expect_true(class(params) =="CCSParams")

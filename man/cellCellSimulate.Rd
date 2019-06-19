@@ -23,8 +23,8 @@ Whether the message is outputted or not (Default: TRUE).
 }
 
 \value{
-A list object containing simcount, LR, celltype, and LR_CCI.
-simcount is the synthetic count matrix, LR is the synthetic ligand-receptor pair list, celltype is the vector to specity the celltype of the each column of simcount, and LR_CCI is the vector to specify the CCI of the each row of LR.
+A list object containing simcount, LR, and celltype.
+simcount is the synthetic count matrix, LR is the synthetic ligand-receptor pair list, and celltype is the vector to specity the celltype of the each column of simcount.
 }
 
 \author{Koki Tsuyuzaki}

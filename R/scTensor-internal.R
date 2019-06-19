@@ -203,6 +203,9 @@
         colnames(A3) <- Pair.name
         core <- out$S@data
         index <- .core2table(core)
+        if(is.vector(index)){
+            index <- t(index)
+        }
         lrpairout <- .cellCellReconst(A1, A2, A3, index, type="tensor",
             names=list(colnames(A1), colnames(A2), colnames(A3)),
             collapse=TRUE)
@@ -617,7 +620,7 @@
         }else{
             warning(paste0("LR plot can be performed when \n",
                 "the maximum number of Ligand/Receptor patterns are \n",
-                "higher than 1 and smaller than 8 for now."))
+                "higher than 1 and smaller than 12 for now."))
         }
     }
 }
@@ -678,41 +681,64 @@
 
 .ensembl <- list(
     "Hsa" = function(){
-        useMart("ensembl", dataset="hsapiens_gene_ensembl")
+        useMart("ensembl",
+            dataset="hsapiens_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Mmu" = function(){
-        useMart("ensembl", dataset="mmusculus_gene_ensembl")
+        useMart("ensembl",
+            dataset="mmusculus_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Ath" = function(){
-        useMart("plants_mart", host="plants.ensembl.org",
-            dataset="athaliana_eg_gene")
+        useMart("plants_mart",
+            dataset="athaliana_eg_gene",
+            host="plants.ensembl.org")
     },
     "Rno" = function(){
-        useMart("ensembl", dataset="rnorvegicus_gene_ensembl")
+        useMart("ensembl",
+            dataset="rnorvegicus_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Bta" = function(){
-        useMart("ensembl", dataset="btaurus_gene_ensembl")
+        useMart("ensembl",
+            dataset="btaurus_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Cel" = function(){
-        useMart("ensembl", dataset="celegans_gene_ensembl")
+        useMart("ensembl",
+            dataset="celegans_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Dme" = function(){
-        useMart("ensembl", dataset="dmelanogaster_gene_ensembl")
+        useMart("ensembl",
+            dataset="dmelanogaster_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Dre" = function(){
-        useMart("ensembl", dataset="drerio_gene_ensembl")
+        useMart("ensembl",
+            dataset="drerio_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Gga" = function(){
-        useMart("ensembl", dataset="ggallus_gene_ensembl")
+        useMart("ensembl",
+            dataset="ggallus_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Pab" = function(){
-        useMart("ensembl", dataset="pabelii_gene_ensembl")
+        useMart("ensembl",
+            dataset="pabelii_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Xtr" = function(){
-        useMart("ensembl", dataset="xtropicalis_gene_ensembl")
+        useMart("ensembl",
+            dataset="xtropicalis_gene_ensembl",
+            host="asia.ensembl.org")
     },
     "Ssc" = function(){
-        useMart("ensembl", dataset="sscrofa_gene_ensembl")
+        useMart("ensembl",
+            dataset="sscrofa_gene_ensembl",
+            host="asia.ensembl.org")
     }
 )
 
@@ -727,6 +753,17 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        # Bipartite Matching
+        g <- graph.data.frame(as.data.frame(GeneName), directed=FALSE)
+        V(g)$type <- bipartite_mapping(g)$type
+        is.bipartite(g)
+        g <- max_bipartite_match(g)
+        target <- as.character(unique(GeneName[,2]))
+        GeneName <- data.frame(
+            external_gene_name=g$matching[target],
+            entrezgene=target
+            )
+        Sys.sleep(10)
         # Description
         message(paste0("Related gene descriptions are retrieved from ",
             "Biomart by biomaRt package..."))
@@ -735,6 +772,7 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        Sys.sleep(10)
         # GO
         message(paste0("Related GO IDs are retrieved from Biomart by ",
             "biomaRt package..."))
@@ -743,6 +781,7 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        Sys.sleep(10)
         # ENSG
         message(paste0("Related Ensembl Gene IDs are retrieved from Biomart by ",
             "biomaRt package..."))
@@ -751,6 +790,7 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        Sys.sleep(10)
         # ENSP
         message(paste0("Related Ensembl Protein IDs are retrieved from Biomart by ",
             "biomaRt package..."))
@@ -759,6 +799,7 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        Sys.sleep(10)
         # UniProtKB
         message(paste0("Related UniProtKB IDs are retrieved from Biomart by ",
             "biomaRt package..."))
@@ -767,6 +808,7 @@
             filters = 'entrezgene',
             values = targetGeneID,
             mart = ens)
+        Sys.sleep(10)
     }else{
         GeneName <- NULL
         Description <- NULL
@@ -2034,7 +2076,11 @@
         )
         ReceptorGeneID <- unlist(lapply(ReceptorGeneName, function(y){
             target <- which(GeneInfo$GeneName[,1] == y)
-            GeneInfo$GeneName[target, 2][1]
+            if(length(target) == 0){
+                y
+            }else{
+                GeneInfo$GeneName[target[1], 2]
+            }
         }))
         paste(
             paste0("[", ReceptorGeneName,
@@ -2073,8 +2119,12 @@
         }
     }, "")
     Ligand <- vapply(Ligand, function(x){
-        LigandGeneID <- GeneInfo$GeneName[
-            which(GeneInfo$GeneName[,1] == x)[1], 2]
+        target <- which(GeneInfo$GeneName[,1] == x)
+        if(length(target) == 0){
+            LigandGeneID <- x
+        }else{
+            LigandGeneID <- GeneInfo$GeneName[target[1], 2]
+        }
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
             LigandGeneID, ") ![](figures/Ligand/",
             LigandGeneID, ".png)")
@@ -2144,7 +2194,11 @@
         )
         LigandGeneID <- unlist(lapply(LigandGeneName, function(y){
             target <- which(GeneInfo$GeneName[,1] == y)
-            GeneInfo$GeneName[target, 2][1]
+            if(length(target) == 0){
+                y
+            }else{
+                GeneInfo$GeneName[target[1], 2]
+            }
         }))
         paste(
             paste0("[", LigandGeneName,
@@ -2183,8 +2237,12 @@
         }
     }, "")
     Receptor <- vapply(Receptor, function(x){
-        ReceptorGeneID <- GeneInfo$GeneName[
-            which(GeneInfo$GeneName[,1] == x)[1], 2]
+        target <- which(GeneInfo$GeneName[,1] == x)
+        if(length(target) == 0){
+            ReceptorGeneID <- x
+        }else{
+            ReceptorGeneID <- GeneInfo$GeneName[target[1], 2]
+        }
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
             ReceptorGeneID, ") ![](figures/Receptor/",
             ReceptorGeneID, ".png)")
@@ -3293,12 +3351,14 @@ names(.eachCircleColor) <- c(
     for (i in seq_along(num.Cell)) {
         deg.index <- which(fc.matrix[, i] != 1)
         col.index <- sum(num.Cell[1:i - 1]) + 1:sum(num.Cell[i])
-        original.matrix[deg.index, col.index] <- t(sapply(deg.index,
-            function(x){
-                rnbinom(n = num.Cell[i],
-                    mu = fc.matrix[x, i] * m[rn.index[x]],
-                    size = 1/disp[rn.index[x]])
-        }))
+        if(length(deg.index) != 0){
+            original.matrix[deg.index, col.index] <- t(sapply(deg.index,
+                function(x){
+                    rnbinom(n = num.Cell[i],
+                        mu = fc.matrix[x, i] * m[rn.index[x]],
+                        size = 1/disp[rn.index[x]])
+            }))
+        }
     }
     original.matrix
 }
@@ -3335,7 +3395,7 @@ names(.eachCircleColor) <- c(
     set.seed(seed)
     data("m")
     data("v")
-    disp <- (.v - .m)/.m^2
+    disp <- (v - m)/m^2
     rn.index <- sample(which(disp > 0), nGene, replace = TRUE)
     row.index <- list()
     start <- 1
@@ -3359,12 +3419,12 @@ names(.eachCircleColor) <- c(
     }
 
     # Original matrix
-    original.matrix <- .matRnbinom(.m, disp, rn.index, sum(nCell))
+    original.matrix <- .matRnbinom(m, disp, rn.index, sum(nCell))
 
     # Setting DEG
-    fc.matrix <- .matFC(nDEG, nGene, nCell, CCI, .m, row.index, rn.index)
+    fc.matrix <- .matFC(nDEG, nGene, nCell, CCI, m, row.index, rn.index)
     original.matrix <- .setDEG(original.matrix, fc.matrix,
-        nCell, rn.index, row.index, .m, disp)
+        nCell, rn.index, row.index, m, disp)
 
     # Setting Dropout
     droprate.matrix <- .matDrop(original.matrix, lambda, nCell)
@@ -3392,13 +3452,14 @@ names(.eachCircleColor) <- c(
     LR <- as.data.frame(LR)
     colnames(LR) <- c("GENEID_L", "GENEID_R")
 
-    # LR <-> CCI relationship
+    # L-R <-> CCI relationship
     LR_CCI <- seq_len(cciInfo$nPair)
     names(LR_CCI) <- c(
         unlist(lapply(seq_along(nDEG), function(x){
             rep(paste0("CCI", x), nDEG[x])
         })),
         rep("nonDEG", cciInfo$nPair - sum(nDEG)))
+    rownames(LR) <- LR_CCI
 
     # Set random seed as default mode
     set.seed(NULL)
@@ -3407,5 +3468,5 @@ names(.eachCircleColor) <- c(
     return(
         list(simcount = testdata.matrix,
         LR=LR,
-        celltypes=celltypes, LR_CCI=LR_CCI))
+        celltypes=celltypes))
 }
