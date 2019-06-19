@@ -4,7 +4,7 @@
 
 Installation of Dependent Packages
 ======
-~~~~
+```r
 # CRAN
 install.packages("RSQLite", repos="http://cran.r-project.org")
 install.packages("igraph", repos="http://cran.r-project.org")
@@ -44,20 +44,20 @@ BiocManager::install("LRBase.Mmu.eg.db", suppressUpdates=TRUE)
 BiocManager::install("MeSH.Mmu.eg.db", suppressUpdates=TRUE)
 BiocManager::install("LRBaseDbi", suppressUpdates=TRUE)
 BiocManager::install("Homo.sapiens", suppressUpdates=TRUE)
-~~~~
+```
 
 Installation
 ======
-~~~~
+```r
 git clone https://github.com/rikenbit/scTensor/
 R CMD INSTALL scTensor
-~~~~
+```
 or type the code below in the R console window
-~~~~
+```r
 install.packages("devtools", repos="http://cran.r-project.org")
 library(devtools)
 devtools::install_github("rikenbit/scTensor")
-~~~~
+```
 
 ## License
 Copyright (c) 2018 Koki Tsuyuzaki and Laboratory for Bioinformatics Research, RIKEN Center for Biosystems Dynamics Reseach
