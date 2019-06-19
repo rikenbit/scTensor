@@ -21,6 +21,7 @@ install.packages("outliers", repos="http://cran.r-project.org")
 install.packages("crayon", repos="http://cran.r-project.org")
 install.packages("checkmate", repos="http://cran.r-project.org")
 install.packages("testthat", repos="http://cran.r-project.org")
+install.packages("Seurat", repos="http://cran.r-project.org")
 
 # Bioconductor
 install.packages("BiocManager")
@@ -42,6 +43,7 @@ BiocManager::install("MeSH.Hsa.eg.db", suppressUpdates=TRUE)
 BiocManager::install("LRBase.Mmu.eg.db", suppressUpdates=TRUE)
 BiocManager::install("MeSH.Mmu.eg.db", suppressUpdates=TRUE)
 BiocManager::install("LRBaseDbi", suppressUpdates=TRUE)
+BiocManager::install("Homo.sapiens", suppressUpdates=TRUE)
 ~~~~
 
 Installation
