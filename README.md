@@ -22,9 +22,9 @@ install.packages("crayon", repos="http://cran.r-project.org")
 install.packages("checkmate", repos="http://cran.r-project.org")
 install.packages("testthat", repos="http://cran.r-project.org")
 install.packages("Seurat", repos="http://cran.r-project.org")
+install.packages("BiocManager", repos="http://cran.r-project.org")
 
 # Bioconductor
-install.packages("BiocManager")
 BiocManager::install("S4Vectors", suppressUpdates=TRUE)
 BiocManager::install("reactome.db", suppressUpdates=TRUE)
 BiocManager::install("AnnotationDbi", suppressUpdates=TRUE)
