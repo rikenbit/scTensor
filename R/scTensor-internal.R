@@ -760,9 +760,9 @@
         g <- max_bipartite_match(g)
         target <- as.character(unique(GeneName[,2]))
         GeneName <- data.frame(
-            external_gene_name=g$matching[target],
-            entrezgene=target
-            )
+            external_gene_name=as.character(g$matching[target]),
+            entrezgene=target,
+            stringsAsFactors = FALSE)
         Sys.sleep(10)
         # Description
         message(paste0("Related gene descriptions are retrieved from ",
