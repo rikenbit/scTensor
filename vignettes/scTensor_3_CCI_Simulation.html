@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2019-06-17" />
+<meta name="date" content="2019-06-19" />
 
 <title>How to perform CCI simulation by cellCellSimulate function</title>
 
@@ -634,9 +634,9 @@ $(document).ready(function () {
 <p class="author-name">Koki Tsuyuzaki<span class="affil-mark">1</span>, Manabu Ishii<span class="affil-mark">1</span> and Itoshi Nikaido<span class="affil-mark">1*</span></p>
 <p class="author-affiliation"><span class="affil-mark">1</span>Laboratory for Bioinformatics Research, RIKEN Center for Biosystems Dynamics Reseach</p>
 <p class="author-email"><span class="affil-mark">*</span><a href="mailto:k.t.the-answer@hotmail.co.jp">k.t.the-answer@hotmail.co.jp</a></p>
-<h4 class="date">17 June 2019</h4>
+<h4 class="date">19 June 2019</h4>
 <h4 class="package">Package</h4>
-<p>scTensor 1.0.1</p>
+<p>scTensor 1.1.0</p>
 
 </div>
 
@@ -802,18 +802,18 @@ three cell types are generated.</p>
 ## [1] stats     graphics  grDevices utils     datasets  methods   base     
 ## 
 ## other attached packages:
-## [1] scTensor_1.0.1   BiocStyle_2.10.0
+## [1] scTensor_1.1.0   BiocStyle_2.10.0
 ## 
 ## loaded via a namespace (and not attached):
 ##   [1] tagcloud_0.6                tidyselect_0.2.5           
 ##   [3] heatmaply_0.16.0            RSQLite_2.1.1              
 ##   [5] AnnotationDbi_1.44.0        htmlwidgets_1.3            
 ##   [7] grid_3.5.0                  MeSH.PCR.db_1.11.0         
-##   [9] TSP_1.1-6                   BiocParallel_1.16.6        
+##   [9] TSP_1.1-7                   BiocParallel_1.16.6        
 ##  [11] munsell_0.5.0               codetools_0.2-16           
 ##  [13] misc3d_0.8-4                colorspace_1.4-1           
 ##  [15] GOSemSim_2.8.0              Biobase_2.42.0             
-##  [17] Category_2.48.1             knitr_1.22                 
+##  [17] Category_2.48.1             knitr_1.23                 
 ##  [19] rstudioapi_0.10             stats4_3.5.0               
 ##  [21] SingleCellExperiment_1.4.1  DOSE_3.8.2                 
 ##  [23] urltools_1.7.3              GenomeInfoDbData_1.2.0     
@@ -822,8 +822,8 @@ three cell types are generated.</p>
 ##  [29] MeSH.Bsu.168.eg.db_1.11.0   xfun_0.7                   
 ##  [31] biovizBase_1.30.1           gclus_1.3.2                
 ##  [33] R6_2.4.0                    GenomeInfoDb_1.18.2        
-##  [35] seriation_1.2-3             fields_9.8-1               
-##  [37] AnnotationFilter_1.6.0      gridGraphics_0.3-0         
+##  [35] seriation_1.2-7             fields_9.8-3               
+##  [37] AnnotationFilter_1.6.0      gridGraphics_0.4-1         
 ##  [39] bitops_1.0-6                fgsea_1.8.0                
 ##  [41] DelayedArray_0.8.0          assertthat_0.2.1           
 ##  [43] MeSH.AOR.db_1.11.0          nnTensor_0.99.4            
@@ -840,8 +840,8 @@ three cell types are generated.</p>
 ##  [65] abind_1.4-5                 GenomicFeatures_1.34.8     
 ##  [67] backports_1.1.4             qvalue_2.14.1              
 ##  [69] Hmisc_4.2-0                 RBGL_1.58.2                
-##  [71] tools_3.5.0                 bookdown_0.10              
-##  [73] ggplotify_0.0.3             ggplot2_3.1.1              
+##  [71] tools_3.5.0                 bookdown_0.11              
+##  [73] ggplotify_0.0.3             ggplot2_3.2.0              
 ##  [75] gplots_3.0.1.1              RColorBrewer_1.1-2         
 ##  [77] cummeRbund_2.24.0           BiocGenerics_0.28.0        
 ##  [79] ggridges_0.5.1              MeSH.Syn.eg.db_1.11.0      
@@ -857,11 +857,11 @@ three cell types are generated.</p>
 ##  [99] MeSH.db_1.11.0              DO.db_2.9                  
 ## [101] triebeard_0.3.0             reactome.db_1.66.0         
 ## [103] ProtGenerics_1.14.0         matrixStats_0.54.0         
-## [105] hms_0.4.2                   evaluate_0.13              
-## [107] xtable_1.8-4                XML_3.98-1.19              
+## [105] hms_0.4.2                   evaluate_0.14              
+## [107] xtable_1.8-4                XML_3.98-1.20              
 ## [109] IRanges_2.16.0              gridExtra_2.3              
 ## [111] compiler_3.5.0              biomaRt_2.38.0             
-## [113] tibble_2.1.1                maps_3.3.0                 
+## [113] tibble_2.1.3                maps_3.3.0                 
 ## [115] KernSmooth_2.23-15          crayon_1.3.4               
 ## [117] htmltools_0.3.6             GOstats_2.48.0             
 ## [119] rTensor_1.4                 Formula_1.2-3              
@@ -878,19 +878,19 @@ three cell types are generated.</p>
 ## [141] foreach_1.4.4               annotate_1.60.1            
 ## [143] webshot_0.5.1               XVector_0.22.0             
 ## [145] AnnotationForge_1.24.0      stringr_1.4.0              
-## [147] VariantAnnotation_1.28.13   digest_0.6.18              
+## [147] VariantAnnotation_1.28.13   digest_0.6.19              
 ## [149] graph_1.60.0                Biostrings_2.50.2          
-## [151] rmarkdown_1.12              fastmatch_1.1-0            
+## [151] rmarkdown_1.13              fastmatch_1.1-0            
 ## [153] htmlTable_1.13.1            dendextend_1.12.0          
 ## [155] GSEABase_1.44.0             curl_3.3                   
 ## [157] graphite_1.28.2             Rsamtools_1.34.1           
 ## [159] gtools_3.8.1                meshr_1.18.0               
 ## [161] outliers_0.14               jsonlite_1.6               
 ## [163] viridisLite_0.3.0           BSgenome_1.50.0            
-## [165] pillar_1.4.0                lattice_0.20-38            
+## [165] pillar_1.4.1                lattice_0.20-38            
 ## [167] httr_1.4.0                  plotrix_3.7-5              
 ## [169] survival_2.44-1.1           GO.db_3.7.0                
-## [171] glue_1.3.1                  UpSetR_1.3.3               
+## [171] glue_1.3.1                  UpSetR_1.4.0               
 ## [173] fdrtool_1.2.15              iterators_1.0.10           
 ## [175] plot3D_1.1.1                bit_1.1-14                 
 ## [177] Rgraphviz_2.26.0            ggforce_0.2.2              

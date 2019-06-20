@@ -2006,18 +2006,28 @@
     "# <font color='#1881c2'>Details of Ligand Gene-centric Overview (selected)",
     "</font>\n\n",
     "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "<style type='text/css'>\n",
+    "table,th,td {\n",
+    "border: 1px solid #bbb;\n",
+    "}\n",
+    "</style>\n\n",
     "|Rank|Frequency|Ligand Gene|Receptor Genes|",
     "Related CCIs|\n",
-    "|----|----|----|----|----|"
+    "|---------------|---------------|---------------|---------------|---------------|"
 )
 
 .RECEPTOR_HEADER <- paste0(
     "# <font color='#1881c2'>Details of Receptor Gene-centric Overview (selected)",
     "</font>\n\n",
     "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "<style type='text/css'>\n",
+    "table,th,td {\n",
+    "border: 1px solid #bbb;\n",
+    "}\n",
+    "</style>\n\n",
     "|Rank|Frequency|Receptor Gene|Ligand Genes|",
     "Related CCIs|\n",
-    "|----|----|----|----|----|"
+    "|---------------|---------------|---------------|---------------|---------------|"
 )
 
 .LIGAND_BODY <- function(out.vecLR, GeneInfo, index, selected){

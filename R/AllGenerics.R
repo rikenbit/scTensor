@@ -209,17 +209,17 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05){
+    author="The person who runs this script", thr=40, top="full", p=0.05, upper=100){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
         thr, top, p){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, thr, top, p, sce)})
+            html.open, title, author, thr, top, p, sce, upper)})
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, ...){
+    author="The person who runs this script", thr=40, top="full", p=0.05, upper=100, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -249,6 +249,9 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     corevalue <- corevalue / sum(corevalue) * 100
     # Thresholding of the elements of core tensor
     selected <- which(cumsum(corevalue) <= thr)
+    if(length(selected) > upper){
+        selected <- seq_len(upper)
+    }
     if(length(selected) == 0){
         message(paste0("None of core tensor element is selected.\n",
         "Please specify the larger thr or perform cellCellDecomp\n",
@@ -272,7 +275,6 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
             strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
         # biomaRt Setting
         ens <- .ensembl[[spc]]()
-        Sys.sleep(10)
         # GeneName, Description, GO, Reactome, MeSH
         GeneInfo <- .geneinformation(sce, ens, spc, LR)
         # Cell Label

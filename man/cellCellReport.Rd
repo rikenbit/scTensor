@@ -13,7 +13,7 @@ The result is saved as HTML report which contains with multiple files.
 cellCellReport(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05)
+    author="The person who runs this script", thr=40, top="full", p=0.05, upper=100)
 }
 
 \arguments{
@@ -46,6 +46,9 @@ top genes in each (*,*,*)-pattern which are selected and summarized in the repor
 }
 \item{p}{
 The threshold of p-value of the enrichment analysis (Default: 1E-2)
+}
+\item{upper}{
+The maxium number of HTML reports generates (Default: 100)
 }
 }
 

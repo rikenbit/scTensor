@@ -177,14 +177,6 @@ LefttoRight <- getBM(attributes=c("hgnc_symbol", "entrezgene"),
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
 
-
-
-
-
-
-
-
-
 # Session information {.unnumbered}
 
 ```{r sessionInfo, echo=FALSE}
