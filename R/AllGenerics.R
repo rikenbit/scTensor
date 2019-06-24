@@ -190,10 +190,16 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     }
 
     # Data size
-    datasize <- c(ncol(res.sctensor[[2]]), ncol(res.sctensor[[3]]),
-        ncol(res.sctensor[[4]]))
-    recerror <- res.sctensor$recerror
-    relchange <- res.sctensor$relchange
+    if (algorithm == "ntd"){
+        datasize <- c(ncol(res.sctensor[[2]]), ncol(res.sctensor[[3]]),
+            ncol(res.sctensor[[4]]))
+        recerror <- res.sctensor$recerror
+        relchange <- res.sctensor$relchange
+    }else{
+        datasize <- NULL
+        recerror <- NULL
+        relchange <- NULL
+    }
 
     # Overwrite
     metadata(sce) <- list(lrbase=metadata(sce)$lrbase,
@@ -213,7 +219,7 @@ setGeneric("cellCellReport", function(sce, reducedDimNames,
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
-        thr, top, p){
+        thr, top, p, upper){
         .cellCellReport(reducedDimNames, out.dir,
             html.open, title, author, thr, top, p, sce, upper)})
 .cellCellReport <- function(reducedDimNames,
