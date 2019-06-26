@@ -221,7 +221,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
         thr, top, p, upper){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, thr, top, p, sce, upper)})
+            html.open, title, author, thr, top, p, upper, sce)})
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
