@@ -537,6 +537,7 @@
     mylayout <- cbind(x, y)
 
     # Network Plot
+    par(ask=FALSE)
     par(oma=c(2,2,2,2))
     plot.igraph(g,
         layout=mylayout,
@@ -549,6 +550,7 @@
         edge.width=E(g)$weight)
 
     # Gradient
+    par(ask=FALSE)
     gradient.rect(xleft, ybottom, xright, ytop,
         col=smoothPalette(sort(weight),
         palfunc=colorRampPalette(.setColor("greens"), alpha=TRUE)),
@@ -609,6 +611,7 @@
                     }, 0.0))
                 label.receptor[] <- smoothPalette(label.receptor,
                     palfunc=colorRampPalette(col.receptor, alpha=TRUE))
+                par(ask=FALSE)
                 par(new=TRUE)
                 par(oma = c(ROMA_1, ROMA_2+(i-1)*omasize,
                     ROMA_3, oma4-omasize*i))
@@ -650,11 +653,13 @@
             length(exp))
     }
     # Plot
+    par(ask=FALSE)
     par(ps=25)
     par(oma=c(2,2,2,2))
     plot(twoD, col=label, pch=16, cex=3, bty="n", xaxt="n", yaxt="n",
         xlab="", ylab="", main=genename)
     # Gradient
+    par(ask=FALSE)
     par(new=TRUE)
     plot(1, xlab="", ylab="", axes=FALSE, col=rgb(0,0,0,0))
     par(new=TRUE)
@@ -679,136 +684,96 @@
     text(xleft-0.05, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5], 1))
 }
 
-.ensembl <- list(
+.annotationhub <- list(
     "Hsa" = function(){
-        useMart("ensembl",
-            dataset="hsapiens_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70572"]]
     },
     "Mmu" = function(){
-        useMart("ensembl",
-            dataset="mmusculus_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70573"]]
     },
     "Ath" = function(){
-        useMart("plants_mart",
-            dataset="athaliana_eg_gene",
-            host="plants.ensembl.org")
+        AnnotationHub()[["AH70564"]]
     },
     "Rno" = function(){
-        useMart("ensembl",
-            dataset="rnorvegicus_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70575"]]
     },
     "Bta" = function(){
-        useMart("ensembl",
-            dataset="btaurus_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70565"]]
     },
     "Cel" = function(){
-        useMart("ensembl",
-            dataset="celegans_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70577"]]
     },
     "Dme" = function(){
-        useMart("ensembl",
-            dataset="dmelanogaster_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70571"]]
     },
     "Dre" = function(){
-        useMart("ensembl",
-            dataset="drerio_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70580"]]
     },
     "Gga" = function(){
-        useMart("ensembl",
-            dataset="ggallus_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70567"]]
     },
     "Pab" = function(){
-        useMart("ensembl",
-            dataset="pabelii_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH72281"]]
     },
     "Xtr" = function(){
-        useMart("ensembl",
-            dataset="xtropicalis_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH72540"]]
     },
     "Ssc" = function(){
-        useMart("ensembl",
-            dataset="sscrofa_gene_ensembl",
-            host="asia.ensembl.org")
+        AnnotationHub()[["AH70574"]]
     }
 )
 
-.geneinformation <- function(sce, ens, spc, LR){
+.geneinformation <- function(sce, ah, spc, LR){
     targetGeneID <- unique(c(LR$GENEID_L, LR$GENEID_R))
-    if(!is.null(ens)){
+    if(!is.null(ah)){
         # Gene Name
-        message(paste0("Related gene names are retrieved from Biomart",
-            " by biomaRt package..."))
-        GeneName <- getBM(
-            attributes=c('external_gene_name', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
+        message("Related gene names are retrieved from AnnotationHub...")
+        GeneName <- AnnotationDbi::select(ah, columns=c("SYMBOL", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        GeneName <- unique(GeneName)
+        nonna1 <- which(!is.na(GeneName[,1]))
+        nonna2 <- which(!is.na(GeneName[,2]))
+        GeneName <- GeneName[intersect(nonna1, nonna2), ]
         # Bipartite Matching
         g <- graph.data.frame(as.data.frame(GeneName), directed=FALSE)
         V(g)$type <- bipartite_mapping(g)$type
-        is.bipartite(g)
         g <- max_bipartite_match(g)
         target <- as.character(unique(GeneName[,2]))
         GeneName <- data.frame(
-            external_gene_name=as.character(g$matching[target]),
-            entrezgene=target,
+            ENTREZID=as.character(g$matching[target]),
+            SYMBOL=target,
             stringsAsFactors = FALSE)
-        Sys.sleep(10)
+        GeneName <- GeneName[, c("ENTREZID", "SYMBOL")]
+
         # Description
-        message(paste0("Related gene descriptions are retrieved from ",
-            "Biomart by biomaRt package..."))
-        Description <- getBM(
-            attributes=c('description', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
-        Sys.sleep(10)
+        message("Related gene descriptions are retrieved from AnnotationHub...")
+        Description <- AnnotationDbi::select(ah, columns=c("GENENAME", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        Description <- Description[, c("ENTREZID", "GENENAME")]
+
         # GO
-        message(paste0("Related GO IDs are retrieved from Biomart by ",
-            "biomaRt package..."))
-        GO <- getBM(
-            attributes=c('go_id', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
-        Sys.sleep(10)
+        message("Related GO IDs are retrieved from AnnotationHub...")
+        GO <- AnnotationDbi::select(ah, columns=c("GO", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        GO <- GO[, c("ENTREZID", "GO")]
+
         # ENSG
-        message(paste0("Related Ensembl Gene IDs are retrieved from Biomart by ",
-            "biomaRt package..."))
-        ENSG <- getBM(
-            attributes=c('ensembl_gene_id', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
-        Sys.sleep(10)
+        message("Related Ensembl Gene IDs are retrieved from AnnotationHub...")
+        ENSG <- AnnotationDbi::select(ah, columns=c("ENSEMBL", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSG <- ENSG[, c("ENTREZID", "ENSEMBL")]
+
         # ENSP
-        message(paste0("Related Ensembl Protein IDs are retrieved from Biomart by ",
-            "biomaRt package..."))
-        ENSP <- getBM(
-            attributes=c('ensembl_peptide_id', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
-        Sys.sleep(10)
+        message("Related Ensembl Protein IDs are retrieved from AnnotationHub...")
+        ENSP <- AnnotationDbi::select(ah, columns=c("ENSEMBLPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSP <- ENSP[, c("ENTREZID", "ENSEMBLPROT")]
+
         # UniProtKB
-        message(paste0("Related UniProtKB IDs are retrieved from Biomart by ",
-            "biomaRt package..."))
-        UniProtKB <- getBM(
-            attributes=c('uniprot_gn', 'entrezgene'),
-            filters = 'entrezgene',
-            values = targetGeneID,
-            mart = ens)
-        Sys.sleep(10)
+        message("Related UniProtKB IDs are retrieved from AnnotationHub...")
+        UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROT")]
     }else{
         GeneName <- NULL
         Description <- NULL
@@ -915,8 +880,8 @@
 
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(is.null(genename)){
             genename = geneid
         }else{
@@ -932,8 +897,8 @@
 
     convertGeneDescription <- function(geneid, geneInfo){
         description <- geneInfo$Description[
-            which(geneInfo$Description$entrezgene ==
-                geneid), "description"][1]
+            which(geneInfo$Description$ENTREZID ==
+                geneid), "GENENAME"][1]
         if(length(description) == 0 || is.na(description)){
             description = ""
         }
@@ -942,8 +907,8 @@
 
     convertGeneOntology <- function(geneid, geneInfo){
         GO <- unique(unlist(geneInfo$GO[
-            which(geneInfo$GO$entrezgene == geneid),
-            "go_id"]))
+            which(geneInfo$GO$ENTREZID == geneid),
+            "GO"]))
         GO <- GO[which(GO != "")]
         GO <- gsub(":", "%3A", GO)
         if(length(GO) != 0){
@@ -1009,8 +974,8 @@
 
     convertUniProtKB <- function(geneid, geneInfo){
         UniProtKB <- unique(unlist(geneInfo$UniProtKB[
-            which(geneInfo$UniProtKB$entrezgene == geneid),
-            "uniprot_gn"]))
+            which(geneInfo$UniProtKB$ENTREZID == geneid),
+            "UNIPROT"]))
         UniProtKB <- UniProtKB[which(UniProtKB != "")]
         if(length(UniProtKB) != 0){
             UniProtKB_loc <- div(seq_along(UniProtKB),
@@ -1032,8 +997,8 @@
 
     convertSTRING <- function(geneid, geneInfo, spc){
         ENSP <- unique(unlist(geneInfo$ENSP[
-            which(geneInfo$ENSP$entrezgene == geneid),
-            "ensembl_peptide_id"]))
+            which(geneInfo$ENSP$ENTREZID == geneid),
+            "ENSEMBLPROT"]))
         ENSP <- ENSP[which(ENSP != "")]
         TAXID <- .TAXID[spc]
         if(length(ENSP) != 0 && !is.na(TAXID)){
@@ -1050,8 +1015,8 @@
 
     convertRefEx <- function(geneid, geneInfo, spc){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) != 0){
             ref <- "http://refex.dbcls.jp/genelist.php?gene_name%5B%5D="
             if(spc == "Hsa"){
@@ -1070,8 +1035,8 @@
 
     convertEA <- function(geneid, geneInfo){
         ENSG <- geneInfo$ENSG[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "ensembl_gene_id"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "ENSEMBL"][1]
         if(length(ENSG) != 0){
             paste0("https://www.ebi.ac.uk/gxa/genes/", tolower(ENSG))
         }else{
@@ -1081,8 +1046,8 @@
 
     convertSEA <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) != 0){
             paste0("https://www.ebi.ac.uk/gxa/sc/search?species=&q=",
                 genename)
@@ -1093,8 +1058,8 @@
 
     convertSCDB <- function(geneid, geneInfo, spc){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) != 0 && spc == "Hsa"){
             paste0("https://bioinfo.uth.edu/scrnaseqdb/",
                 "index.php?r=site/rankGene&gene=",
@@ -1107,8 +1072,8 @@
 
     convertPANGLAO <- function(geneid, geneInfo, spc){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) != 0){
             ref <- "https://panglaodb.se/search.html?query="
             if(spc == "Hsa"){
@@ -1125,8 +1090,8 @@
 
     convertCMAP <- function(geneid, geneInfo, spc){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) != 0){
             ref <- "https://clue.io/command?q="
             if(spc == "Hsa"){
@@ -1879,8 +1844,8 @@
     # Setting
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"][1]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"][1]
         if(length(genename) == 0){
             genename = geneid
         }
@@ -1958,7 +1923,9 @@
     # All Pattern
     png(filename=paste0(out.dir, "/figures/GeneHypergraph.png"),
         width=2500, height=2500)
+    par(ask=FALSE)
     plot.igraph(g, layout=l)
+    par(ask=FALSE)
     legend("topleft",
         legend=c("ligand", "receptor",
             colnames(out.vecLR)),
@@ -1989,9 +1956,11 @@
             gsub("pattern", "", colnames(out.vecLR)[x]),
             ".png"),
             width=2500, height=2500)
+        par(ask=FALSE)
         plot.igraph(g,
             vertex.color=tmp_nodecolor,
             edge.color=tmp_edgecolor, layout=l)
+        par(ask=FALSE)
         legend("topleft",
             legend=c("ligand", "receptor",
                 colnames(out.vecLR)[x]),
@@ -2034,7 +2003,7 @@
     # Setting
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName[,2] == geneid), 1]
+            which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
         if(length(genename) == 0){
             genename = geneid
         }
@@ -2085,11 +2054,11 @@
             )
         )
         ReceptorGeneID <- unlist(lapply(ReceptorGeneName, function(y){
-            target <- which(GeneInfo$GeneName[,1] == y)
+            target <- which(GeneInfo$GeneName[, "SYMBOL"] == y)
             if(length(target) == 0){
                 y
             }else{
-                GeneInfo$GeneName[target[1], 2]
+                GeneInfo$GeneName[target[1], "ENTREZID"]
             }
         }))
         paste(
@@ -2129,11 +2098,11 @@
         }
     }, "")
     Ligand <- vapply(Ligand, function(x){
-        target <- which(GeneInfo$GeneName[,1] == x)
+        target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){
             LigandGeneID <- x
         }else{
-            LigandGeneID <- GeneInfo$GeneName[target[1], 2]
+            LigandGeneID <- GeneInfo$GeneName[target[1], "ENTREZID"]
         }
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
             LigandGeneID, ") ![](figures/Ligand/",
@@ -2151,8 +2120,8 @@
     # Setting
     convertGeneName <- function(geneid, geneInfo){
         genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$entrezgene == geneid),
-            "external_gene_name"]
+            which(geneInfo$GeneName$ENTREZID == geneid),
+            "SYMBOL"]
         if(length(genename) == 0){
             genename = geneid
         }
@@ -2203,11 +2172,11 @@
             )
         )
         LigandGeneID <- unlist(lapply(LigandGeneName, function(y){
-            target <- which(GeneInfo$GeneName[,1] == y)
+            target <- which(GeneInfo$GeneName$SYMBOL == y)
             if(length(target) == 0){
                 y
             }else{
-                GeneInfo$GeneName[target[1], 2]
+                GeneInfo$GeneName[target[1], "ENTREZID"]
             }
         }))
         paste(
@@ -2247,11 +2216,11 @@
         }
     }, "")
     Receptor <- vapply(Receptor, function(x){
-        target <- which(GeneInfo$GeneName[,1] == x)
+        target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){
             ReceptorGeneID <- x
         }else{
-            ReceptorGeneID <- GeneInfo$GeneName[target[1], 2]
+            ReceptorGeneID <- GeneInfo$GeneName[target[1], "ENTREZID"]
         }
         paste0("[", x, "](https://www.ncbi.nlm.nih.gov/gene/",
             ReceptorGeneID, ") ![](figures/Receptor/",
@@ -2283,7 +2252,7 @@
     GeneName <- GeneInfo$GeneName
     LigandGeneID <- unique(LR$GENEID_L)
     LigandGeneName <- vapply(LigandGeneID, function(x){
-        GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
     naposition <- which(vapply(LigandGeneName, is.na, TRUE))
     LigandGeneName[naposition] <- LigandGeneID[naposition]
     # Sort by Alphabet of the ligand genes
@@ -2310,7 +2279,7 @@
         target <- which(LR$GENEID_L == LigandGeneID[x])
         ReceptorGeneID <- unique(LR$GENEID_R[target])
         ReceptorGeneName <- vapply(ReceptorGeneID, function(xx){
-            GeneName[which(GeneName[,2] == xx)[1], 1]
+            GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
         }, "")
         naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
         ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
@@ -2329,7 +2298,7 @@
     GeneName <- GeneInfo$GeneName
     ReceptorGeneID <- unique(LR$GENEID_R)
     ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
-        GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
     naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
     ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
     # Sort by Alphabet of the Receptor genes
@@ -2356,7 +2325,7 @@
         target <- which(LR$GENEID_R == ReceptorGeneID[x])
         LigandGeneID <- unique(LR$GENEID_L[target])
         LigandGeneName <- vapply(LigandGeneID, function(xx){
-            GeneName[which(GeneName[,2] == xx)[1], 1]
+            GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
         }, "")
         naposition <- which(vapply(LigandGeneName, is.na, TRUE))
         LigandGeneName[naposition] <- LigandGeneID[naposition]
@@ -2647,6 +2616,7 @@ names(.eachCircleColor) <- c(
             }else if(length(pval) == 1){
                 # background circle
                 for(i in 1:120){
+                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -2655,6 +2625,7 @@ names(.eachCircleColor) <- c(
             }else{
                 # background circle
                 for(i in 1:120){
+                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -2665,6 +2636,7 @@ names(.eachCircleColor) <- c(
                 }else{
                     t <- sapply(t, function(x){.shrink2(x, thr=25)})
                 }
+                par(ask=FALSE)
                 tagcloud(t[target], weights = negLogPval[target],
                 col = smoothPalette(negLogPval[target], palfunc = .palf),
                 order = "size", algorithm = "oval",
@@ -2676,12 +2648,14 @@ names(.eachCircleColor) <- c(
 }
 
 .NULLPlot <- function(){
+    par(ask=FALSE)
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=100)
     text(1, 1, "None", col=rgb(0,0,0,0.5))
 }
 
 .SinglePlot <- function(x){
+    par(ask=FALSE)
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=100)
     text(1, 1, x, col="red")
@@ -3237,9 +3211,9 @@ names(.eachCircleColor) <- c(
     LigandGeneID <- unique(LR$GENEID_L)
     ReceptorGeneID <- unique(LR$GENEID_R)
     LigandGeneName <- vapply(LigandGeneID, function(x){
-        GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
     ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
-        GeneName[which(GeneName[,2] == x)[1], 1]}, "")
+        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
 
     # Plot (Ligand)
     lapply(seq_along(LigandGeneID), function(x){
@@ -3276,6 +3250,7 @@ names(.eachCircleColor) <- c(
             palfunc=colorRampPalette(col.ligand, alpha=TRUE))
         LPatternfile <- paste0(out.dir, "/figures/Pattern_", i, "__", ".png")
         png(filename=LPatternfile, width=1000, height=1000, bg="transparent")
+        par(ask=FALSE)
         par(ps=20)
         plot(twoD, col=label.ligand, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",
@@ -3292,6 +3267,7 @@ names(.eachCircleColor) <- c(
             palfunc=colorRampPalette(col.receptor, alpha=TRUE))
         RPatternfile = paste0(out.dir, "/figures/Pattern__", i, "_", ".png")
         png(filename=RPatternfile, width=1000, height=1000, bg="transparent")
+        par(ask=FALSE)
         par(ps=20)
         plot(twoD, col=label.receptor, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",

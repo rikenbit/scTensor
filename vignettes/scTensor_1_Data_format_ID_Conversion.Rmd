@@ -123,28 +123,25 @@ LefttoRight <- select(Homo.sapiens,
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
 
-Second approarch is using `r Biocpkg("biomaRt")` package.
-Since only three Organism DB packages are available for now,
-user will use biomaRt,
-when the data is generated from other species (e.g. Zebrafish, Arabidopsis thaliana).
+Second approarch is using `r Biocpkg("AnnotationHub")` package.
 
-Although [Web Application of biomart](http://asia.ensembl.org/biomart/martview/e23ce55ec2642f78b0e3e7ec785adc78) is available,
-here we introduce the R package.
+Although only three Organism DB packages are explicitly developed,
+even if the data is generated from other species (e.g. Zebrafish, Arabidopsis thaliana),
+similar database is also available from `r Biocpkg("AnnotationHub")`,
+and `select` function can be performed like below.
 
-Using `useMart` and `getBM` function of `biomaRt`,
-the corresponding table can be retrieved like below.
-
-```{r Ensembl with biomaRt, echo=TRUE}
-suppressPackageStartupMessages(library("biomaRt"))
+```{r Ensembl with AnnotationHub, echo=TRUE}
+suppressPackageStartupMessages(library("AnnotationHub"))
 
 # 1. Input matrix
 input <- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
-hg <- useMart("ensembl",
-            dataset="hsapiens_gene_ensembl",
-            host="asia.ensembl.org")
-LefttoRight <- getBM(attributes=c("ensembl_gene_id", "entrezgene"),
-  filters="ensembl_gene_id", values=rowID, mart=hg)
+ah <- AnnotationHub()
+# Database of Human
+hg <- ah[["AH70572"]]
+LefttoRight <- select(hg,
+  column=c("ENSEMBL", "ENTREZID"),
+  keytype="ENSEMBL", keys=rowID)
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
 
@@ -153,7 +150,8 @@ When using cellranger or `r CRANpkg("Seurat")` to quantify UMI-count (cf. Step1,
 the row names of input matrix might be Gene Symbol,
 and have to be converted to NCBI Gene ID.
 As well as the Case I described above,
-Organism DB and biomaRt will support such a task like below.
+[Organism DB](https://bioconductor.org/packages/release/BiocViews.html#___OrganismDb)
+and `r Biocpkg("AnnotationHub")` will support such a task like below.
 
 ```{r Gene Symbol with Organism DB, echo=TRUE}
 # 1. Input matrix
@@ -168,12 +166,16 @@ LefttoRight <- select(Homo.sapiens,
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
 
-```{r Gene Symbol with biomaRt, echo=TRUE}
+```{r Gene Symbol with AnnotationHub, echo=TRUE}
 # 1. Input matrix
 input <- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
-LefttoRight <- getBM(attributes=c("hgnc_symbol", "entrezgene"),
-  filters="hgnc_symbol", values=rowID, mart=hg)
+ah <- AnnotationHub()
+# Database of Human
+hg <- ah[["AH70572"]]
+LefttoRight <- select(hg,
+  column=c("SYMBOL", "ENTREZID"),
+  keytype="SYMBOL", keys=rowID)
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
 

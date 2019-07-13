@@ -77,7 +77,8 @@ The result is saved as HTML report which contains with multiple files.
 	cellCellDecomp(sce, ranks=rks$selected)
 	cellCellReport(sce, reducedDimNames="TSNE",
 	    title="Cell-cell interaction within Germline_Male, GSE86146",
-	    author="Koki Tsuyuzaki", thr=30, html.open=TRUE)
+	    author="Koki Tsuyuzaki", thr=20, html.open=TRUE)
+	try(dev.off())
     }
 }
 

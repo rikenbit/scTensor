@@ -280,9 +280,9 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         spc <- gsub(".eg.db.sqlite", "",
             strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
         # biomaRt Setting
-        ens <- .ensembl[[spc]]()
+        ah <- .annotationhub[[spc]]()
         # GeneName, Description, GO, Reactome, MeSH
-        GeneInfo <- .geneinformation(sce, ens, spc, LR)
+        GeneInfo <- .geneinformation(sce, ah, spc, LR)
         # Cell Label
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
@@ -339,12 +339,14 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         # Tagcloud
         invisible(.tagCloud(out.vecLR, out.dir))
         # Plot（CCI Hypergraph）
+        par(ask=FALSE)
         png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
             width=2000, height=950)
         invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
             twoDplot=twoD, label=celltypes))
         dev.off()
         # Plot（Gene-wise Hypergraph）
+        par(ask=FALSE)
         invisible(.geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
 
         # Rmd（ligand, selected）
@@ -437,11 +439,9 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
         # Rendering
         message("index.Rmd is compiled to index.html...")
         render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
-        if(out.dir == tempdir()){
-            message(paste0("################################################\n",
-                "Data files are saved in\n",
-                out.dir, "\n################################################\n"))
-        }
+        message(paste0("################################################\n",
+            "Data files are saved in\n",
+            out.dir, "\n################################################\n"))
         # HTML Open
         if(html.open){
             browseURL(paste0(out.dir, "/index.html"))
