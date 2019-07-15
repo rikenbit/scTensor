@@ -536,7 +536,7 @@ convertToNCBIGeneID <- function(input, rowID, LefttoRight){
     if(dif > 0){
         message(paste0(dif, " of genes are removed from input matrix (",
             nr, "*", nc, "),\n",
-            "and only ", nrow(input), " of genes are keeped."))
+            "and only ", nrow(input), " of genes are kept."))
     }
     input
 }
