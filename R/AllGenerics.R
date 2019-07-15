@@ -522,7 +522,7 @@ convertToNCBIGeneID <- function(input, rowID, LefttoRight){
     position.input <- unlist(lapply(seq_along(targetGeneID), function(x){
         target <- which(rowID == names(targetGeneID)[x])
         if(length(target) != 1){
-            targetID <- target[which(score[target] == max(score[target]))]
+            targetID <- target[which(score[target] == max(score[target]))[1]]
         }else{
             targetID <- target
         }
@@ -535,7 +535,8 @@ convertToNCBIGeneID <- function(input, rowID, LefttoRight){
     dif <- nr - nrow(input)
     if(dif > 0){
         message(paste0(dif, " of genes are removed from input matrix (",
-            nr, "*", nc, ")"))
+            nr, "*", nc, "),\n",
+            "and only ", nrow(input), " of genes are keeped."))
     }
     input
 }

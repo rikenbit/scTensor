@@ -724,7 +724,7 @@
 )
 
 .geneinformation <- function(sce, ah, spc, LR){
-    targetGeneID <- unique(c(LR$GENEID_L, LR$GENEID_R))
+    targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
     if(!is.null(ah)){
         # Gene Name
         message("Related gene names are retrieved from AnnotationHub...")
