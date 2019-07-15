@@ -215,7 +215,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, upper=100){
+    author="The person who runs this script", thr=40, top="full", p=0.05, upper=30){
     standardGeneric("cellCellReport")})
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
@@ -225,7 +225,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, upper=100, ...){
+    author="The person who runs this script", thr=40, top="full", p=0.05, upper=30, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
