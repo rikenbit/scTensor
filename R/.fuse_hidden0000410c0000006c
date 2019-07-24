@@ -686,44 +686,42 @@
 
 .annotationhub <- list(
     "Hsa" = function(){
-        query(AnnotationHub(), c("OrgDb", "Homo sapiens"))[[1]]
+        AnnotationHub()[["AH70572"]]
     },
     "Mmu" = function(){
-        query(AnnotationHub(), c("OrgDb", "Mus musculus"))[[1]]
+        AnnotationHub()[["AH70573"]]
     },
     "Ath" = function(){
-        query(AnnotationHub(), c("OrgDb", "Arabidopsis thaliana"))[[1]]
+        AnnotationHub()[["AH70564"]]
     },
     "Rno" = function(){
-        query(AnnotationHub(), c("OrgDb", "Rattus norvegicus"))[[1]]
+        AnnotationHub()[["AH70575"]]
     },
     "Bta" = function(){
-        query(AnnotationHub(), c("OrgDb", "Bos taurus"))[[1]]
+        AnnotationHub()[["AH70565"]]
     },
     "Cel" = function(){
-        query(AnnotationHub(), c("OrgDb", "Caenorhabditis elegans"))[[1]]
+        AnnotationHub()[["AH70577"]]
     },
     "Dme" = function(){
-        query(AnnotationHub(), c("OrgDb", "Drosophila melanogaster"))[[1]]
+        AnnotationHub()[["AH70571"]]
     },
     "Dre" = function(){
-        query(AnnotationHub(), c("OrgDb", "Danio rerio"))[[1]]
+        AnnotationHub()[["AH70580"]]
     },
     "Gga" = function(){
-        query(AnnotationHub(), c("OrgDb", "Gallus gallus"))[[1]]
+        AnnotationHub()[["AH70567"]]
     },
     "Pab" = function(){
-        query(AnnotationHub(), c("OrgDb", "Pongo abelii"))[[1]]
+        AnnotationHub()[["AH72281"]]
     },
     "Xtr" = function(){
-        query(AnnotationHub(), c("OrgDb", "Xenopus", "Silurana"))[[1]]
+        AnnotationHub()[["AH72540"]]
     },
     "Ssc" = function(){
-        query(AnnotationHub(), c("OrgDb", "Sus scrofa"))[[1]]
+        AnnotationHub()[["AH70574"]]
     }
 )
-
-'%ni%' <- Negate('%in%')
 
 .geneinformation <- function(sce, ah, spc, LR){
     targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
@@ -760,34 +758,22 @@
         GO <- GO[, c("ENTREZID", "GO")]
 
         # ENSG
-        if(spc %in% c("Hsa", "Mmu", "Rno", "Cel", "Dre")){
-            message("Related Ensembl Gene IDs are retrieved from AnnotationHub...")
-            ENSG <- AnnotationDbi::select(ah, columns=c("ENSEMBL", "ENTREZID"),
-                keytype="ENTREZID", keys=targetGeneID)
-            ENSG <- ENSG[, c("ENTREZID", "ENSEMBL")]
-        }else{
-            ENSG <- NULL
-        }
+        message("Related Ensembl Gene IDs are retrieved from AnnotationHub...")
+        ENSG <- AnnotationDbi::select(ah, columns=c("ENSEMBL", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSG <- ENSG[, c("ENTREZID", "ENSEMBL")]
 
         # ENSP
-        if(spc %ni% c("Ath", "Pab", "Xtr", "Ssc")){
-            message("Related Ensembl Protein IDs are retrieved from AnnotationHub...")
-            ENSP <- AnnotationDbi::select(ah, columns=c("ENSEMBLPROT", "ENTREZID"),
-                keytype="ENTREZID", keys=targetGeneID)
-            ENSP <- ENSP[, c("ENTREZID", "ENSEMBLPROT")]
-        }else{
-            ENSP <- NULL
-        }
+        message("Related Ensembl Protein IDs are retrieved from AnnotationHub...")
+        ENSP <- AnnotationDbi::select(ah, columns=c("ENSEMBLPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSP <- ENSP[, c("ENTREZID", "ENSEMBLPROT")]
 
         # UniProtKB
-        if(spc %ni% c("Ath", "Xtr")){
-            message("Related UniProtKB IDs are retrieved from AnnotationHub...")
-            UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROT", "ENTREZID"),
-                keytype="ENTREZID", keys=targetGeneID)
-            UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROT")]
-        }else{
-            UniProtKB <- NULL
-        }
+        message("Related UniProtKB IDs are retrieved from AnnotationHub...")
+        UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROT")]
     }else{
         GeneName <- NULL
         Description <- NULL

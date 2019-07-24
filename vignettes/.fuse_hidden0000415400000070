@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2019-07-23" />
+<meta name="date" content="2019-07-13" />
 
 <title>Roadmap to prepare the input matrix for scTensor</title>
 
@@ -634,9 +634,9 @@ $(document).ready(function () {
 <p class="author-name">Koki Tsuyuzaki<span class="affil-mark">1</span>, Manabu Ishii<span class="affil-mark">1</span> and Itoshi Nikaido<span class="affil-mark">1*</span></p>
 <p class="author-affiliation"><span class="affil-mark">1</span>Laboratory for Bioinformatics Research, RIKEN Center for Biosystems Dynamics Reseach</p>
 <p class="author-email"><span class="affil-mark">*</span><a href="mailto:k.t.the-answer@hotmail.co.jp">k.t.the-answer@hotmail.co.jp</a></p>
-<h4 class="date">23 July 2019</h4>
+<h4 class="date">13 July 2019</h4>
 <h4 class="package">Package</h4>
-<p>scTensor 1.0.7</p>
+<p>scTensor 1.0.6</p>
 
 </div>
 
@@ -659,8 +659,8 @@ $(document).ready(function () {
 
 <div id="introduction" class="section level1">
 <h1><span class="header-section-number">1</span> Introduction</h1>
-<p>We explain the way to create a matrix, in which the row names are <strong>NCBI Gene ID (ENTREZID)</strong>, for specifying an input of <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em>.
-Typical <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em> workflow can be described like below.</p>
+<p>We explain the way to create a matrix, in which the row names are <strong>NCBI Gene ID (ENTREZID)</strong>, for specifying an input of <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em>.
+Typical <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em> workflow can be described like below.</p>
 <pre class="r"><code>library(&quot;scTensor&quot;)
 library(&quot;LRBase.XXX.eg.db&quot;) # e.g. LRBase.Hsa.eg.db
 # Input matrix
@@ -671,7 +671,7 @@ color &lt;- ...
 # Celltype vector
 label &lt;- ...
 cellCellSetting(sce, LRBase.XXX.eg.db, color, label)</code></pre>
-<p>In <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em>, the row names of the input matrix is limited only NCBI Gene ID to cooperate with the other R packages (cf. data(“Germline”)). Since the user has many different types of the data matrix, here we introduce some situations and the way to convert the row names of the user’s matrix as NCBI Gene ID.</p>
+<p>In <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em>, the row names of the input matrix is limited only NCBI Gene ID to cooperate with the other R packages (cf. data(“Germline”)). Since the user has many different types of the data matrix, here we introduce some situations and the way to convert the row names of the user’s matrix as NCBI Gene ID.</p>
 </div>
 <div id="step.1-create-gene-level-expression-matrix" class="section level1">
 <h1><span class="header-section-number">2</span> Step.1 : Create gene-level expression matrix</h1>
@@ -680,13 +680,13 @@ There are many types of single-cell RNA-Seq (scRNA-Seq) technologies and the sit
 <div id="case-i-gene-level-quantification" class="section level2">
 <h2><span class="header-section-number">2.1</span> Case I: Gene-level quantification</h2>
 <p>In Plate-based scRNA-Seq experiment (i.e. Smart-Seq2, Quart-Seq2, CEL-Seq2, MARS-Seq,…etc), FASTQ file is generated in each cell. After the mapping of reads in each FASTQ file to reference genome, the same number of BAM files will be generated.
-By using some quantification tools such as <a href="http://bioinf.wehi.edu.au/featureCounts/">featureCounts</a>, or <a href="https://htseq.readthedocs.io/en/release_0.11.1/count.html">HTSeq-count</a>, user can get the expression matrix and used as the input of <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em>. These tools simply count the number of reads in union-exon in each gene.
+By using some quantification tools such as <a href="http://bioinf.wehi.edu.au/featureCounts/">featureCounts</a>, or <a href="https://htseq.readthedocs.io/en/release_0.11.1/count.html">HTSeq-count</a>, user can get the expression matrix and used as the input of <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em>. These tools simply count the number of reads in union-exon in each gene.
 However, these tools do not take “multimap” of not unique reads into consideration and the quantification is not accurate.
 Therefore, we recommend the transcript-level quantification and gene-level summarization explained below.</p>
 </div>
 <div id="case-ii-transcript-level-quantification" class="section level2">
 <h2><span class="header-section-number">2.2</span> Case II : Transcript-level quantification</h2>
-<p>Some quantification tools such as <a href="https://deweylab.github.io/RSEM/">RSEM</a>, <a href="https://www.cs.cmu.edu/~ckingsf/software/sailfish/">Sailfish</a>, <a href="https://combine-lab.github.io/salmon/">Salmon</a>, <a href="https://pachterlab.github.io/kallisto/">Kallisto</a>, and <a href="http://ccb.jhu.edu/software/stringtie/index.shtml">StringTie</a> use the reference transcriptome instead of genome, and quantify the expression level in each transcript. After the quantification, the transcript-level expression can be summarized to gene-level by using <code>summarizeToGene</code> function of <em><a href="https://bioconductor.org/packages/3.8/tximport">tximport</a></em>. <a href="https://f1000research.com/articles/4-1521">The paper of tximport</a> showed that the gene-level summalization is more accurate than featureCounts.</p>
+<p>Some quantification tools such as <a href="https://deweylab.github.io/RSEM/">RSEM</a>, <a href="https://www.cs.cmu.edu/~ckingsf/software/sailfish/">Sailfish</a>, <a href="https://combine-lab.github.io/salmon/">Salmon</a>, <a href="https://pachterlab.github.io/kallisto/">Kallisto</a>, and <a href="http://ccb.jhu.edu/software/stringtie/index.shtml">StringTie</a> use the reference transcriptome instead of genome, and quantify the expression level in each transcript. After the quantification, the transcript-level expression can be summarized to gene-level by using <code>summarizeToGene</code> function of <em><a href="https://bioconductor.org/packages/3.9/tximport">tximport</a></em>. <a href="https://f1000research.com/articles/4-1521">The paper of tximport</a> showed that the gene-level summalization is more accurate than featureCounts.</p>
 <p>Note that if you use the reference transcriptome of <a href="https://www.gencodegenes.org/human/stats.html">GENCODE</a>, this step becomes slightly complicated. Although the number of transcripts of GENCODE and that of <a href="https://ensembl.org/Homo_sapiens/Info/Annotation">Ensembl</a> is almost the same,
 and actually, most of the transcript is duplicated in these two databases,
 the gene identifier used in GENCODE looks complicated like “ENST00000456328.2|ENSG00000223972.5|OTTHUMG00000000961.2|OTTHUMT00000362751.1|DDX11L1-202|DDX11L1|1657|processed_transcript|”.
@@ -708,7 +708,7 @@ pbmc.data &lt;- Read10X(data.dir = &quot;filtered_gene_bc_matrices/hg19/&quot;)
 # Initialize the Seurat object with the raw (non-normalized data).
 pbmc &lt;- CreateSeuratObject(counts = pbmc.data,
   project = &quot;pbmc3k&quot;, min.cells = 3, min.features = 200)</code></pre>
-<p><strong>Note that the matrix is formatted as a sparse matrix of <em><a href="https://CRAN.R-project.org/package=Matrix">Matrix</a></em> package (MM: Matrix market), but the <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em> assumes dense matrix.</strong>
+<p><strong>Note that the matrix is formatted as a sparse matrix of <em><a href="https://CRAN.R-project.org/package=Matrix">Matrix</a></em> package (MM: Matrix market), but the <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em> assumes dense matrix.</strong>
 By using <code>as.matrix</code> function,
 the sparse matrix is easily converted to dense matrix as follows.</p>
 <pre><code># Sparse matrix to dense matrix
@@ -719,7 +719,7 @@ for_sc &lt;- as.matrix(pbmc.data)</code></pre>
 <h1><span class="header-section-number">3</span> Step.2: Convert the row names of a matrix as NCBI Gene ID (ENTREZID)</h1>
 <p>Even after creating the gene-level expression matrix in Step.1,
 many kinds of gene-level gene identifiers can be assigned as row names of the matrix such as Ensembl Gene ID, RefSeq, or Gene Symbol.
-Again, only NCBI Gene ID can be used as row names of input matrix of <em><a href="https://bioconductor.org/packages/3.8/scTensor">scTensor</a></em>.
+Again, only NCBI Gene ID can be used as row names of input matrix of <em><a href="https://bioconductor.org/packages/3.9/scTensor">scTensor</a></em>.
 To do such a task, we originally implemented a function <code>convertToNCBIGeneID</code>.
 The only user has to prepare for using this function is the 1. input matrix (or data.frame) filled with only numbers, 2. current gene-level gene identifier in each row of the input matrix, and 3. corresponding table containing current gene-level gene identifier (left) and corresponding NCBI Gene ID (right).
 The usage of this function is explained below.</p>
@@ -727,20 +727,12 @@ The usage of this function is explained below.</p>
 <h2><span class="header-section-number">3.1</span> Case I: Ensembl Gene ID to NCBI Gene ID</h2>
 <p>In addition to 1. and 2., the user has to prepare the 3. corresponding table.
 Here we introduce two approaches to assign user’s Ensembl Gene ID to NCBI Gene ID.
-First approarch is using <a href="https://bioconductor.org/packages/release/BiocViews.html#___OrganismDb">Organism DB</a> packages such as <em><a href="https://bioconductor.org/packages/3.8/Homo.sapiens">Homo.sapiens</a></em>, <em><a href="https://bioconductor.org/packages/3.8/Mus.musculus">Mus.musculus</a></em>, and <em><a href="https://bioconductor.org/packages/3.8/Rattus.norvegicus">Rattus.norvegicus</a></em>.</p>
+First approarch is using <a href="https://bioconductor.org/packages/release/BiocViews.html#___OrganismDb">Organism DB</a> packages such as <em><a href="https://bioconductor.org/packages/3.9/Homo.sapiens">Homo.sapiens</a></em>, <em><a href="https://bioconductor.org/packages/3.9/Mus.musculus">Mus.musculus</a></em>, and <em><a href="https://bioconductor.org/packages/3.9/Rattus.norvegicus">Rattus.norvegicus</a></em>.</p>
 <p>Using the <code>select</code> function of Organism DB, the corresponding table can be retrieved like below.</p>
 <pre class="r"><code>suppressPackageStartupMessages(library(&quot;scTensor&quot;))
-suppressPackageStartupMessages(library(&quot;Homo.sapiens&quot;))</code></pre>
-<pre><code>## Warning: package 'AnnotationDbi' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'BiocGenerics' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'Biobase' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'IRanges' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'S4Vectors' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'OrganismDbi' was built under R version 3.5.1</code></pre>
-<pre><code>## Warning: package 'GenomicFeatures' was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package 'GenomeInfoDb' was built under R version 3.5.2</code></pre>
-<pre><code>## Warning: package 'GenomicRanges' was built under R version 3.5.1</code></pre>
-<pre class="r"><code># 1. Input matrix
+suppressPackageStartupMessages(library(&quot;Homo.sapiens&quot;))
+
+# 1. Input matrix
 input &lt;- matrix(1:20, nrow=4, ncol=5)
 # 2. Gene identifier in each row
 rowID &lt;- c(&quot;ENSG00000204531&quot;, &quot;ENSG00000181449&quot;,
@@ -757,24 +749,24 @@ LefttoRight &lt;- select(Homo.sapiens,
 ## 6657    2    6   10   14   18
 ## 4609    3    7   11   15   19
 ## 9314    4    8   12   16   20</code></pre>
-<p>Second approarch is using <em><a href="https://bioconductor.org/packages/3.8/AnnotationHub">AnnotationHub</a></em> package.</p>
+<p>Second approarch is using <em><a href="https://bioconductor.org/packages/3.9/AnnotationHub">AnnotationHub</a></em> package.</p>
 <p>Although only three Organism DB packages are explicitly developed,
 even if the data is generated from other species (e.g. Zebrafish, Arabidopsis thaliana),
-similar database is also available from <em><a href="https://bioconductor.org/packages/3.8/AnnotationHub">AnnotationHub</a></em>,
+similar database is also available from <em><a href="https://bioconductor.org/packages/3.9/AnnotationHub">AnnotationHub</a></em>,
 and <code>select</code> function can be performed like below.</p>
-<pre class="r"><code>suppressPackageStartupMessages(library(&quot;AnnotationHub&quot;))</code></pre>
-<pre><code>## Warning: package 'AnnotationHub' was built under R version 3.5.2</code></pre>
-<pre class="r"><code># 1. Input matrix
+<pre class="r"><code>suppressPackageStartupMessages(library(&quot;AnnotationHub&quot;))
+
+# 1. Input matrix
 input &lt;- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
 ah &lt;- AnnotationHub()</code></pre>
-<pre><code>## snapshotDate(): 2018-10-24</code></pre>
+<pre><code>## snapshotDate(): 2019-05-02</code></pre>
 <pre class="r"><code># Database of Human
-hs &lt;- query(ah, c(&quot;OrgDb&quot;, &quot;Homo sapiens&quot;))[[1]]</code></pre>
+hg &lt;- ah[[&quot;AH70572&quot;]]</code></pre>
 <pre><code>## downloading 0 resources</code></pre>
 <pre><code>## loading from cache 
-##     '/Users/tsuyusakikouki//.AnnotationHub/72902'</code></pre>
-<pre class="r"><code>LefttoRight &lt;- select(hs,
+##     'AH70572 : 77318'</code></pre>
+<pre class="r"><code>LefttoRight &lt;- select(hg,
   column=c(&quot;ENSEMBL&quot;, &quot;ENTREZID&quot;),
   keytype=&quot;ENSEMBL&quot;, keys=rowID)</code></pre>
 <pre><code>## 'select()' returned 1:1 mapping between keys and columns</code></pre>
@@ -792,7 +784,7 @@ the row names of input matrix might be Gene Symbol,
 and have to be converted to NCBI Gene ID.
 As well as the Case I described above,
 <a href="https://bioconductor.org/packages/release/BiocViews.html#___OrganismDb">Organism DB</a>
-and <em><a href="https://bioconductor.org/packages/3.8/AnnotationHub">AnnotationHub</a></em> will support such a task like below.</p>
+and <em><a href="https://bioconductor.org/packages/3.9/AnnotationHub">AnnotationHub</a></em> will support such a task like below.</p>
 <pre class="r"><code># 1. Input matrix
 input &lt;- matrix(1:20, nrow=4, ncol=5)
 # 2. Gene identifier in each row
@@ -813,13 +805,13 @@ LefttoRight &lt;- select(Homo.sapiens,
 input &lt;- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
 ah &lt;- AnnotationHub()</code></pre>
-<pre><code>## snapshotDate(): 2018-10-24</code></pre>
+<pre><code>## snapshotDate(): 2019-05-02</code></pre>
 <pre class="r"><code># Database of Human
-hs &lt;- query(ah, c(&quot;OrgDb&quot;, &quot;Homo sapiens&quot;))[[1]]</code></pre>
+hg &lt;- ah[[&quot;AH70572&quot;]]</code></pre>
 <pre><code>## downloading 0 resources</code></pre>
 <pre><code>## loading from cache 
-##     '/Users/tsuyusakikouki//.AnnotationHub/72902'</code></pre>
-<pre class="r"><code>LefttoRight &lt;- select(hs,
+##     'AH70572 : 77318'</code></pre>
+<pre class="r"><code>LefttoRight &lt;- select(hg,
   column=c(&quot;SYMBOL&quot;, &quot;ENTREZID&quot;),
   keytype=&quot;SYMBOL&quot;, keys=rowID)</code></pre>
 <pre><code>## 'select()' returned 1:1 mapping between keys and columns</code></pre>
@@ -833,13 +825,13 @@ hs &lt;- query(ah, c(&quot;OrgDb&quot;, &quot;Homo sapiens&quot;))[[1]]</code></
 </div>
 <div id="session-information" class="section level1 unnumbered">
 <h1>Session information</h1>
-<pre><code>## R version 3.5.0 (2018-04-23)
+<pre><code>## R version 3.6.0 (2019-04-26)
 ## Platform: x86_64-apple-darwin15.6.0 (64-bit)
-## Running under: macOS  10.14.5
+## Running under: macOS Mojave 10.14
 ## 
 ## Matrix products: default
-## BLAS: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRlapack.dylib
+## BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
 ## [1] C
@@ -849,114 +841,117 @@ hs &lt;- query(ah, c(&quot;OrgDb&quot;, &quot;Homo sapiens&quot;))[[1]]</code></
 ## [8] methods   base     
 ## 
 ## other attached packages:
-##  [1] AnnotationHub_2.14.5                   
-##  [2] Homo.sapiens_1.3.1                     
-##  [3] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
-##  [4] org.Hs.eg.db_3.7.0                     
-##  [5] GO.db_3.7.0                            
-##  [6] OrganismDbi_1.24.0                     
-##  [7] GenomicFeatures_1.34.8                 
-##  [8] GenomicRanges_1.34.0                   
-##  [9] GenomeInfoDb_1.18.2                    
-## [10] AnnotationDbi_1.44.0                   
-## [11] IRanges_2.16.0                         
-## [12] S4Vectors_0.20.1                       
-## [13] Biobase_2.42.0                         
-## [14] BiocGenerics_0.28.0                    
-## [15] scTensor_1.0.7                         
-## [16] BiocStyle_2.10.0                       
+##  [1] AnnotationHub_2.16.0                   
+##  [2] BiocFileCache_1.8.0                    
+##  [3] dbplyr_1.4.2                           
+##  [4] Homo.sapiens_1.3.1                     
+##  [5] TxDb.Hsapiens.UCSC.hg19.knownGene_3.2.2
+##  [6] org.Hs.eg.db_3.8.2                     
+##  [7] GO.db_3.8.2                            
+##  [8] OrganismDbi_1.26.0                     
+##  [9] GenomicFeatures_1.36.3                 
+## [10] GenomicRanges_1.36.0                   
+## [11] GenomeInfoDb_1.20.0                    
+## [12] AnnotationDbi_1.46.0                   
+## [13] IRanges_2.18.1                         
+## [14] S4Vectors_0.22.0                       
+## [15] Biobase_2.44.0                         
+## [16] BiocGenerics_0.30.0                    
+## [17] scTensor_1.0.6                         
+## [18] BiocStyle_2.12.0                       
 ## 
 ## loaded via a namespace (and not attached):
-##   [1] tagcloud_0.6                  tidyselect_0.2.5             
-##   [3] heatmaply_0.16.0              RSQLite_2.1.1                
-##   [5] htmlwidgets_1.3               grid_3.5.0                   
-##   [7] MeSH.PCR.db_1.11.0            TSP_1.1-7                    
-##   [9] BiocParallel_1.16.6           munsell_0.5.0                
-##  [11] codetools_0.2-15              misc3d_0.8-4                 
-##  [13] GOSemSim_2.8.0                colorspace_1.4-1             
-##  [15] Category_2.48.1               knitr_1.23                   
-##  [17] rstudioapi_0.10               SingleCellExperiment_1.4.1   
-##  [19] DOSE_3.8.2                    urltools_1.7.3               
-##  [21] GenomeInfoDbData_1.2.0        polyclip_1.10-0              
-##  [23] farver_1.1.0                  bit64_0.9-7                  
-##  [25] MeSH.Aca.eg.db_1.11.0         MeSH.Bsu.168.eg.db_1.11.0    
-##  [27] xfun_0.8                      biovizBase_1.30.1            
-##  [29] gclus_1.3.2                   R6_2.4.0                     
-##  [31] seriation_1.2-7               fields_9.8-3                 
-##  [33] AnnotationFilter_1.6.0        gridGraphics_0.4-1           
-##  [35] fgsea_1.8.0                   bitops_1.0-6                 
-##  [37] DelayedArray_0.8.0            assertthat_0.2.1             
-##  [39] MeSH.AOR.db_1.11.0            nnTensor_0.99.4              
-##  [41] promises_1.0.1                scales_1.0.0                 
-##  [43] ggraph_1.0.2                  enrichplot_1.2.0             
-##  [45] nnet_7.3-12                   gtable_0.3.0                 
-##  [47] MeSHDbi_1.18.0                spam_2.2-2                   
-##  [49] ensembldb_2.6.8               rlang_0.4.0                  
-##  [51] genefilter_1.64.0             splines_3.5.0                
-##  [53] rtracklayer_1.42.2            lazyeval_0.2.2               
-##  [55] acepack_1.4.1                 dichromat_2.0-0              
-##  [57] europepmc_0.3                 checkmate_1.9.3              
-##  [59] reshape2_1.4.3                BiocManager_1.30.4           
-##  [61] yaml_2.2.0                    abind_1.4-5                  
-##  [63] backports_1.1.4               httpuv_1.5.1                 
-##  [65] qvalue_2.14.1                 Hmisc_4.2-0                  
-##  [67] RBGL_1.58.2                   tools_3.5.0                  
-##  [69] bookdown_0.11                 ggplotify_0.0.3              
-##  [71] ggplot2_3.2.0                 gplots_3.0.1.1               
-##  [73] RColorBrewer_1.1-2            cummeRbund_2.24.0            
-##  [75] ggridges_0.5.1                MeSH.Syn.eg.db_1.11.0        
-##  [77] Rcpp_1.0.1                    plyr_1.8.4                   
-##  [79] base64enc_0.1-3               progress_1.2.2               
-##  [81] zlibbioc_1.28.0               purrr_0.3.2                  
-##  [83] RCurl_1.95-4.12               prettyunits_1.0.2            
-##  [85] rpart_4.1-13                  viridis_0.5.1                
-##  [87] cowplot_0.9.4                 ggrepel_0.8.1                
-##  [89] SummarizedExperiment_1.12.0   cluster_2.0.7-1              
-##  [91] MeSH.Hsa.eg.db_1.11.0         magrittr_1.5                 
-##  [93] data.table_1.12.2             DO.db_2.9                    
-##  [95] MeSH.db_1.11.0                triebeard_0.3.0              
-##  [97] reactome.db_1.66.0            ProtGenerics_1.14.0          
-##  [99] matrixStats_0.54.0            hms_0.4.2                    
-## [101] mime_0.7                      evaluate_0.14                
-## [103] xtable_1.8-4                  XML_3.98-1.20                
-## [105] gridExtra_2.3                 compiler_3.5.0               
-## [107] biomaRt_2.38.0                tibble_2.1.3                 
-## [109] maps_3.3.0                    KernSmooth_2.23-15           
-## [111] crayon_1.3.4                  htmltools_0.3.6              
-## [113] GOstats_2.48.0                rTensor_1.4                  
-## [115] later_0.8.0                   Formula_1.2-3                
-## [117] tidyr_0.8.3                   ReactomePA_1.26.0            
-## [119] DBI_1.0.0                     tweenr_1.0.1                 
-## [121] rappdirs_0.3.1                MASS_7.3-49                  
-## [123] Matrix_1.2-14                 gdata_2.18.0                 
-## [125] Gviz_1.26.5                   dotCall64_1.0-0              
-## [127] igraph_1.2.4.1                pkgconfig_2.0.2              
-## [129] rvcheck_0.1.3                 GenomicAlignments_1.18.1     
-## [131] registry_0.5-1                foreign_0.8-70               
-## [133] plotly_4.9.0                  xml2_1.2.0                   
-## [135] foreach_1.4.4                 annotate_1.60.1              
-## [137] webshot_0.5.1                 XVector_0.22.0               
-## [139] AnnotationForge_1.24.0        stringr_1.4.0                
-## [141] VariantAnnotation_1.28.13     digest_0.6.19                
-## [143] graph_1.60.0                  Biostrings_2.50.2            
-## [145] fastmatch_1.1-0               rmarkdown_1.13               
-## [147] htmlTable_1.13.1              dendextend_1.12.0            
-## [149] GSEABase_1.44.0               curl_3.3                     
-## [151] graphite_1.28.2               shiny_1.3.2                  
-## [153] Rsamtools_1.34.1              gtools_3.8.1                 
-## [155] meshr_1.18.0                  outliers_0.14                
-## [157] jsonlite_1.6                  viridisLite_0.3.0            
-## [159] BSgenome_1.50.0               pillar_1.4.1                 
-## [161] lattice_0.20-35               httr_1.4.0                   
-## [163] plotrix_3.7-6                 survival_2.41-3              
-## [165] interactiveDisplayBase_1.20.0 glue_1.3.1                   
-## [167] UpSetR_1.4.0                  fdrtool_1.2.15               
-## [169] iterators_1.0.10              plot3D_1.1.1                 
-## [171] bit_1.1-14                    Rgraphviz_2.26.0             
-## [173] ggforce_0.2.2                 stringi_1.4.3                
-## [175] blob_1.1.1                    latticeExtra_0.6-28          
-## [177] caTools_1.17.1.2              memoise_1.1.0                
-## [179] dplyr_0.8.1</code></pre>
+##   [1] rappdirs_0.3.1                rtracklayer_1.44.0           
+##   [3] AnnotationForge_1.26.0        tidyr_0.8.3                  
+##   [5] ggplot2_3.2.0                 acepack_1.4.1                
+##   [7] bit64_0.9-7                   knitr_1.23                   
+##   [9] DelayedArray_0.10.0           data.table_1.12.2            
+##  [11] rpart_4.1-15                  RCurl_1.95-4.12              
+##  [13] AnnotationFilter_1.8.0        cowplot_0.9.4                
+##  [15] RSQLite_2.1.1                 europepmc_0.3                
+##  [17] bit_1.1-14                    enrichplot_1.4.0             
+##  [19] webshot_0.5.1                 xml2_1.2.0                   
+##  [21] httpuv_1.5.1                  SummarizedExperiment_1.14.0  
+##  [23] assertthat_0.2.1              viridis_0.5.1                
+##  [25] xfun_0.8                      hms_0.5.0                    
+##  [27] evaluate_0.14                 promises_1.0.1               
+##  [29] TSP_1.1-7                     progress_1.2.2               
+##  [31] caTools_1.17.1.2              dendextend_1.12.0            
+##  [33] Rgraphviz_2.28.0              igraph_1.2.4.1               
+##  [35] DBI_1.0.0                     htmlwidgets_1.3              
+##  [37] MeSH.db_1.12.0                purrr_0.3.2                  
+##  [39] dplyr_0.8.3                   backports_1.1.4              
+##  [41] bookdown_0.11                 annotate_1.62.0              
+##  [43] biomaRt_2.40.1                vctrs_0.2.0                  
+##  [45] SingleCellExperiment_1.6.0    ensembldb_2.8.0              
+##  [47] abind_1.4-5                   ggforce_0.2.2                
+##  [49] Gviz_1.28.0                   triebeard_0.3.0              
+##  [51] BSgenome_1.52.0               checkmate_1.9.4              
+##  [53] GenomicAlignments_1.20.1      gclus_1.3.2                  
+##  [55] fdrtool_1.2.15                prettyunits_1.0.2            
+##  [57] cluster_2.1.0                 DOSE_3.10.2                  
+##  [59] dotCall64_1.0-0               lazyeval_0.2.2               
+##  [61] crayon_1.3.4                  genefilter_1.66.0            
+##  [63] pkgconfig_2.0.2               tweenr_1.0.1                 
+##  [65] ProtGenerics_1.16.0           seriation_1.2-7              
+##  [67] nnet_7.3-12                   rlang_0.4.0                  
+##  [69] meshr_1.20.0                  MeSHDbi_1.20.0               
+##  [71] registry_0.5-1                MeSH.PCR.db_1.12.0           
+##  [73] rTensor_1.4                   GOstats_2.50.0               
+##  [75] dichromat_2.0-0               polyclip_1.10-0              
+##  [77] matrixStats_0.54.0            graph_1.62.0                 
+##  [79] Matrix_1.2-17                 urltools_1.7.3               
+##  [81] base64enc_0.1-3               ggridges_0.5.1               
+##  [83] viridisLite_0.3.0             MeSH.AOR.db_1.12.0           
+##  [85] bitops_1.0-6                  KernSmooth_2.23-15           
+##  [87] spam_2.2-2                    MeSH.Bsu.168.eg.db_1.12.0    
+##  [89] Biostrings_2.52.0             blob_1.2.0                   
+##  [91] stringr_1.4.0                 qvalue_2.16.0                
+##  [93] nnTensor_0.99.4               gridGraphics_0.4-1           
+##  [95] reactome.db_1.68.0            scales_1.0.0                 
+##  [97] memoise_1.1.0                 graphite_1.30.0              
+##  [99] GSEABase_1.46.0               magrittr_1.5                 
+## [101] plyr_1.8.4                    gplots_3.0.1.1               
+## [103] gdata_2.18.0                  zlibbioc_1.30.0              
+## [105] compiler_3.6.0                RColorBrewer_1.1-2           
+## [107] plotrix_3.7-6                 Rsamtools_2.0.0              
+## [109] XVector_0.24.0                Category_2.50.0              
+## [111] MeSH.Aca.eg.db_1.12.0         htmlTable_1.13.1             
+## [113] Formula_1.2-3                 MASS_7.3-51.4                
+## [115] tidyselect_0.2.5              stringi_1.4.3                
+## [117] MeSH.Syn.eg.db_1.12.0         yaml_2.2.0                   
+## [119] GOSemSim_2.10.0               latticeExtra_0.6-28          
+## [121] ggrepel_0.8.1                 grid_3.6.0                   
+## [123] VariantAnnotation_1.30.1      fastmatch_1.1-0              
+## [125] tools_3.6.0                   rstudioapi_0.10              
+## [127] foreach_1.4.4                 foreign_0.8-71               
+## [129] tagcloud_0.6                  outliers_0.14                
+## [131] gridExtra_2.3                 farver_1.1.0                 
+## [133] ggraph_1.0.2                  digest_0.6.20                
+## [135] rvcheck_0.1.3                 BiocManager_1.30.4           
+## [137] shiny_1.3.2                   Rcpp_1.0.1                   
+## [139] later_0.8.0                   httr_1.4.0                   
+## [141] cummeRbund_2.26.0             biovizBase_1.32.0            
+## [143] colorspace_1.4-1              XML_3.98-1.20                
+## [145] splines_3.6.0                 fields_9.8-3                 
+## [147] RBGL_1.60.0                   ggplotify_0.0.3              
+## [149] plotly_4.9.0                  xtable_1.8-4                 
+## [151] jsonlite_1.6                  heatmaply_0.16.0             
+## [153] UpSetR_1.4.0                  zeallot_0.1.0                
+## [155] R6_2.4.0                      MeSH.Hsa.eg.db_1.12.0        
+## [157] Hmisc_4.2-0                   pillar_1.4.2                 
+## [159] htmltools_0.3.6               mime_0.7                     
+## [161] glue_1.3.1                    BiocParallel_1.18.0          
+## [163] interactiveDisplayBase_1.22.0 codetools_0.2-16             
+## [165] maps_3.3.0                    fgsea_1.10.0                 
+## [167] lattice_0.20-38               tibble_2.1.3                 
+## [169] curl_3.3                      gtools_3.8.1                 
+## [171] ReactomePA_1.28.0             misc3d_0.8-4                 
+## [173] survival_2.44-1.1             rmarkdown_1.13               
+## [175] munsell_0.5.0                 DO.db_2.9                    
+## [177] GenomeInfoDbData_1.2.1        plot3D_1.1.1                 
+## [179] iterators_1.0.10              reshape2_1.4.3               
+## [181] gtable_0.3.0</code></pre>
 </div>
 
 

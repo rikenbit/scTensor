@@ -138,8 +138,8 @@ input <- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
 ah <- AnnotationHub()
 # Database of Human
-hs <- query(ah, c("OrgDb", "Homo sapiens"))[[1]]
-LefttoRight <- select(hs,
+hg <- ah[["AH70572"]]
+LefttoRight <- select(hg,
   column=c("ENSEMBL", "ENTREZID"),
   keytype="ENSEMBL", keys=rowID)
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
@@ -172,8 +172,8 @@ input <- matrix(1:20, nrow=4, ncol=5)
 # 3. Corresponding table
 ah <- AnnotationHub()
 # Database of Human
-hs <- query(ah, c("OrgDb", "Homo sapiens"))[[1]]
-LefttoRight <- select(hs,
+hg <- ah[["AH70572"]]
+LefttoRight <- select(hg,
   column=c("SYMBOL", "ENTREZID"),
   keytype="SYMBOL", keys=rowID)
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
