@@ -1700,6 +1700,7 @@
     names(goannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
         "Bta", "Cel", "Dme", "Dre", "Gga", "Ssc")
     goannotation <- goannotation[spc]
+    if(!requireNamespace(goannotation, quietly=TRUE)) install(goannotation)
     meshannotation <- paste0("MeSH.",
         c("Hsa", "Mmu", "Ath", "Rno", "Bta", "Cel",
         "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc"), ".eg.db")

@@ -5,6 +5,7 @@ import(knitr)
 import(RSQLite)
 import(AnnotationHub)
 
+importFrom(BiocManager, install)
 importFrom(AnnotationDbi, toTable)
 importFrom(igraph, graph.data.frame, bipartite_mapping, max_bipartite_match, graph.empty, add.vertices, add.edges, "E<-", "V<-", V, E, layout_with_dh, plot.igraph, get.edgelist)
 importFrom(reactome.db, reactomeEXTID2PATHID)
