@@ -12,7 +12,7 @@ SVD is performed in each mode.
 \usage{
 cellCellRanks(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, ftt=TRUE, thr1=0.9, thr2=0.9, thr3=0.9)
+    num.sampling=100, assayNames = "counts", thr1=0.9, thr2=0.9, thr3=0.9)
 }
 
 \arguments{
@@ -38,8 +38,8 @@ or "all" (all possible cell-cell pairing) is calculed (Default: "random").
 The number of random sampling used
 (Default: 100).
 }
-\item{ftt}{
-When the value is TRUE, Freeman-Tuckey transformation (FTT) of data matrix is calculated (Default: TRUE).
+\item{assayNames}{
+The unit of gene expression for using scTensor (e.g. normcounts, cpm...etc) (Default: "counts").
 }
 \item{thr1}{
 The threshold for selection of top eigenvalues of mode-1 matricised data tensor (Default: 0.9 (0 to 1)).

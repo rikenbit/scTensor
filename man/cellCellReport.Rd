@@ -13,7 +13,7 @@ The result is saved as HTML report which contains with multiple files.
 cellCellReport(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, upper=30)
+    author="The person who runs this script", assayNames = "counts", thr=100, top="full", p=0.05, upper=20)
 }
 
 \arguments{
@@ -37,9 +37,12 @@ The title of HTML report (Default: "The result of scTensor").
 \item{author}{
 The author of HTML report (Default: "The person who runs this script").
 }
+\item{assayNames}{
+The unit of gene expression for using scTensor (e.g. normcounts, cpm...etc) (Default: "counts").
+}
 \item{thr}{
 The threshold for selection of top pecentage of core tensor elements
-(Default: 40 (1 to 100)).
+(Default: 100 (1 to 100)).
 }
 \item{top}{
 top genes in each (*,*,*)-pattern which are selected and summarized in the report (Default: "full")
@@ -48,7 +51,7 @@ top genes in each (*,*,*)-pattern which are selected and summarized in the repor
 The threshold of p-value of the enrichment analysis (Default: 1E-2)
 }
 \item{upper}{
-The maxium number of HTML reports generates (Default: 30)
+The maxium number of HTML reports generates (Default: 20)
 }
 }
 
@@ -63,21 +66,37 @@ The result is saved as HTML report which contains with multiple files.
 
 \examples{
 	if(interactive()){
+	# Package Loading
 	library("SingleCellExperiment")
 	library("LRBase.Hsa.eg.db")
 	library("MeSH.Hsa.eg.db")
 
+	# Data Loading
 	data(GermMale)
 	data(labelGermMale)
 	data(tsneGermMale)
+
+	# SingleCellExperiment Object
 	sce <- SingleCellExperiment(assays=list(counts = GermMale))
 	reducedDims(sce) <- SimpleList(TSNE=tsneGermMale$Y)
+
+	# User's Original Normalization Function
+	CPMED <- function(input){
+	    libsize <- colSums(input)
+	    median(libsize) * t(t(input) / libsize)
+	}
+	# Normalization
+	normcounts(sce) <- log10(CPMED(counts(sce)) + 1)
+	# Registration of required information into metadata(sce)
 	cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
-	rks <- cellCellRanks(sce)
-	cellCellDecomp(sce, ranks=rks$selected)
-	cellCellReport(sce, reducedDimNames="TSNE",
+	# Rank Estimation
+	rks <- cellCellRanks(sce, assayNames="normcounts")
+	# CCI Tensor Decomposition
+	cellCellDecomp(sce, ranks=rks$selected, assayNames="normcounts")
+	# HTML Report
+	cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
 	    title="Cell-cell interaction within Germline_Male, GSE86146",
-	    author="Koki Tsuyuzaki", thr=20, html.open=TRUE)
+	    author="Koki Tsuyuzaki", html.open=TRUE, upper=2)
 	if(.Device == "quartz"){
 		dev.off()
 	}

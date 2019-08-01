@@ -1,8 +1,8 @@
 Package: scTensor
 Type: Package
 Title: Detection of cell-cell interaction from single-cell RNA-seq dataset by tensor decomposition
-Version: 1.0.9
-Date: 2019-07-27
+Version: 1.0.10
+Date: 2019-08-1
 Authors@R: person("Koki", "Tsuyuzaki", role = c("aut", "cre"), email = "k.t.the-answer@hotmail.co.jp")
 Depends: R (>= 3.5.0)
 Imports: methods, RSQLite, igraph, S4Vectors, plotly, reactome.db, AnnotationDbi, SummarizedExperiment, SingleCellExperiment, nnTensor, rTensor, abind, plotrix, heatmaply, tagcloud, rmarkdown, BiocStyle, knitr, AnnotationHub, MeSHDbi, grDevices, graphics, stats, utils, outliers, Category, meshr, GOstats, ReactomePA, DOSE, crayon, checkmate, BiocManager

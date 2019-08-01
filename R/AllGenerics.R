@@ -3,10 +3,12 @@
 #
 setGeneric("cellCellSetting", function(sce, lrbase, color, label){
     standardGeneric("cellCellSetting")})
+
 setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
     function(sce, lrbase, color, label){
         userobjects <- deparse(substitute(sce))
         .cellCellSetting(userobjects, lrbase, color, label, sce)})
+
 .cellCellSetting <- function(userobjects, lrbase, color, label, ...){
     sce <- list(...)[[1]]
     # class-check
@@ -62,29 +64,28 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
 #
 setGeneric("cellCellRanks", function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, ftt=TRUE, thr1=0.9, thr2=0.9, thr3=0.9){
+    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=0.9){
     standardGeneric("cellCellRanks")})
+
 setMethod("cellCellRanks",
     signature(sce="SingleCellExperiment"),
     function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, ftt=TRUE, thr1=0.9, thr2=0.9, thr3=0.9){
+    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=0.9){
         # Argument Check
         mergeas <- match.arg(mergeas)
         outer <- match.arg(outer)
         comb <- match.arg(comb)
         .cellCellRanks(centering, mergeas, outer, comb, num.sampling,
-            ftt, thr1, thr2, thr3, sce)
+            assayNames, thr1, thr2, thr3, sce)
     })
+
 .cellCellRanks <- function(centering, mergeas, outer, comb, num.sampling,
-    ftt, thr1, thr2, thr3, ...){
+    assayNames, thr1, thr2, thr3, ...){
     # Import from sce object
     sce <- list(...)[[1]]
-    if(ftt){
-        input <- .FTT(assay(sce))
-    }else{
-        input <- assay(sce)
-    }
+    # Import expression matrix
+    input <- .importAssays(sce, assayNames)
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
     LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
     LR <- unique(LR)
@@ -125,18 +126,19 @@ setMethod("cellCellRanks",
 #
 # cellCellDecomp
 #
-setGeneric("cellCellDecomp", function(sce, algorithm=c("ntd", "nmf", "pearson",
+setGeneric("cellCellDecomp", function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
     "pcomb", "label.permutation"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
     centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
-    comb=c("random", "all"), num.sampling=100, decomp=TRUE, ftt=TRUE){
+    comb=c("random", "all"), num.sampling=100, assayNames="counts", decomp=TRUE){
     standardGeneric("cellCellDecomp")})
+
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
-    function(sce, algorithm=c("ntd", "nmf", "pearson", "spearman", "distance",
+    function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson", "spearman", "distance",
         "pearson.lr", "spearman.lr", "distance.lr", "pcomb", "label.permutation"), ranks=c(3,3,3),
         rank=3, thr1=log2(5), thr2=25, centering=TRUE,
         mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-        num.sampling=100, decomp=TRUE, ftt=TRUE){
+        num.sampling=100, assayNames="counts", decomp=TRUE){
         # Argument Check
         algorithm = match.arg(algorithm)
         mergeas = match.arg(mergeas)
@@ -145,17 +147,14 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 
         userobjects <- deparse(substitute(sce))
         .cellCellDecomp(userobjects, algorithm, ranks, rank, thr1, thr2,
-            centering, mergeas, outer, comb, num.sampling, decomp, ftt, sce)})
+            centering, mergeas, outer, comb, num.sampling, assayNames, decomp, sce)})
 
 .cellCellDecomp <- function(userobjects, algorithm, ranks, rank, thr1,
-    thr2, centering, mergeas, outer, comb, num.sampling, decomp, ftt, ...){
+    thr2, centering, mergeas, outer, comb, num.sampling, assayNames, decomp,  ...){
     # Import from sce object
     sce <- list(...)[[1]]
-    if(ftt){
-        input <- .FTT(assay(sce))
-    }else{
-        input <- assay(sce)
-    }
+    # Import expression matrix
+    input <- .importAssays(sce, assayNames)
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
     LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
     LR <- unique(LR)
@@ -190,7 +189,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     }
 
     # Data size
-    if (algorithm == "ntd"){
+    if (algorithm == "ntd" || algorithm == "ntd2"){
         datasize <- c(ncol(res.sctensor[[2]]), ncol(res.sctensor[[3]]),
             ncol(res.sctensor[[4]]))
         recerror <- res.sctensor$recerror
@@ -215,24 +214,26 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, upper=30){
+    author="The person who runs this script", assayNames="counts", thr=100, top="full", p=0.05, upper=20){
     standardGeneric("cellCellReport")})
+
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
-    function(sce, reducedDimNames, out.dir, html.open, title, author,
+    function(sce, reducedDimNames, out.dir, html.open, title, author, assayNames,
         thr, top, p, upper){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, thr, top, p, upper, sce)})
+            html.open, title, author, assayNames, thr, top, p, upper, sce)})
+
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", thr=40, top="full", p=0.05, upper=30, ...){
+    author="The person who runs this script", assayNames="counts", thr=100, top="full", p=0.05, upper=20, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
-    if(metadata(sce)$algorithm != "ntd"){
+    if(metadata(sce)$algorithm != "ntd" && metadata(sce)$algorithm != "ntd2"){
         stop(paste0("cellCellReport can be performed by the result of",
             " cellCellDecomp in which the algorithm is ",
-            "specified as 'ntd' for now."))
+            "specified as 'ntd' or 'ntd2' for now."))
     }
     # The Directory for saving the analytical result
     dir.create(paste0(out.dir, "/figures"),
@@ -244,208 +245,32 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     dir.create(paste0(out.dir, "/figures/Tagcloud"),
         showWarnings = FALSE, recursive = TRUE)
     # File copy
-    file.copy(
-        from = system.file("extdata", "Workflow.jpeg", package = "scTensor"),
-        to = paste0(out.dir, "/Workflow.jpeg"),
-        overwrite = TRUE)
-
-    # Core Tensor
-    index <- metadata(sce)$sctensor$index
-    corevalue <- index[, "Value"]
-    corevalue <- corevalue / sum(corevalue) * 100
-    # Thresholding of the elements of core tensor
-    selected <- which(cumsum(corevalue) <= thr)
-    if(length(selected) > upper){
-        selected <- seq_len(upper)
+    if(metadata(sce)$algorithm == "ntd"){
+        file.copy(
+            from = system.file("extdata", "Workflow.png", package = "scTensor"),
+            to = paste0(out.dir, "/Workflow.png"),
+            overwrite = TRUE)
     }
-    if(length(selected) == 0){
-        message(paste0("None of core tensor element is selected.\n",
-        "Please specify the larger thr or perform cellCellDecomp\n",
-        "with smaller ranks such as c(3,3,3)."))
-    }else{
-        names(corevalue) <- c(rep("selected", length=length(selected)),
-            rep("not selected",
-            length=length(corevalue) - length(selected)))
-        # Data matrix
-        input <- assay(sce)
-        # Low dimensional data
-        twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
-        # Ligand-Receptor, PMID
-        con = dbConnect(SQLite(), metadata(sce)$lrbase)
-        LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
-            c("GENEID_L", "GENEID_R", "SOURCEID")]
-        LR <- unique(LR)
-        dbDisconnect(con)
-        # Species
-        spc <- gsub(".eg.db.sqlite", "",
-            strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
-        # biomaRt Setting
-        ah <- .annotationhub[[spc]]()
-        # GeneName, Description, GO, Reactome, MeSH
-        GeneInfo <- .geneinformation(sce, ah, spc, LR)
-        # Cell Label
-        celltypes <- metadata(sce)$color
-        names(celltypes) <- metadata(sce)$label
+    if(metadata(sce)$algorithm == "ntd2"){
+        file.copy(
+            from = system.file("extdata", "Workflow_2.png", package = "scTensor"),
+            to = paste0(out.dir, "/Workflow_2.png"),
+            overwrite = TRUE)
+    }
 
-        # Plot Ligand/Receptor Genes
-        invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
-        # Plot (Each <L,R,*>)
-        vapply(seq_along(selected), function(i){
-            filenames <- paste0(out.dir,
-                "/figures/CCIHypergraph_", index[i, 1],
-                "_", index[i, 2], ".png")
-            png(filename=filenames, width=2000, height=950)
-            invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
-                twoDplot=twoD,
-                label=celltypes,
-                emph=index[i, seq_len(2)]))
-            dev.off()
-        }, 0L)
-        # <*,*,LR>
-        SelectedLR <- sort(unique(index[selected, "Mode3"]))
-
-        # Setting for Parallel Computing
-        message(paste0(length(SelectedLR),
-            " LR vectors will be calculated :"))
-        e <<- new.env()
-        e$p <- p
-        e$index <- index
-        e$sce <- sce
-        e$.HCLUST <- .HCLUST
-        e$.OUTLIERS <- .OUTLIERS
-        e$top <- top
-        e$spc <- spc
-        e$GeneInfo <- GeneInfo
-        e$out.dir <- out.dir
-        e$.smallTwoDplot <- .smallTwoDplot
-        e$input <- input
-        e$twoD <- twoD
-        e$.hyperLinks <- .hyperLinks
-        e$LR <- LR
-        e$.eachVecLR <- .eachVecLR
-        e$.eachRender <- .eachRender
-        e$.XYZ_HEADER1 <- .XYZ_HEADER1
-        e$.XYZ_HEADER2 <- .XYZ_HEADER2
-        e$.XYZ_HEADER3 <- .XYZ_HEADER3
-        e$.XYZ_ENRICH <- .XYZ_ENRICH
-
-        # EachVec（Heavy...）
-        out.vecLR <- vapply(SelectedLR,
-            function(x, e){.eachVecLR(x, e)},
-            FUN.VALUE=rep(list(0L), 9), e=e)
-        colnames(out.vecLR) <- paste0("pattern", SelectedLR)
-        e$out.vecLR <- out.vecLR
-
-        # Tagcloud
-        invisible(.tagCloud(out.vecLR, out.dir))
-        # Plot（CCI Hypergraph）
-        par(ask=FALSE)
-        png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
-            width=2000, height=950)
-        invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
-            twoDplot=twoD, label=celltypes))
-        dev.off()
-        # Plot（Gene-wise Hypergraph）
-        par(ask=FALSE)
-        invisible(.geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
-
-        # Rmd（ligand, selected）
-        message("ligand.Rmd is created...")
-        outLg <- file(paste0(out.dir, "/ligand.Rmd"), "w")
-        writeLines(.LIGAND_HEADER, outLg, sep="\n")
-        writeLines(.LIGAND_BODY(out.vecLR, GeneInfo, index, selected),
-            outLg, sep="\n")
-        close(outLg)
-        # Rmd（receptor, selected）
-        message("receptor.Rmd is created...")
-        outRp <- file(paste0(out.dir, "/receptor.Rmd"), "w")
-        writeLines(.RECEPTOR_HEADER, outRp, sep="\n")
-        writeLines(.RECEPTOR_BODY(out.vecLR, GeneInfo, index, selected),
-            outRp, sep="\n")
-        close(outRp)
-        # Rmd（ligand, all）
-        message("ligand_all.Rmd is created...")
-        outLg_all <- file(paste0(out.dir, "/ligand_all.Rmd"), "w")
-        writeLines(.LIGANDALL_HEADER, outLg_all, sep="\n")
-        writeLines(.LIGANDALL_BODY(GeneInfo, LR, input),
-            outLg_all, sep="\n")
-        close(outLg_all)
-        # Rmd（receptor, all）
-        message("receptor_all.Rmd is created...")
-        outRp_all <- file(paste0(out.dir, "/receptor_all.Rmd"), "w")
-        writeLines(.RECEPTORALL_HEADER, outRp_all, sep="\n")
-        writeLines(.RECEPTORALL_BODY(GeneInfo, LR, input),
-            outRp_all, sep="\n")
-        close(outRp_all)
-
-        # Number of Patterns
-        vecL <- metadata(sce)$sctensor$ligand
-        vecR <- metadata(sce)$sctensor$receptor
-        numLPattern <- nrow(vecL)
-        numRPattern <- nrow(vecR)
-        col.ligand <- .setColor("reds")
-        col.receptor <- .setColor("blues")
-        # Clustering
-        ClusterL <- t(apply(vecL, 1, .HCLUST))
-        ClusterR <- t(apply(vecR, 1, .HCLUST))
-        # Ligand Pattern
-        invisible(.ligandPatternPlot(numLPattern, celltypes, sce, col.ligand, ClusterL, out.dir, twoD))
-        # Receptor Pattern
-        invisible(.receptorPatternPlot(numRPattern, celltypes, sce,
-            col.receptor, ClusterR, out.dir, twoD))
-        # Save the result of scTensor
-        save(sce, input, twoD, LR, celltypes, index, corevalue,
-            selected, ClusterL, ClusterR, out.vecLR,
-            file=paste0(out.dir, "/reanalysis.RData"))
-
-        # Rendering
-        message("ligand.Rmd is compiled to ligand.html...")
-        render(paste0(out.dir, "/ligand.Rmd"), quiet=TRUE)
-        message("ligand_all.Rmd is compiled to ligand_all.html...")
-        render(paste0(out.dir, "/ligand_all.Rmd"), quiet=TRUE)
-        message("receptor.Rmd is compiled to receptor.html...")
-        render(paste0(out.dir, "/receptor.Rmd"), quiet=TRUE)
-        message("receptor_all.Rmd is compiled to receptor_all.html...")
-        render(paste0(out.dir, "/receptor_all.Rmd"), quiet=TRUE)
-        message(paste0(length(selected),
-            " pattern_X_Y_Z.Rmd files are compiled to pattern_X_Y_Z.html :"))
-        vapply(selected,
-            function(x, e, SelectedLR){
-                .eachRender(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
-
-        # Output index.html
-        RMDFILES <- vapply(selected, function(x){
-            paste0(paste(c("pattern", index[x, seq_len(3)]),
-                collapse="_"), ".Rmd")
-        }, "")
-        message("index.Rmd is created...")
-        outIdx <- file(paste0(out.dir, "/index.Rmd"), "w")
-        writeLines(.MAINHEADER(author, title), outIdx, sep="\n")
-        writeLines(.BODY1, outIdx, sep="\n")
-        writeLines(.BODY2, outIdx, sep="\n")
-        writeLines(.BODY3(numLPattern, ClusterL), outIdx, sep="\n")
-        writeLines(.BODY4(numRPattern, ClusterR), outIdx, sep="\n")
-        writeLines(.BODY5, outIdx, sep="\n")
-        writeLines(.BODY6, outIdx, sep="\n")
-        writeLines(.BODY7, outIdx, sep="\n")
-        if(length(selected) != 0){
-            writeLines(.BODY8(selected, RMDFILES, index, corevalue),
-                outIdx, sep="\n")
-        }
-        writeLines(.BODY9, outIdx, sep="\n")
-        writeLines(.BODY10, outIdx, sep="\n")
-        close(outIdx)
-
-        # Rendering
-        message("index.Rmd is compiled to index.html...")
-        render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
-        message(paste0("################################################\n",
-            "Data files are saved in\n",
-            out.dir, "\n################################################\n"))
-        # HTML Open
-        if(html.open){
-            browseURL(paste0(out.dir, "/index.html"))
-        }
+    # HTML Report
+    if(metadata(sce)$algorithm == "ntd"){
+        .cellCellReport.Third(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top)
+    }
+    if(metadata(sce)$algorithm == "ntd2"){
+        .cellCellReport.Third_2(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top)
+    }
+    # HTML Open
+    message(paste0("################################################\n",
+        "Data files are saved in\n",
+        out.dir, "\n################################################\n"))
+    if(html.open){
+        browseURL(paste0(out.dir, "/index.html"))
     }
 }
 
