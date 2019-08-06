@@ -1962,7 +1962,7 @@
     "        toc_depth: 2\n",
     "---\n",
     "# <font color='#1881c2'>(", paste(index[i, seq_len(2)], collapse=","),
-    ",\\*) Pattern</font>\n\n",
+    ",:) Pattern</font>\n\n",
     "![](figures/CCIHypergraph_",
     paste(index[i, seq_len(2)], collapse="_"), ".png)\n\n")
     sub("XXXXX", TITLE, HEADER)
@@ -1971,7 +1971,7 @@
 .XYZ_HEADER1_2 <- function(index, i){
     TITLE <- paste0("Details of (",
     paste(c(index[i, seq_len(2)], ""), collapse=","),
-    ") -related LR-pairs")
+    ") -related L-R pairs")
     HEADER <- paste0("---\n",
     "title: <font color='#87b13f'>XXXXX</font>\n",
     "output:\n",
@@ -1981,7 +1981,7 @@
     "        toc_depth: 2\n",
     "---\n",
     "# <font color='#1881c2'>(", paste(index[i, seq_len(2)], collapse=","),
-    ",\\*) Pattern</font>\n\n",
+    ",:) Pattern</font>\n\n",
     "![](figures/CCIHypergraph_",
     paste(index[i, seq_len(2)], collapse="_"), ".png)\n\n")
     sub("XXXXX", TITLE, HEADER)
@@ -2004,7 +2004,7 @@
 .XYZ_HEADER2_2 <- function(index, i, top){
     paste0("# <font color='#1881c2'>(",
     paste(c(index[i, seq_len(2)], ""), collapse=","),
-    ") -related LR-pairs (Top", top, " pairs)</font>\n\n",
+    ") -related L-R pairs (Top", top, " pairs)</font>\n\n",
     paste0("![](figures/GeneHypergraph_",
         paste0(index[i, seq_len(2)], collapse="_"),
         ".png)\n\n", collapse=""),
@@ -2049,9 +2049,8 @@
     "rownames of input data matrix and extracted as vector. ",
     "In this step, the gene identifier is limited as [NCBI ",
     "Gene ID](https://www.ncbi.nlm.nih.gov/gene) for now.\n\n",
-    "Next, the all elements of extracted two vectors are summed ",
-    "up with all possible combination (Kronecker sum) and summarized",
-    " as a matrix. ",
+    "Next, the outer product of two vectors are calculated ",
+    "and summarized as a matrix. ",
     "Here, the multiple matrices can be represented as a three-order",
     " \"tensor\" (Ligand-Cell * Receptor-Cell * LR-Pair). ",
     "scTensor decomposes the tensor into a small tensor (core tensor)",
@@ -2500,16 +2499,16 @@
         BODY8 <- vapply(selected, function(i){
             paste0("\n\n## (",
                 paste(c(index[i, seq_len(2)], ""), collapse=","),
-                ") -related LR Pairs : (", round(corevalue[i], 2), "%)\n",
+                ") -related L-R Pairs : (", round(corevalue[i], 2), "%)\n",
                 "[Details of (",
                 paste(c(index[i, seq_len(2)], ""), collapse=","),
-                ") -related LR Pairs", "](", htmlfiles[i], ")\n")
+                ") -related L-R Pairs", "](", htmlfiles[i], ")\n")
             }, "")
         BODY8 <- paste(BODY8, collapse = "\n")
         BODY8 <- paste0("# (Ligand-Cell, Receptor-Cell, )",
-            " -related LR Pairs\n\n", BODY8)
+            " -related L-R Pairs\n\n", BODY8)
     }else{
-        BODY8 <- "# (Ligand-Cell, Receptor-Cell, ) -related LR Pairs\n\n"
+        BODY8 <- "# (Ligand-Cell, Receptor-Cell, ) -related L-R Pairs\n\n"
     }
 }
 
@@ -3157,7 +3156,7 @@
         cciout <- vapply(vec, function(xx){
             paste0("[See the details of (",
                 paste(c(index[xx, paste0("Mode", 1:2)], ""), collapse=","),
-                ")-related LR patterns](",
+                ")-related L-R patterns](",
                 "pattern_",
                 paste(index[xx, paste0("Mode", 1:2)], collapse="_"),
                 ".html)")
@@ -3379,7 +3378,7 @@
         cciout <- vapply(vec, function(xx){
             paste0("[See the details of (",
                 paste(c(index[xx, paste0("Mode", 1:2)], ""), collapse=","),
-                ")-related LR patterns](",
+                ")-related L-R patterns](",
                 "pattern_",
                 paste(index[xx, paste0("Mode", 1:2)], collapse="_"),
                 ".html)")

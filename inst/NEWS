@@ -1,3 +1,7 @@
+VERSION 1.0.11
+------------------------
+   o Some bugs are fixed
+
 VERSION 1.0.10
 ------------------------
    o Tensor decomposition model is changed from non-negative Tucker3 to non-negative Tucker2
