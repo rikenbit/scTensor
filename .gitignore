@@ -185,6 +185,12 @@ $RECYCLE.BIN/
 # sshfs
 .fuse*
 
+.Rhistory
+*/.Rhistory
+*/*.Rhistory
+*/*/*.Rhistory
+*/*/*/*.Rhistory
+
 #############
 ## Python
 #############
