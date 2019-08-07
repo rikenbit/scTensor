@@ -645,7 +645,7 @@
         }else{
             core <- modeSum(out$S, m=3, drop=TRUE)@data
             if(ranks[1] == 1 || ranks[2] == 1){
-                core <- t(core)
+                dim(core) <- c(ranks[1], ranks[2])
             }
         }
         index <- .core2table_2(core)
