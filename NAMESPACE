@@ -39,5 +39,7 @@ importFrom(checkmate, assertClass, assertList)
 importFrom("stats", "rbinom", "rnbinom", "var")
 importFrom("utils", "data")
 
+importFrom(visNetwork, visNetwork, toVisNetworkData)
+
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
 export(cellCellSimulate, newCCSParams, convertToNCBIGeneID)

@@ -40,7 +40,7 @@
         # Plot Ligand/Receptor Genes
         invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
         # Plot (Each <L,R,*>)
-        vapply(seq_along(selected), function(i){
+        out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
                 "/figures/CCIHypergraph_", index[i, 1],
                 "_", index[i, 2], ".png")
@@ -102,7 +102,7 @@
         dev.off()
         # Plot（Gene-wise Hypergraph）
         par(ask=FALSE)
-        invisible(.geneHyperGraphPlot_2(out.vecLR, GeneInfo, out.dir))
+        invisible(g <- .geneHyperGraphPlot_2(out.vecLR, GeneInfo, out.dir))
 
         # Rmd（ligand, selected）
         message("ligand.Rmd is created...")
@@ -150,7 +150,7 @@
             col.receptor, ClusterR, out.dir, twoD))
         # Save the result of scTensor
         save(sce, input, twoD, LR, celltypes, index, corevalue,
-            selected, ClusterL, ClusterR, out.vecLR,
+            selected, ClusterL, ClusterR, out.vecLR, g,
             file=paste0(out.dir, "/reanalysis.RData"))
 
         # Rendering
@@ -164,7 +164,7 @@
         render(paste0(out.dir, "/receptor_all.Rmd"), quiet=TRUE)
         message(paste0(length(selected),
             " pattern_X_Y.Rmd files are compiled to pattern_X_Y.html :"))
-        vapply(selected,
+        out <- vapply(selected,
             function(x, e, SelectedLR){
                 .eachRender_2(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
 
@@ -238,7 +238,7 @@
         # Plot Ligand/Receptor Genes
         invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
         # Plot (Each <L,R,*>)
-        vapply(seq_along(selected), function(i){
+        out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
                 "/figures/CCIHypergraph_", index[i, 1],
                 "_", index[i, 2], ".png")
@@ -296,7 +296,7 @@
         dev.off()
         # Plot（Gene-wise Hypergraph）
         par(ask=FALSE)
-        invisible(.geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
+        invisible(g <- .geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
 
         # Rmd（ligand, selected）
         message("ligand.Rmd is created...")
@@ -344,7 +344,7 @@
             col.receptor, ClusterR, out.dir, twoD))
         # Save the result of scTensor
         save(sce, input, twoD, LR, celltypes, index, corevalue,
-            selected, ClusterL, ClusterR, out.vecLR,
+            selected, ClusterL, ClusterR, out.vecLR, g,
             file=paste0(out.dir, "/reanalysis.RData"))
 
         # Rendering
@@ -358,7 +358,7 @@
         render(paste0(out.dir, "/receptor_all.Rmd"), quiet=TRUE)
         message(paste0(length(selected),
             " pattern_X_Y_Z.Rmd files are compiled to pattern_X_Y_Z.html :"))
-        vapply(selected,
+        out <- vapply(selected,
             function(x, e, SelectedLR){
                 .eachRender(x, e, SelectedLR)}, "", e=e, SelectedLR=SelectedLR)
 
@@ -1082,7 +1082,7 @@
     if(!is.null(twoDplot)){
         # Setting
         maLR <- max(numLPattern, numRPattern)
-        if(1 <= maLR && maLR <= 12){
+        if(1 <= maLR && maLR <= 16){
             omasize <- .omasize(numLPattern, numRPattern)
             oma4 <- .oma4(numLPattern, numRPattern)
             #
@@ -1094,7 +1094,7 @@
             LOMA_1 = 48.85
             LOMA_2 = 42
             LOMA_3 = 4
-            vapply(seq_len(numLPattern), function(i){
+            out <- vapply(seq_len(numLPattern), function(i){
                 label.ligand <- unlist(vapply(names(label),
                     function(x){
                         outobj$ligand[paste0("Dim", i), x]
@@ -1119,7 +1119,7 @@
             ROMA_1 = 4
             ROMA_2 = 42
             ROMA_3 = 48.85
-            vapply(seq_len(numRPattern), function(i){
+            out <- vapply(seq_len(numRPattern), function(i){
                 label.receptor <- unlist(vapply(names(label),
                     function(x){
                         outobj$receptor[paste0("Dim", i), x]
@@ -1242,7 +1242,7 @@
     if(!is.null(twoDplot)){
         # Setting
         maLR <- max(numLPattern, numRPattern)
-        if(1 <= maLR && maLR <= 12){
+        if(1 <= maLR && maLR <= 16){
             omasize <- .omasize(numLPattern, numRPattern)
             oma4 <- .oma4(numLPattern, numRPattern)
             #
@@ -1254,7 +1254,7 @@
             LOMA_1 = 48.85
             LOMA_2 = 42
             LOMA_3 = 4
-            vapply(seq_len(numLPattern), function(i){
+            out <- vapply(seq_len(numLPattern), function(i){
                 label.ligand <- unlist(vapply(names(label),
                     function(x){
                         outobj$ligand[paste0("Dim", i), x]
@@ -1279,7 +1279,7 @@
             ROMA_1 = 4
             ROMA_2 = 42
             ROMA_3 = 48.85
-            vapply(seq_len(numRPattern), function(i){
+            out <- vapply(seq_len(numRPattern), function(i){
                 label.receptor <- unlist(vapply(names(label),
                     function(x){
                         outobj$receptor[paste0("Dim", i), x]
@@ -1304,15 +1304,19 @@
 }
 
 .omasize <- function(l, r){
-    # 1 - 12
-    c(44.7, 44.7, 22.4, 14.9, 11.15, 8.95,
-        7.45, 6.4, 5.6,4.98, 4.47, 4.06)[max(l, r)]
+    # 1 - 16
+    c(44.7, 44.7, 22.4, 14.9, 11.15,
+    8.95, 7.45, 6.4, 5.6, 4.98,
+    4.47, 4.06, 3.75, 3.52, 3.25,
+    3.05)[max(l, r)]
 }
 
 .oma4 <- function(l, r){
-    # 1 - 12
-    c(131.4, 131.4, 109.2, 101.5, 97.75, 95.5,
-        94.1, 93.1, 92.3, 91.7, 91.2, 90.7)[max(l, r)]
+    # 1 - 16
+    c(131.4, 131.4, 109.2, 101.5, 97.75,
+    95.5, 94.1, 93.1, 92.3, 91.7,
+    91.2, 90.7, 90.7, 91.70, 91.000,
+    91.000)[max(l, r)]
 }
 
 .smallTwoDplot <- function(input, geneid, genename, twoD, color){
@@ -1987,10 +1991,18 @@
     sub("XXXXX", TITLE, HEADER)
 }
 
-.XYZ_HEADER2 <- function(i, top){
+.XYZ_HEADER2 <- function(i, x, top){
     paste0("# <font color='#1881c2'>(\\*,\\*,", i, ") Pattern",
     " (Top", top, " LR-pairs)</font>\n\n",
-    paste0("![](figures/GeneHypergraph_", i, ".png)\n\n", collapse=""),
+    "```{r}\n", # Top
+    "library(\"visNetwork\")\n",
+    "load(\"reanalysis.RData\")\n\n",
+    "cols <- .setColor(\"many\")\n",
+    "visnetwork_data <- toVisNetworkData(g)\n",
+    "edges <- visnetwork_data$edges[visnetwork_data$edges$color == cols[", x, "], ]\n",
+    "nodes <- visnetwork_data$nodes[unique(c(edges$from, edges$to)), ]\n",
+    "visNetwork(nodes=nodes, edges=edges)\n",
+    "```\n\n", # Bottom
     "|Rank|Ligand Gene|Receptor Gene|",
     "Ligand Expression (Log10(exp + 1))|",
     "Receptor Expression (Log10(exp + 1))|",
@@ -2005,9 +2017,15 @@
     paste0("# <font color='#1881c2'>(",
     paste(c(index[i, seq_len(2)], ""), collapse=","),
     ") -related L-R pairs (Top", top, " pairs)</font>\n\n",
-    paste0("![](figures/GeneHypergraph_",
-        paste0(index[i, seq_len(2)], collapse="_"),
-        ".png)\n\n", collapse=""),
+    "```{r}\n", # Top
+    "library(\"visNetwork\")\n",
+    "load(\"reanalysis.RData\")\n\n",
+    "cols <- .setColor(\"many\")\n",
+    "visnetwork_data <- toVisNetworkData(g)\n",
+    "edges <- visnetwork_data$edges[visnetwork_data$edges$color == cols[", i, "], ]\n",
+    "nodes <- visnetwork_data$nodes[unique(c(edges$from, edges$to)), ]\n",
+    "visNetwork(nodes=nodes, edges=edges)\n",
+    "```\n\n", # Bottom
     "|Rank|Ligand Gene|Receptor Gene|",
     "Ligand Expression (Log10(exp + 1))|",
     "Receptor Expression (Log10(exp + 1))|",
@@ -2465,7 +2483,11 @@
 # 7. Gene-wise Hypergraph
 .BODY7 <- paste0(
     "\n\n# Gene-wise Hypergraph\n\n",
-    "![](figures/GeneHypergraph.png){ width=100% }\n",
+    "```{r}\n", # Top
+    "library(\"visNetwork\")\n",
+    "visnetwork_data <- toVisNetworkData(g)\n",
+    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "```\n\n", # Bottom
     "[Details of Ligand Gene-centric Overview (selected)](ligand.html)\n\n",
     "[Details of Ligand Gene-centric Overview (all)](ligand_all.html)\n\n",
     "[Details of Receptor Gene-centric Overview (selected)](receptor.html)\n\n",
@@ -2715,7 +2737,7 @@
 
     # Bottom part of Rmarkdown
     XYZ_BOTTOM <- paste(
-        c(.XYZ_HEADER2(indexLR, length(TARGET)),
+        c(.XYZ_HEADER2(indexLR, x, length(TARGET)),
         LINKS,
         .XYZ_HEADER3(indexLR),
         .XYZ_ENRICH(out.vecLR, indexLR)),
@@ -2881,7 +2903,7 @@
     dev.off()
 
     # Each Pattern
-    vapply(seq_len(length(out.vecLR)), function(x){
+    out <- vapply(seq_len(length(out.vecLR)), function(x){
         tmp_edgecolor <- edge.cols
         tmp_edgecolor[which(tmp_edgecolor != cols[x])] <- rgb(0,0,0,0.1)
         tmp_nodecolor <- V(g)$color
@@ -2915,6 +2937,7 @@
             pch=16, cex=2.2)
         dev.off()
     }, 0L)
+    return(g)
 }
 
 .geneHyperGraphPlot <- function(out.vecLR, GeneInfo, out.dir){
@@ -3012,7 +3035,7 @@
     dev.off()
 
     # Each Pattern
-    vapply(seq_len(ncol(out.vecLR)), function(x){
+    out <- vapply(seq_len(ncol(out.vecLR)), function(x){
         tmp_edgecolor <- edge.cols
         tmp_edgecolor[which(tmp_edgecolor != cols[x])] <- rgb(0,0,0,0.1)
         tmp_nodecolor <- V(g)$color
@@ -3046,12 +3069,18 @@
             pch=16, cex=2.2)
         dev.off()
     }, 0L)
+    return(g)
 }
 
 .LIGAND_HEADER <- paste0(
     "# <font color='#1881c2'>Details of Ligand Gene-centric Overview (selected)",
     "</font>\n\n",
-    "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "```{r}\n", # Top
+    "library(\"visNetwork\")\n",
+    "load(\"reanalysis.RData\")\n",
+    "visnetwork_data <- toVisNetworkData(g)\n",
+    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "```\n\n", # Bottom
     "<style type='text/css'>\n",
     "table,th,td {\n",
     "width: 20%;\n",
@@ -3066,7 +3095,12 @@
 .RECEPTOR_HEADER <- paste0(
     "# <font color='#1881c2'>Details of Receptor Gene-centric Overview (selected)",
     "</font>\n\n",
-    "![](figures/GeneHypergraph.png){ width=100% }\n\n",
+    "```{r}\n", # Top
+    "library(\"visNetwork\")\n",
+    "load(\"reanalysis.RData\")\n",
+    "visnetwork_data <- toVisNetworkData(g)\n",
+    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "```\n\n", # Bottom
     "<style type='text/css'>\n",
     "table,th,td {\n",
     "width: 20%;\n",
