@@ -37,9 +37,11 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
         stop("Please specify the row names of the input matrix is unique")
     }
     # Only matrix is accepted
-    if(!is.matrix(assay(sce))){
-        message("The input data is coverted to matrix format by as.matrix")
-        assay(sce) <- as.matrix(assay(sce))
+    for(i in names(assays(sce))){
+        if(!is.matrix(assays(sce)[[i]])){
+            message("The input data is coverted to matrix format by as.matrix")
+            assays(sce)[[i]] <- as.matrix(assays(sce)[[i]])
+        }
     }
     # NA-check
     NA1 <- length(which(is.na(colnames(assay(sce)))))
@@ -214,19 +216,28 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 setGeneric("cellCellReport", function(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", assayNames="counts", thr=100, top="full", p=0.05, upper=20){
+    author="The person who runs this script", assayNames="counts", thr=100,
+    top="full", p=0.05, upper=20,
+    goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE){
     standardGeneric("cellCellReport")})
 
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
-    function(sce, reducedDimNames, out.dir, html.open, title, author, assayNames,
-        thr, top, p, upper){
+    function(sce, reducedDimNames, out.dir, html.open, title, author,
+        assayNames, thr, top, p, upper, goenrich, meshenrich,
+        reactomeenrich, doenrich, ncgenrich, dgnenrich){
         .cellCellReport(reducedDimNames, out.dir,
-            html.open, title, author, assayNames, thr, top, p, upper, sce)})
+            html.open, title, author, assayNames, thr, top, p, upper,
+            goenrich, meshenrich, reactomeenrich,
+            doenrich, ncgenrich, dgnenrich, sce)})
 
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", assayNames="counts", thr=100, top="full", p=0.05, upper=20, ...){
+    author="The person who runs this script", assayNames="counts",
+    thr=100, top="full", p=0.05, upper=20,
+    goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -260,10 +271,14 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
 
     # HTML Report
     if(metadata(sce)$algorithm == "ntd"){
-        .cellCellReport.Third(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top)
+        .cellCellReport.Third(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
+            goenrich, meshenrich, reactomeenrich,
+            doenrich, ncgenrich, dgnenrich)
     }
     if(metadata(sce)$algorithm == "ntd2"){
-        .cellCellReport.Third_2(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top)
+        .cellCellReport.Third_2(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
+            goenrich, meshenrich, reactomeenrich,
+            doenrich, ncgenrich, dgnenrich)
     }
     # HTML Open
     message(paste0("################################################\n",

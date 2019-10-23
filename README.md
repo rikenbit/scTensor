@@ -6,45 +6,20 @@ Installation of Dependent Packages
 ======
 ```r
 # CRAN
-install.packages("RSQLite", repos="http://cran.r-project.org")
-install.packages("igraph", repos="http://cran.r-project.org")
-install.packages("plotly", repos="http://cran.r-project.org")
-install.packages("nnTensor", repos="http://cran.r-project.org")
-install.packages("rTensor", repos="http://cran.r-project.org")
-install.packages("abind", repos="http://cran.r-project.org")
-install.packages("plotrix", repos="http://cran.r-project.org")
-install.packages("heatmaply", repos="http://cran.r-project.org")
-install.packages("tagcloud", repos="http://cran.r-project.org")
-install.packages("rmarkdown", repos="http://cran.r-project.org")
-install.packages("knitr", repos="http://cran.r-project.org")
-install.packages("outliers", repos="http://cran.r-project.org")
-install.packages("crayon", repos="http://cran.r-project.org")
-install.packages("checkmate", repos="http://cran.r-project.org")
-install.packages("testthat", repos="http://cran.r-project.org")
-install.packages("Seurat", repos="http://cran.r-project.org")
-install.packages("BiocManager", repos="http://cran.r-project.org")
+install.packages(c("RSQLite", "igraph", "plotly", "nnTensor",
+    "rTensor", "abind", "plotrix", "heatmaply", "tagcloud",
+    "rmarkdown", "knitr", "outliers", "crayon", "checkmate",
+    "testthat", "Seurat", "BiocManager"),
+    repos="http://cran.r-project.org")
 
 # Bioconductor
 library("BiocManager")
-BiocManager::install("S4Vectors", suppressUpdates=TRUE)
-BiocManager::install("reactome.db", suppressUpdates=TRUE)
-BiocManager::install("AnnotationDbi", suppressUpdates=TRUE)
-BiocManager::install("SummarizedExperiment", suppressUpdates=TRUE)
-BiocManager::install("SingleCellExperiment", suppressUpdates=TRUE)
-BiocManager::install("BiocStyle", suppressUpdates=TRUE)
-BiocManager::install("biomaRt", suppressUpdates=TRUE)
-BiocManager::install("MeSHDbi", suppressUpdates=TRUE)
-BiocManager::install("Category", suppressUpdates=TRUE)
-BiocManager::install("meshr", suppressUpdates=TRUE)
-BiocManager::install("GOstats", suppressUpdates=TRUE)
-BiocManager::install("ReactomePA", suppressUpdates=TRUE)
-BiocManager::install("DOSE", suppressUpdates=TRUE)
-BiocManager::install("LRBase.Hsa.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Hsa.eg.db", suppressUpdates=TRUE)
-BiocManager::install("LRBase.Mmu.eg.db", suppressUpdates=TRUE)
-BiocManager::install("MeSH.Mmu.eg.db", suppressUpdates=TRUE)
-BiocManager::install("LRBaseDbi", suppressUpdates=TRUE)
-BiocManager::install("Homo.sapiens", suppressUpdates=TRUE)
+BiocManager::install(c("S4Vectors", "reactome.db", "AnnotationDbi",
+    "SummarizedExperiment", "SingleCellExperiment", "BiocStyle",
+    "biomaRt", "MeSHDbi", "Category", "meshr", "GOstats", "ReactomePA",
+    "DOSE", "LRBase.Hsa.eg.db", "MeSH.Hsa.eg.db", "LRBase.Mmu.eg.db",
+    "MeSH.Mmu.eg.db", "LRBaseDbi", "Homo.sapiens"),
+    suppressUpdates=TRUE)
 ```
 
 Installation

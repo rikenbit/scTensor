@@ -1,4 +1,6 @@
-.cellCellReport.Third_2 <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top){
+.cellCellReport.Third_2 <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
+    goenrich, meshenrich, reactomeenrich,
+    doenrich, ncgenrich, dgnenrich){
     # Core Tensor
     index <- metadata(sce)$sctensor$index
     corevalue <- index[, "Value"]
@@ -79,6 +81,12 @@
         e$.XYZ_HEADER3_2 <- .XYZ_HEADER3_2
         e$.XYZ_ENRICH_2 <- .XYZ_ENRICH_2
         e$algorithm <- metadata(sce)$algorithm
+        e$goenrich <- goenrich
+        e$meshenrich <- meshenrich
+        e$reactomeenrich <- reactomeenrich
+        e$doenrich <- doenrich
+        e$ncgenrich <- ncgenrich
+        e$dgnenrich <- dgnenrich
 
         # EachVec（Heavy...）
         if(is.vector(SelectedLR)){
@@ -196,7 +204,9 @@
     }
 }
 
-.cellCellReport.Third <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top){
+.cellCellReport.Third <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
+    goenrich, meshenrich, reactomeenrich, doenrich,
+    ncgenrich, dgnenrich){
     # Core Tensor
     index <- metadata(sce)$sctensor$index
     corevalue <- index[, "Value"]
@@ -277,6 +287,12 @@
         e$.XYZ_HEADER3 <- .XYZ_HEADER3
         e$.XYZ_ENRICH <- .XYZ_ENRICH
         e$algorithm <- metadata(sce)$algorithm
+        e$goenrich <- goenrich
+        e$meshenrich <- meshenrich
+        e$reactomeenrich <- reactomeenrich
+        e$doenrich <- doenrich
+        e$ncgenrich <- ncgenrich
+        e$dgnenrich <- dgnenrich
 
         # EachVec（Heavy...）
         out.vecLR <- vapply(SelectedLR,
@@ -2548,6 +2564,53 @@
     "[Artistic License 2.0](",
     "http://www.perlfoundation.org/artistic_license_2_0)\n")
 
+.GOANNOTATION <- list(
+    "Hsa" = "org.Hs.eg.db",
+    "Mmu" = "org.Mm.eg.db",
+    "Ath" = "org.At.tair.db",
+    "Rno" = "org.Rn.eg.db",
+    "Bta" = "org.Bt.eg.db",
+    "Cel" = "org.Ce.eg.db",
+    "Dme" = "org.Dm.eg.db",
+    "Dre" = "org.Dr.eg.db",
+    "Gga" = "org.Gg.eg.db",
+    "Ssc" = "org.Sc.sgd.db"
+)
+
+.MESHANNOTATION <- list(
+    "Hsa" = "MeSH.Hsa.eg.db",
+    "Mmu" = "MeSH.Mmu.eg.db",
+    "Ath" = "MeSH.Ath.eg.db",
+    "Rno" = "MeSH.Rno.eg.db",
+    "Bta" = "MeSH.Bta.eg.db",
+    "Cel" = "MeSH.Cel.eg.db",
+    "Dme" = "MeSH.Dme.eg.db",
+    "Dre" = "MeSH.Dre.eg.db",
+    "Gga" = "MeSH.Gga.eg.db",
+    "Pab" = "MeSH.Pab.eg.db",
+    "Xtr" = "MeSH.Xtr.eg.db",
+    "Ssc" = "MeSH.Ssc.eg.db"
+)
+
+.REACTOMESPC <- list(
+    "Aga" = "anopheles",
+    "Ath" = "arabidopsis",
+    "Bta" = "bovine",
+    "Cfa" = "canine",
+    "Cel" = "celegans",
+    "Gga" = "chicken",
+    "Ptr" = "chimp",
+    "Dme" = "fly",
+    "Tgo" = "gondii",
+    "Hsa" = "human",
+    "Pfa" = "malaria",
+    "Mmu" = "mouse",
+    "Ssc" = "pig",
+    "Rno" = "rat",
+    "Xla" = "xenopus",
+    "Dre" = "zebrafish"
+)
+
 .eachVecLR <- function(x, e){
     p <- e$p
     index <- e$index
@@ -2570,6 +2633,12 @@
     .XYZ_ENRICH <- e$.XYZ_ENRICH
     out.vecLR <- e$out.vecLR
     algorithm <- e$algorithm
+    goenrich <- e$goenrich
+    meshenrich <- e$meshenrich
+    reactomeenrich <- e$reactomeenrich
+    doenrich <- e$doenrich
+    ncgenrich <- e$ncgenrich
+    dgnenrich <- e$dgnenrich
 
     # Each LR-Pattern Vector
     if(algorithm == "ntd2"){
@@ -2597,33 +2666,15 @@
     # Enrichment (Too Heavy)
     all <- unique(unlist(strsplit(names(vecLR), "_")))
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
-    goannotation <- c("org.Hs.eg.db", "org.Mm.eg.db",
-        "org.At.tair.db", "org.Rn.eg.db", "org.Bt.eg.db",
-        "org.Ce.eg.db", "org.Dm.eg.db", "org.Dr.eg.db",
-        "org.Gg.eg.db", "org.Sc.sgd.db")
-    names(goannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
-        "Bta", "Cel", "Dme", "Dre", "Gga", "Ssc")
-    goannotation <- goannotation[spc]
+    goannotation <- .GOANNOTATION[[spc]]
+    meshannotation <- .MESHANNOTATION[[spc]]
+    reactomespc <- .REACTOMESPC[[spc]]
     if(!requireNamespace(goannotation, quietly=TRUE)){
         install(goannotation)
     }
-    meshannotation <- paste0("MeSH.",
-        c("Hsa", "Mmu", "Ath", "Rno", "Bta", "Cel",
-        "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc"), ".eg.db")
-    names(meshannotation) <- c("Hsa", "Mmu", "Ath", "Rno",
-        "Bta", "Cel", "Dme", "Dre", "Gga", "Pab", "Xtr", "Ssc")
-    meshannotation <- meshannotation[spc]
     if(!requireNamespace(meshannotation, quietly=TRUE)){
         install(meshannotation)
     }
-    reactomespc <- c("anopheles", "arabidopsis", "bovine", "canine",
-        "celegans", "chicken", "chimp", "fly", "gondii", "human",
-        "malaria", "mouse", "pig", "rat", "xenopus", "zebrafish")
-    names(reactomespc) <- c("Aga", "Ath", "Bta", "Cfa", "Cel",
-        "Gga", "Ptr", "Dme", "Tgo", "Hsa",
-        "Pfa", "Mmu", "Ssc", "Rno", "Xla",
-        "Dre")
-    reactomespc <- reactomespc[spc]
     dospc <- 0L
     ncgspc <- 0L
     dgnspc <- 0L
@@ -2634,7 +2685,9 @@
     ncgspc <- ncgspc[spc]
     dgnspc <- dgnspc[spc]
     Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation,
-        meshannotation, reactomespc, dospc, ncgspc, dgnspc, p))
+        meshannotation, reactomespc, dospc, ncgspc, dgnspc,
+        goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich,
+        p))
     # Eigen Value
     # Each LR-Pattern Vector
     if(algorithm == "ntd2"){
@@ -3791,60 +3844,104 @@
     }
 }
 
+.NOSIG <- list(Term=NULL, PValue=NULL)
+
 .ENRICHMENT <- function(all, sig, goannotation, meshannotation, reactomespc,
-    dospc, ncgspc, dgnspc, p){
+    dospc, ncgspc, dgnspc,
+    goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p){
     # GO
-    cat("GO-Enrichment Analysis is running...(1/3)\n")
-    BP <- .GOENRICHMENT(all, sig, goannotation, "BP", p)
-    cat("GO-Enrichment Analysis is running...(2/3)\n")
-    MF <- .GOENRICHMENT(all, sig, goannotation, "MF", p)
-    cat("GO-Enrichment Analysis is running...(3/3)\n")
-    CC <- .GOENRICHMENT(all, sig, goannotation, "CC", p)
+    if(goenrich){
+        cat("GO-Enrichment Analysis is running...(1/3)\n")
+        BP <- .GOENRICHMENT(all, sig, goannotation, "BP", p)
+        cat("GO-Enrichment Analysis is running...(2/3)\n")
+        MF <- .GOENRICHMENT(all, sig, goannotation, "MF", p)
+        cat("GO-Enrichment Analysis is running...(3/3)\n")
+        CC <- .GOENRICHMENT(all, sig, goannotation, "CC", p)
+    }else{
+        BP <- .NOSIG
+        MF <- .NOSIG
+        CC <- .NOSIG
+    }
     # MeSH
-    cat("MeSH-Enrichment Analysis is running...(1/16)\n")
-    A <- .MeSHENRICHMENT(all, sig, meshannotation, "A", p)
-    cat("MeSH-Enrichment Analysis is running...(2/16)\n")
-    B <- .MeSHENRICHMENT(all, sig, meshannotation, "B", p)
-    cat("MeSH-Enrichment Analysis is running...(3/16)\n")
-    C <- .MeSHENRICHMENT(all, sig, meshannotation, "C", p)
-    cat("MeSH-Enrichment Analysis is running...(4/16)\n")
-    D <- .MeSHENRICHMENT(all, sig, meshannotation, "D", p)
-    cat("MeSH-Enrichment Analysis is running...(5/16)\n")
-    E <- .MeSHENRICHMENT(all, sig, meshannotation, "E", p)
-    cat("MeSH-Enrichment Analysis is running...(6/16)\n")
-    F <- .MeSHENRICHMENT(all, sig, meshannotation, "F", p)
-    cat("MeSH-Enrichment Analysis is running...(7/16)\n")
-    G <- .MeSHENRICHMENT(all, sig, meshannotation, "G", p)
-    cat("MeSH-Enrichment Analysis is running...(8/16)\n")
-    H <- .MeSHENRICHMENT(all, sig, meshannotation, "H", p)
-    cat("MeSH-Enrichment Analysis is running...(9/16)\n")
-    I <- .MeSHENRICHMENT(all, sig, meshannotation, "I", p)
-    cat("MeSH-Enrichment Analysis is running...(10/16)\n")
-    J <- .MeSHENRICHMENT(all, sig, meshannotation, "J", p)
-    cat("MeSH-Enrichment Analysis is running...(11/16)\n")
-    K <- .MeSHENRICHMENT(all, sig, meshannotation, "K", p)
-    cat("MeSH-Enrichment Analysis is running...(12/16)\n")
-    L <- .MeSHENRICHMENT(all, sig, meshannotation, "L", p)
-    cat("MeSH-Enrichment Analysis is running...(13/16)\n")
-    M <- .MeSHENRICHMENT(all, sig, meshannotation, "M", p)
-    cat("MeSH-Enrichment Analysis is running...(14/16)\n")
-    N <- .MeSHENRICHMENT(all, sig, meshannotation, "N", p)
-    cat("MeSH-Enrichment Analysis is running...(15/16)\n")
-    V <- .MeSHENRICHMENT(all, sig, meshannotation, "V", p)
-    cat("MeSH-Enrichment Analysis is running...(16/16)\n")
-    Z <- .MeSHENRICHMENT(all, sig, meshannotation, "Z", p)
+    if(meshenrich){
+        cat("MeSH-Enrichment Analysis is running...(1/16)\n")
+        A <- .MeSHENRICHMENT(all, sig, meshannotation, "A", p)
+        cat("MeSH-Enrichment Analysis is running...(2/16)\n")
+        B <- .MeSHENRICHMENT(all, sig, meshannotation, "B", p)
+        cat("MeSH-Enrichment Analysis is running...(3/16)\n")
+        C <- .MeSHENRICHMENT(all, sig, meshannotation, "C", p)
+        cat("MeSH-Enrichment Analysis is running...(4/16)\n")
+        D <- .MeSHENRICHMENT(all, sig, meshannotation, "D", p)
+        cat("MeSH-Enrichment Analysis is running...(5/16)\n")
+        E <- .MeSHENRICHMENT(all, sig, meshannotation, "E", p)
+        cat("MeSH-Enrichment Analysis is running...(6/16)\n")
+        F <- .MeSHENRICHMENT(all, sig, meshannotation, "F", p)
+        cat("MeSH-Enrichment Analysis is running...(7/16)\n")
+        G <- .MeSHENRICHMENT(all, sig, meshannotation, "G", p)
+        cat("MeSH-Enrichment Analysis is running...(8/16)\n")
+        H <- .MeSHENRICHMENT(all, sig, meshannotation, "H", p)
+        cat("MeSH-Enrichment Analysis is running...(9/16)\n")
+        I <- .MeSHENRICHMENT(all, sig, meshannotation, "I", p)
+        cat("MeSH-Enrichment Analysis is running...(10/16)\n")
+        J <- .MeSHENRICHMENT(all, sig, meshannotation, "J", p)
+        cat("MeSH-Enrichment Analysis is running...(11/16)\n")
+        K <- .MeSHENRICHMENT(all, sig, meshannotation, "K", p)
+        cat("MeSH-Enrichment Analysis is running...(12/16)\n")
+        L <- .MeSHENRICHMENT(all, sig, meshannotation, "L", p)
+        cat("MeSH-Enrichment Analysis is running...(13/16)\n")
+        M <- .MeSHENRICHMENT(all, sig, meshannotation, "M", p)
+        cat("MeSH-Enrichment Analysis is running...(14/16)\n")
+        N <- .MeSHENRICHMENT(all, sig, meshannotation, "N", p)
+        cat("MeSH-Enrichment Analysis is running...(15/16)\n")
+        V <- .MeSHENRICHMENT(all, sig, meshannotation, "V", p)
+        cat("MeSH-Enrichment Analysis is running...(16/16)\n")
+        Z <- .MeSHENRICHMENT(all, sig, meshannotation, "Z", p)
+    }else{
+        A <- .NOSIG
+        B <- .NOSIG
+        C <- .NOSIG
+        D <- .NOSIG
+        E <- .NOSIG
+        F <- .NOSIG
+        G <- .NOSIG
+        H <- .NOSIG
+        I <- .NOSIG
+        J <- .NOSIG
+        K <- .NOSIG
+        L <- .NOSIG
+        M <- .NOSIG
+        N <- .NOSIG
+        V <- .NOSIG
+        Z <- .NOSIG
+    }
     # Reactome
-    cat("Reactome-Enrichment Analysis is running...(1/1)\n")
-    Reactome <- .ReactomeENRICHMENT(all, sig, reactomespc, p)
+    if(reactomeenrich){
+        cat("Reactome-Enrichment Analysis is running...(1/1)\n")
+        Reactome <- .ReactomeENRICHMENT(all, sig, reactomespc, p)
+    }else{
+        Reactome <- .NOSIG
+    }
     # DO
-    cat("DO-Enrichment Analysis is running...(1/1)\n")
-    DO <- .DOENRICHMENT(all, sig, dospc, p)
+    if(doenrich){
+        cat("DO-Enrichment Analysis is running...(1/1)\n")
+        DO <- .DOENRICHMENT(all, sig, dospc, p)
+    }else{
+        DO <- .NOSIG
+    }
     # NCG
-    cat("NCG-Enrichment Analysis is running...(1/1)\n")
-    NCG <- .NCGENRICHMENT(all, sig, ncgspc, p)
+    if(ncgenrich){
+        cat("NCG-Enrichment Analysis is running...(1/1)\n")
+        NCG <- .NCGENRICHMENT(all, sig, ncgspc, p)
+    }else{
+        NCG <- .NOSIG
+    }
     # DGN
-    cat("DGN-Enrichment Analysis is running...(1/1)\n")
-    DGN <- .DGNENRICHMENT(all, sig, dgnspc, p)
+    if(dgnenrich){
+        cat("DGN-Enrichment Analysis is running...(1/1)\n")
+        DGN <- .DGNENRICHMENT(all, sig, dgnspc, p)
+    }else{
+        DGN <- .NOSIG
+    }
 
     # Output
     out <- list(BP, MF, CC,
@@ -3853,7 +3950,7 @@
     # Exception
     out <- lapply(out, function(x){
             if(length(x$Term) == 0 || length(x$Pvalue) == 0){
-                list(Term=NULL, Pvalue=NULL)
+                .NOSIG
             }else{
                 x
             }

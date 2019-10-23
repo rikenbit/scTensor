@@ -15,7 +15,7 @@ package: scTensor
 output:
   BiocStyle::html_document
 vignette: |
-  %\VignetteIndexEntry{scTensor: Simulation of CCI}
+  %\VignetteIndexEntry{scTensor: 3. Simulation of CCI}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -59,7 +59,7 @@ This document provides the way to use
 `r Biocpkg("LRBaseDbi")`, LRBase.XXX.eg.db-type packages, and
 `r CRANpkg("scTensor")` package.
 
-![Figure 1 : Workflow of L-R-related packages](Workflow.jpeg)
+![Figure 1 : Workflow of L-R-related packages](Workflow_2.png)
 
 ## Dependencies of CCI-related Packages
 
@@ -209,7 +209,7 @@ Next, the cell type-level mean vectors of ligand expression and that of receptor
 expression are multiplied as outer product and converted to cell type $\times$
 cell type matrix. Here, the multiple matrices can be represented as a three-order
 "tensor" (Ligand-Cell * Receptor-Cell * L-R-Pair). `r Biocpkg("scTensor")`
-decomposes the tensor into a small tensor (core tensor) and three factor
+decomposes the tensor into a small tensor (core tensor) and two factor
 matrices. Tensor decomposition is very similar to the matrix decomposition like
 PCA (principal component analysis). The core tensor is similar to the eigenvalue of
 PCA;  this means that how much the pattern is outstanding. Likewise, three
@@ -217,13 +217,13 @@ matrices are similar to the PC scores/loadings of PCA; These represent which
 ligand-cell/receptor-cell/L-R-pair are informative. When the matrices have
 negative values, interpreting which direction (+/-) is important and which
 is not, is a difficult and laboring task. That's why, `r Biocpkg("scTensor")`
-performs non-negative Tucker decomposition (NTD), which is non-negative version
+performs non-negative Tucker2 decomposition (NTD2), which is non-negative version
 of tensor decomposition (cf. `r CRANpkg("nnTensor")`).
 
-Finally, the result of NTD is summarized as an HTML report. Because most of the plots
+Finally, the result of NTD2 is summarized as an HTML report. Because most of the plots
 are visualized by `r CRANpkg("plotly")` package, the precise information of
 the plot can be interactively confirmed by user's on-site web browser.
-The three factor matrices can be interactively viewed and which cell types
+The two factor matrices can be interactively viewed and which cell types
 and which L-R-pairs are likely to be interacted each other.
 The mode-3 (LR-pair direction) sum of the core tensor is calculated and
 visualized as Ligand-Receptor Patterns. Detail of
@@ -309,10 +309,10 @@ cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
 After `cellCellSetting`, we can perform tensor decomposition by
 `cellCellDecomp`. Here the parameter `ranks` is specified as dimension of
 core tensor. For example, c(2, 3, 4) means The data tensor is decomposed to
-2 ligand-patterns, 3 receptor-patterns, and 4 L-R-pairs-patterns.
+2 ligand-patterns and 3 receptor-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
-cellCellDecomp(sce, ranks=c(2,3,4))
+cellCellDecomp(sce, ranks=c(2,3,1))
 ```
 
 Although user has to specify the rank to perform cellCellDecomp,
@@ -338,7 +338,7 @@ browser. Combined with cloud storage service such as Amazon Simple Storage
 Service (S3), it can be a simple web application and multiple people like
 collaborators can confirm the same report simultaneously.
 
-![Figure2 : cellCellReport function of scTensor](Report.jpeg)
+![Figure2 : cellCellReport function of scTensor](Report.png)
 
 # Session information {.unnumbered}
 

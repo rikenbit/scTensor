@@ -13,7 +13,10 @@ The result is saved as HTML report which contains with multiple files.
 cellCellReport(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
-    author="The person who runs this script", assayNames = "counts", thr=100, top="full", p=0.05, upper=20)
+    author="The person who runs this script", assayNames = "counts", thr=100,
+    top="full", p=0.05, upper=20,
+    goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE)
 }
 
 \arguments{
@@ -52,6 +55,24 @@ The threshold of p-value of the enrichment analysis (Default: 1E-2)
 }
 \item{upper}{
 The maxium number of HTML reports generates (Default: 20)
+}
+\item{goenrich}{
+Whether GO-Enrichment analysis is performed (Default: TRUE)
+}
+\item{meshenrich}{
+Whether MeSH-Enrichment analysis is performed (Default: TRUE)
+}
+\item{reactomeenrich}{
+Whether Reactome-Enrichment analysis is performed (Default: TRUE)
+}
+\item{doenrich}{
+Whether DO-Enrichment analysis is performed (Default: TRUE)
+}
+\item{ncgenrich}{
+Whether NCG-Enrichment analysis is performed (Default: TRUE)
+}
+\item{dgnenrich}{
+Whether DGN-Enrichment analysis is performed (Default: TRUE)
 }
 }
 
@@ -96,7 +117,9 @@ The result is saved as HTML report which contains with multiple files.
 	# HTML Report
 	cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
 	    title="Cell-cell interaction within Germline_Male, GSE86146",
-	    author="Koki Tsuyuzaki", html.open=TRUE, upper=2)
+	    author="Koki Tsuyuzaki", html.open=TRUE, upper=2,
+        goenrich=TRUE, meshenrich=FALSE, reactomeenrich=FALSE,
+        doenrich=FALSE, ncgenrich=FALSE, dgnenrich=FALSE)
 	if(.Device == "quartz"){
 		dev.off()
 	}

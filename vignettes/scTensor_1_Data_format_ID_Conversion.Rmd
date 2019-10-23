@@ -15,7 +15,7 @@ package: scTensor
 output:
   BiocStyle::html_document
 vignette: |
-  %\VignetteIndexEntry{scTensor: Data format and ID conversion}
+  %\VignetteIndexEntry{scTensor: 1. Data format and ID conversion}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -72,7 +72,7 @@ Although Cell Ranger is implemented by Python, starting from the files generated
 For example, according to the tutorial of Seurat ([Seurat - Guided Clustering Tutorial](https://satijalab.org/seurat/v3.0/pbmc3k_tutorial.html)), PBMC data of Cell Ranger can be imported by `Read10X` function and DGE matrix of UMI-count is available by the output of `CreateSeuratObject` function.
 
 ```{r Seurat, eval=FALSE}
-suppressPackageStartupMessages(library("Seurat"))
+library("Seurat")
 
 # Load the PBMC dataset
 pbmc.data <- Read10X(data.dir = "filtered_gene_bc_matrices/hg19/")
@@ -85,6 +85,7 @@ pbmc <- CreateSeuratObject(counts = pbmc.data,
 **Note that the matrix is formatted as a sparse matrix of `r CRANpkg("Matrix")` package (MM: Matrix market), but the `r Biocpkg("scTensor")` assumes dense matrix.**
 By using `as.matrix` function,
 the sparse matrix is easily converted to dense matrix as follows.
+
 ```
 # Sparse matrix to dense matrix
 for_sc <- as.matrix(pbmc.data)
@@ -178,6 +179,47 @@ LefttoRight <- select(hs,
   keytype="SYMBOL", keys=rowID)
 (input <- convertToNCBIGeneID(input, rowID, LefttoRight))
 ```
+
+# Step.3: Normalize the count matrix
+
+Finally, we introduce some situations to perform some normalization methods of gene expression matrix.
+
+If a user convert a Seurat object to a SingleCellExperient object by using `as.SingleCellExperiment`,
+the result of `NormalizeData` function (logcounts) is inherited to the SingleCellExperient object as follows;
+
+```{r Seurat normalization, eval=FALSE}
+pbmc2 <- NormalizeData(pbmc, normalization.method = "LogNormalize",
+    scale.factor = 10000)
+sce <- as.SingleCellExperiment(pbmc2)
+assayNames(sce) # counts, logcounts
+```
+
+If the user want to use `r Biocpkg("scater")` package,
+`calculateCPM` or `normalize` function can calculate the normalized expression values as follows; (see also [the vignette of scater](https://bioconductor.org/packages/release/bioc/vignettes/scater/inst/doc/vignette-intro.html)).
+
+```{r Scater normalization, eval=FALSE}
+library("scater")
+sce <- SingleCellExperiment(assays=list(counts = input))
+cpm(sce) <- calculateCPM(sce)
+sce <- normalize(sce)
+assayNames(sce) # counts, normcounts, logcounts, cpm
+```
+
+Actually, any original normalization can be stored in the sce.
+For example, we can calculate the value of count per median (CPMED) as follows;
+
+```{r Original normalization, eval=FALSE}
+# User's Original Normalization Function
+CPMED <- function(input){
+    libsize <- colSums(input)
+    median(libsize) * t(t(input) / libsize)
+}
+# Normalization
+normcounts(sce) <- log10(CPMED(counts(sce)) + 1)
+```
+
+We recommend using the normcounts slot to save such original normalization values.
+After the normalization, such values can be specified by `assayNames` option in `cellCellRanks` `cellCellDecomp` and `cellCellReport` functions.
 
 # Session information {.unnumbered}
 

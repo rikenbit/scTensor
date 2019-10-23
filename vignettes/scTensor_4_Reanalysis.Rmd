@@ -1,0 +1,84 @@
+---
+title: "How to reanalyze the results of scTensor"
+author:
+- name: Koki Tsuyuzaki
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+- name: Manabu Ishii
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+- name: Itoshi Nikaido
+  affiliation: Laboratory for Bioinformatics Research,
+    RIKEN Center for Biosystems Dynamics Reseach
+  email: k.t.the-answer@hotmail.co.jp
+package: scTensor
+output:
+  BiocStyle::html_document
+vignette: |
+  %\VignetteIndexEntry{scTensor: 4. Reanalysis of the results of scTensor}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# Summary of the output objects of scTensor
+
+Here, we introduced the objects saved in reanalysis.RData.
+
+```{r reanalysis.RData, eval=FALSE}
+suppressPackageStartupMessages(library("scTensor"))
+load("reanalysis.RData")
+```
+
+After performing `cellCellReport`, some R objects are saved in the reanalysis.RData as follows;
+
+- **sce** : SingleCellExperiment object
+    - **metadata(sce)$lrbase** : The file pass to the database file of LRBase
+    - **metadata(sce)$color** : The color vector specified by `cellCellSetting`
+    - **metadata(sce)$label** : The label vector specified by `cellCellSetting`
+    - **metadata(sce)$algorithm** : The algorithm for performing `r Biocpkg("scTensor")`
+    - **metadata(sce)$sctensor** : The results of `r Biocpkg("scTensor")`
+        - **metadata(sce)\$sctensor\$ligand** : The factor matrix (Ligand)
+        - **metadata(sce)\$sctensor\$receptor** : The factor matrix (Receptor)
+        - **metadata(sce)\$sctensor\$lrpair** : The core tensor
+    - **metadata(sce)$datasize** : The data size of CCI tensor
+    - **metadata(sce)$ranks** : The number of lower dimension in each direction of CCI tensor
+    - **metadata(sce)$recerror** : Reconstruction Error of NTD
+    - **metadata(sce)$relchange** : Relative Change of NTD
+- **input** : The gene expression matrix <# Genes * # Cells>
+- **twoD** : The result of 2D dimensional reduction (e.g. t-SNE)
+- **LR** : The Ligand-Receptor corresponding table extracted from LRBase.XXX.eg.db
+- **celltypes** : The celltype label and color scheme
+- **index** : The core tensor values
+- **corevalue** : The core tensor values (normalized)
+- **selected** : The selected corevalue position with thr threshold "thr"
+- **ClusterL** : The result of analysis in each L vector
+- **ClusterR** : The result of analysis in each R vector
+- **out.vecLR** : The result of analysis in LR pairs
+- **g** : The igraph object to visualize ligand-receptor gene network
+
+# Execution of scTensor with the different options
+
+Using the reanalysis.RData, some user may want to perform `r Biocpkg("scTensor")` with different parameters.
+
+For example, the user can perform `cellCellDecomp` with different ranks,
+and also can peform `cellCellReport` with omiting some enrichment analysis step as follows.
+
+```{r Reanalysis, eval=FALSE}
+suppressPackageStartupMessages(library("LRBase.Hsa.eg.db"))
+# Register the file pass of user's LRBase
+metadata(sce)$lrbase <- dbfile(LRBase.Hsa.eg.db)
+# CCI Tensor Decomposition
+cellCellDecomp(sce, ranks=c(6,5,1), assayNames="normcounts")
+# HTML Report
+cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
+    title="Cell-cell interaction within Germline_Male, GSE86146",
+    author="Koki Tsuyuzaki", html.open=TRUE,
+    goenrich=TRUE, meshenrich=FALSE, reactomeenrich=FALSE,
+    doenrich=FALSE, ncgenrich=FALSE, dgnenrich=FALSE)
+```
+
+# Session information {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
