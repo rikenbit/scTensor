@@ -68,7 +68,7 @@ suppressPackageStartupMessages(library("LRBase.Hsa.eg.db"))
 # Register the file pass of user's LRBase
 metadata(sce)$lrbase <- dbfile(LRBase.Hsa.eg.db)
 # CCI Tensor Decomposition
-cellCellDecomp(sce, ranks=c(6,5,1), assayNames="normcounts")
+cellCellDecomp(sce, ranks=c(6,5), assayNames="normcounts")
 # HTML Report
 cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
     title="Cell-cell interaction within Germline_Male, GSE86146",

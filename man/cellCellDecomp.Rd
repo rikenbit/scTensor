@@ -12,7 +12,7 @@ All parameters is saved to metadata slot of SingleCellExperiment object.
 \usage{
 cellCellDecomp(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb", "label.permutation"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
+    "pcomb", "label.permutation"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25,
     centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
     comb=c("random", "all"), num.sampling=100, assayNames = "counts", decomp=TRUE)
 }
@@ -31,7 +31,7 @@ can be specified (Default: ntd2).
 The size of the core tensor decomposed by NTD.
 Each element means (Number of Ligand-Cell Pattern,
 Number of Receptor-Cell Pattern, Number of LR-pairs Pattern)
-(Default: c(3,3,3)).
+(Default: c(3,3)).
 }
 \item{rank}{
 The number of low dimension of NMF (Default: 3).

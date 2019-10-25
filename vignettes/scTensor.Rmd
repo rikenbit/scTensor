@@ -308,11 +308,11 @@ cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
 
 After `cellCellSetting`, we can perform tensor decomposition by
 `cellCellDecomp`. Here the parameter `ranks` is specified as dimension of
-core tensor. For example, c(2, 3, 4) means The data tensor is decomposed to
+core tensor. For example, c(2, 3) means The data tensor is decomposed to
 2 ligand-patterns and 3 receptor-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
-cellCellDecomp(sce, ranks=c(2,3,1))
+cellCellDecomp(sce, ranks=c(2,3))
 ```
 
 Although user has to specify the rank to perform cellCellDecomp,

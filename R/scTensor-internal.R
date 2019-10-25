@@ -1,3 +1,38 @@
+.myvisNetwork <- function(g, col=NULL){
+    # Edges
+    edges = as.data.frame(get.edgelist(g), stringsAsFactors=FALSE)
+    colnames(edges) <- c("from", "to")
+    edges <- data.frame(edges,
+        color=edge.attributes(g)$color,
+        width=edge.attributes(g)$width)
+    if(!is.null(col)){
+        edges <- edges[which(edges$color == col), ]
+    }
+    # Nodes
+    vattr <- get.vertex.attribute(g)
+    uniqueid <- unique(c(edges$from, edges$to))
+    color <- sapply(uniqueid, function(x){
+        pos <- which(vattr$name == x)
+        if(length(pos) == 1){
+            vattr$color[pos]
+        }else{
+            "purple"
+        }
+    })
+    size <- sapply(uniqueid, function(x){
+        sum(vattr$size[which(vattr$name == x)])
+    })
+    nodes <- data.frame(
+        id=uniqueid,
+        type=TRUE,
+        color=color,
+        size=size*5,
+        label=uniqueid
+    )
+    # Plot
+    visNetwork(nodes, edges)
+}
+
 .cellCellReport.Third_2 <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
     goenrich, meshenrich, reactomeenrich,
     doenrich, ncgenrich, dgnenrich){
@@ -623,16 +658,13 @@
     # rank check
     check1 <- dim(fout$tnsr)[2] * dim(fout$tnsr)[3] < ranks[1]
     check2 <- dim(fout$tnsr)[3] * dim(fout$tnsr)[1] < ranks[2]
-    check3 <- dim(fout$tnsr)[1] * dim(fout$tnsr)[2] < ranks[3]
     if(check1){
         stop("Please specify the ranks[1] as an smaller value")
     }
     if(check2){
         stop("Please specify the ranks[2] as an smaller value")
     }
-    if(check3){
-        stop("Please specify the ranks[3] as an smaller value")
-    }
+    ranks <- ranks[1:2]
     if(dim(fout$tnsr)[1] >= 100 || dim(fout$tnsr)[2] >= 100){
         stop(paste0("Extreamly Large tensor will be generated!\n",
             "This problem will be solved by the next version of scTensor."))
@@ -2011,13 +2043,10 @@
     paste0("# <font color='#1881c2'>(\\*,\\*,", i, ") Pattern",
     " (Top", top, " LR-pairs)</font>\n\n",
     "```{r}\n", # Top
-    "library(\"visNetwork\")\n",
+    "library(\"scTensor\")\n",
     "load(\"reanalysis.RData\")\n\n",
-    "cols <- .setColor(\"many\")\n",
-    "visnetwork_data <- toVisNetworkData(g)\n",
-    "edges <- visnetwork_data$edges[visnetwork_data$edges$color == cols[", x, "], ]\n",
-    "nodes <- visnetwork_data$nodes[unique(c(edges$from, edges$to)), ]\n",
-    "visNetwork(nodes=nodes, edges=edges)\n",
+    "col <- .setColor(\"many\")[", x, "]\n",
+    "scTensor:::.myvisNetwork(g, col)\n",
     "```\n\n", # Bottom
     "|Rank|Ligand Gene|Receptor Gene|",
     "Ligand Expression (Log10(exp + 1))|",
@@ -2034,13 +2063,10 @@
     paste(c(index[i, seq_len(2)], ""), collapse=","),
     ") -related L-R pairs (Top", top, " pairs)</font>\n\n",
     "```{r}\n", # Top
-    "library(\"visNetwork\")\n",
+    "library(\"scTensor\")\n",
     "load(\"reanalysis.RData\")\n\n",
-    "cols <- .setColor(\"many\")\n",
-    "visnetwork_data <- toVisNetworkData(g)\n",
-    "edges <- visnetwork_data$edges[visnetwork_data$edges$color == cols[", i, "], ]\n",
-    "nodes <- visnetwork_data$nodes[unique(c(edges$from, edges$to)), ]\n",
-    "visNetwork(nodes=nodes, edges=edges)\n",
+    "col <- .setColor(\"many\")[", i, "]\n",
+    "scTensor:::.myvisNetwork(g, col)\n",
     "```\n\n", # Bottom
     "|Rank|Ligand Gene|Receptor Gene|",
     "Ligand Expression (Log10(exp + 1))|",
@@ -2500,9 +2526,9 @@
 .BODY7 <- paste0(
     "\n\n# Gene-wise Hypergraph\n\n",
     "```{r}\n", # Top
-    "library(\"visNetwork\")\n",
-    "visnetwork_data <- toVisNetworkData(g)\n",
-    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "library(\"scTensor\")\n",
+    "load(\"reanalysis.RData\")\n\n",
+    "scTensor:::.myvisNetwork(g)\n",
     "```\n\n", # Bottom
     "[Details of Ligand Gene-centric Overview (selected)](ligand.html)\n\n",
     "[Details of Ligand Gene-centric Overview (all)](ligand_all.html)\n\n",
@@ -3129,10 +3155,9 @@
     "# <font color='#1881c2'>Details of Ligand Gene-centric Overview (selected)",
     "</font>\n\n",
     "```{r}\n", # Top
-    "library(\"visNetwork\")\n",
-    "load(\"reanalysis.RData\")\n",
-    "visnetwork_data <- toVisNetworkData(g)\n",
-    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "library(\"scTensor\")\n",
+    "load(\"reanalysis.RData\")\n\n",
+    "scTensor:::.myvisNetwork(g)\n",
     "```\n\n", # Bottom
     "<style type='text/css'>\n",
     "table,th,td {\n",
@@ -3149,10 +3174,9 @@
     "# <font color='#1881c2'>Details of Receptor Gene-centric Overview (selected)",
     "</font>\n\n",
     "```{r}\n", # Top
-    "library(\"visNetwork\")\n",
-    "load(\"reanalysis.RData\")\n",
-    "visnetwork_data <- toVisNetworkData(g)\n",
-    "visNetwork(nodes=visnetwork_data$nodes, edges=visnetwork_data$edges)\n",
+    "library(\"scTensor\")\n",
+    "load(\"reanalysis.RData\")\n\n",
+    "scTensor:::.myvisNetwork(g)\n",
     "```\n\n", # Bottom
     "<style type='text/css'>\n",
     "table,th,td {\n",

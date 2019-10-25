@@ -12,7 +12,7 @@ SVD is performed in each mode.
 \usage{
 cellCellRanks(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames = "counts", thr1=0.9, thr2=0.9, thr3=0.9)
+    num.sampling=100, assayNames = "counts", thr1=0.9, thr2=0.9, thr3=NULL)
 }
 
 \arguments{
@@ -48,7 +48,7 @@ The threshold for selection of top eigenvalues of mode-1 matricised data tensor 
 The threshold for selection of top eigenvalues of mode-2 matricised data tensor (Default: 0.9 (0 to 1)).
 }
 \item{thr3}{
-The threshold for selection of top eigenvalues of mode-3 matricised data tensor (Default: 0.9 (0 to 1)).
+The threshold for selection of top eigenvalues of mode-3 matricised data tensor (Default: NULL (0 to 1)).
 }
 }
 

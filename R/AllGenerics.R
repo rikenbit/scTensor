@@ -66,14 +66,14 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
 #
 setGeneric("cellCellRanks", function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=0.9){
+    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=NULL){
     standardGeneric("cellCellRanks")})
 
 setMethod("cellCellRanks",
     signature(sce="SingleCellExperiment"),
     function(sce, centering=TRUE,
     mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=0.9){
+    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=NULL){
         # Argument Check
         mergeas <- match.arg(mergeas)
         outer <- match.arg(outer)
@@ -83,7 +83,7 @@ setMethod("cellCellRanks",
     })
 
 .cellCellRanks <- function(centering, mergeas, outer, comb, num.sampling,
-    assayNames, thr1, thr2, thr3, ...){
+    assayNames, thr1, thr2, thr3=NULL, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # Import expression matrix
@@ -101,28 +101,33 @@ setMethod("cellCellRanks",
         thr1, thr2)$cellcelllrpairpattern
     d1 <- svd(rs_unfold(tnsr, m=1)@data)$d
     d2 <- svd(rs_unfold(tnsr, m=2)@data)$d
-    d3 <- svd(rs_unfold(tnsr, m=3)@data)$d
     cumd1 <- cumsum(d1) / sum(d1)
     cumd2 <- cumsum(d2) / sum(d2)
-    cumd3 <- cumsum(d3) / sum(d3)
-    # Output
     rank1 <- length(which(cumd1 <= thr1))
     rank2 <- length(which(cumd2 <= thr2))
-    rank3 <- length(which(cumd3 <= thr3))
+    # Output
     if(rank1 == 0){
         rank1 = 1
     }
     if(rank2 == 0){
         rank2 = 1
     }
-    if(rank3 == 0){
-        rank3 = 1
+    if(!is.null(thr3)){
+        d3 <- svd(rs_unfold(tnsr, m=3)@data)$d
+        cumd3 <- cumsum(d3) / sum(d3)
+        rank3 <- length(which(cumd3 <= thr3))
+        if(rank3 == 0){
+            rank3 = 1
+        }
+        list(selected=c(rank1, rank2, rank3),
+            mode1=d1,
+            mode2=d2,
+            mode3=d3)
+    }else{
+        list(selected=c(rank1, rank2),
+            mode1=d1,
+            mode2=d2)
     }
-    selected = c(rank1, rank2, rank3)
-    list(selected=selected,
-        mode1=d1,
-        mode2=d2,
-        mode3=d3)
 }
 
 #
@@ -130,14 +135,14 @@ setMethod("cellCellRanks",
 #
 setGeneric("cellCellDecomp", function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb", "label.permutation"), ranks=c(3,3,3), rank=3, thr1=log2(5), thr2=25,
+    "pcomb", "label.permutation"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25,
     centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
     comb=c("random", "all"), num.sampling=100, assayNames="counts", decomp=TRUE){
     standardGeneric("cellCellDecomp")})
 
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson", "spearman", "distance",
-        "pearson.lr", "spearman.lr", "distance.lr", "pcomb", "label.permutation"), ranks=c(3,3,3),
+        "pearson.lr", "spearman.lr", "distance.lr", "pcomb", "label.permutation"), ranks=c(3,3),
         rank=3, thr1=log2(5), thr2=25, centering=TRUE,
         mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
         num.sampling=100, assayNames="counts", decomp=TRUE){
