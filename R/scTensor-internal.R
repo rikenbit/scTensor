@@ -1,3 +1,14 @@
+.uniqueLR <- function(LR){
+  targetL <- grep("GENEID", LR$GENEID_L, invert = TRUE)
+  targetR <- grep("GENEID", LR$GENEID_R, invert = TRUE)
+  targetNotNAL <- which(!is.na(LR$GENEID_L))
+  targetNotNAR <- which(!is.na(LR$GENEID_R))
+  target <- intersect(targetL,
+    intersect(targetR,
+      intersect(targetNotNAL, targetNotNAR)))
+  unique(LR[target, ])
+}
+
 .myvisNetwork <- function(g, col=NULL){
     # Edges
     edges = as.data.frame(get.edgelist(g), stringsAsFactors=FALSE)
@@ -61,7 +72,7 @@
         con = dbConnect(SQLite(), metadata(sce)$lrbase)
         LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
             c("GENEID_L", "GENEID_R", "SOURCEID")]
-        LR <- unique(LR)
+        LR <- .uniqueLR(LR)
         dbDisconnect(con)
         # Species
         spc <- gsub(".eg.db.sqlite", "",
@@ -267,7 +278,7 @@
         con = dbConnect(SQLite(), metadata(sce)$lrbase)
         LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
             c("GENEID_L", "GENEID_R", "SOURCEID")]
-        LR <- unique(LR)
+        LR <- .uniqueLR(LR)
         dbDisconnect(con)
         # Species
         spc <- gsub(".eg.db.sqlite", "",
@@ -3258,7 +3269,7 @@
             ReceptorGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Ligand, function(x){
+    CCI <- vapply(Ligand, function(x){
         hit <- vapply(seq_len(length(out.vecLR)), function(xx){
             length(which(LnodesGeneName[[xx]] == x))
         }, 0L)
@@ -3273,7 +3284,7 @@
                 ".html)")
         }, "")
         paste(unique(cciout), collapse=" ")
-    }, ""))
+    }, "")
     Ligand <- vapply(Ligand, function(x){
         target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){
@@ -3362,7 +3373,7 @@
             ReceptorGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Ligand, function(x){
+    CCI <- vapply(Ligand, function(x){
         hit <- vapply(seq_len(ncol(out.vecLR)), function(xx){
             length(which(LnodesGeneName[[xx]] == x))
         }, 0L)
@@ -3390,7 +3401,7 @@
                     ".html)")
             }, ""), collapse=" ")
         }
-    }, ""))
+    }, "")
     Ligand <- vapply(Ligand, function(x){
         target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){
@@ -3480,7 +3491,7 @@
             LigandGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Receptor, function(x){
+    CCI <- vapply(Receptor, function(x){
         hit <- vapply(seq_len(length(out.vecLR)), function(xx){
             length(which(RnodesGeneName[[xx]] == x))
         }, 0L)
@@ -3495,7 +3506,7 @@
                 ".html)")
         }, "")
         paste(unique(cciout), collapse=" ")
-    }, ""))
+    }, "")
     Receptor <- vapply(Receptor, function(x){
         target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){
@@ -3585,7 +3596,7 @@
             LigandGeneID, ".png)"), collapse=" ")
     })
 
-    CCI <- unique(vapply(Receptor, function(x){
+    CCI <- vapply(Receptor, function(x){
         hit <- vapply(seq_len(ncol(out.vecLR)), function(xx){
             length(which(RnodesGeneName[[xx]] == x))
         }, 0L)
@@ -3613,7 +3624,7 @@
                     ".html)")
             }, ""), collapse=" ")
         }
-    }, ""))
+    }, "")
     Receptor <- vapply(Receptor, function(x){
         target <- which(GeneInfo$GeneName$SYMBOL == x)
         if(length(target) == 0){

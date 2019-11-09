@@ -90,7 +90,7 @@ setMethod("cellCellRanks",
     input <- .importAssays(sce, assayNames)
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
     LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
-    LR <- unique(LR)
+    LR <- .uniqueLR(LR)
     dbDisconnect(con)
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
@@ -164,7 +164,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     input <- .importAssays(sce, assayNames)
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
     LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
-    LR <- unique(LR)
+    LR <- .uniqueLR(LR)
     dbDisconnect(con)
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
