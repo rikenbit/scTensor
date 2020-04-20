@@ -1,3 +1,34 @@
+.frontal.normalization <- function(tnsr, total=1){
+    original.dim <- dim(tnsr)
+    denom <- apply(tnsr, 3, sum)
+    dim(tnsr) <- c(prod(original.dim[1:2]), original.dim[3])
+    tnsr2 <- vapply(seq(ncol(tnsr)), function(x, y){
+        y$data[,x] / y$denom[x] * y$total
+        }, y=list(data=tnsr, denom=denom, total=total),
+        FUN.VALUE=tnsr[,1])
+    tnsr2[which(is.nan(tnsr2))] <- 0
+    dim(tnsr2) <- original.dim
+    tnsr2
+}
+
+.searchRank <- function(objects, m){
+    l <- objects$l
+    tnsr <- objects$tnsr
+    for(i in 2:l){
+        # NMF
+        V <- NMF(cs_unfold(tnsr, m=m)@data, J=i, algorithm="KL")$V
+        # Binarlization
+        Cluster <- apply(V, 2, .HCLUST)
+        if(ncol(V) > nrow(unique(t(Cluster)))){
+            out <- i - 1
+            break
+        }else{
+           out <- i
+        }
+    }
+    out
+}
+
 .uniqueLR <- function(LR){
   targetL <- grep("GENEID", LR$GENEID_L, invert = TRUE)
   targetR <- grep("GENEID", LR$GENEID_R, invert = TRUE)
@@ -46,7 +77,7 @@
 
 .cellCellReport.Third_2 <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
     goenrich, meshenrich, reactomeenrich,
-    doenrich, ncgenrich, dgnenrich){
+    doenrich, ncgenrich, dgnenrich, nbins){
     # Core Tensor
     index <- metadata(sce)$sctensor$index
     corevalue <- index[, "Value"]
@@ -85,8 +116,12 @@
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
 
+        # Setting of schex
+        sce <- make_hexbin(sce, nbins=nbins,
+            dimension_reduction=reducedDimNames)
         # Plot Ligand/Receptor Genes
-        invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
+        suppressMessages(
+            invisible(.genePlot(sce, assayNames, input, out.dir, GeneInfo, LR)))
         # Plot (Each <L,R,*>)
         out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
@@ -252,7 +287,7 @@
 
 .cellCellReport.Third <- function(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
     goenrich, meshenrich, reactomeenrich, doenrich,
-    ncgenrich, dgnenrich){
+    ncgenrich, dgnenrich, nbins){
     # Core Tensor
     index <- metadata(sce)$sctensor$index
     corevalue <- index[, "Value"]
@@ -291,8 +326,12 @@
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
 
+        # Setting of schex
+        sce <- make_hexbin(sce, nbins=nbins,
+            dimension_reduction=reducedDimNames)
         # Plot Ligand/Receptor Genes
-        invisible(.genePlot(input, twoD, out.dir, GeneInfo, LR))
+        suppressMessages(
+            invisible(.genePlot(sce, assayNames, input, out.dir, GeneInfo, LR)))
         # Plot (Each <L,R,*>)
         out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
@@ -509,7 +548,7 @@
     type="matrix", names, collapse=FALSE){
     if(type == "matrix"){
         out <- lapply(seq_len(ncol(A1)), function(x){
-            base::outer(A1[, x], A2[, x])})
+            outer(A1[, x], A2[, x])})
     }else if(type == "tensor"){
         out <- list()
         counter <- 1
@@ -568,27 +607,7 @@
     out[order(out[,3], decreasing=TRUE), ]
 }
 
-.celltypemergedtensor <- function(input, LR, celltypes, mergeas, outer){
-    ct <- .cellType(input, celltypes, mergeas)
-    ct <- .divLR(ct, LR)
-    L <- ct[[1]]
-    R <- ct[[2]]
-    tnsr <- array(0, dim=c(ncol(L), ncol(R), 0))
-    Pair.name <- c()
-    for(i in seq_len(nrow(LR))){
-        l <- which(LR$GENEID_L[i] == rownames(L))
-        r <- which(LR$GENEID_R[i] == rownames(R))
-        if(length(l)==1 && length(r) == 1){
-            tnsr <- abind(tnsr,
-                base::outer(as.vector(L[l,]), as.vector(R[r,]), outer), along=3)
-            Pair.name <- c(Pair.name,
-                paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
-        }
-    }
-    list(tnsr=tnsr, pairname=Pair.name)
-}
-
-.fastPossibleCombination <- function(input, LR, celltypes, num.sampling, outer){
+.fastPossibleCombination <- function(input, LR, celltypes, num.sampling, outerfunc){
     lr <- .divLR(input, LR)
     L <- as.matrix(lr[[1]])
     R <- as.matrix(lr[[2]])
@@ -606,21 +625,21 @@
             for(j in seq_len(num.sampling)){
                 target <- vapply(unique(names(celltypes)), function(x){
                     sample(which(names(celltypes) == x), 1)}, 0L)
-                pre_tnsr[,,1] <- pre_tnsr[,,1] +
-                base::outer(as.vector(L[l, target]),
-                as.vector(R[r, target]), outer)
+                pre_tnsr[,,1] <- pre_tnsr[,,1] + outer(as.vector(L[l, target]),
+                as.vector(R[r, target]), outerfunc)
             }
             tnsr <- abind(tnsr, pre_tnsr, along=3)
             Pair.name <- c(Pair.name, paste(LR$GENEID_L[i],
                 LR$GENEID_R[i], sep="_"))
         }
     }
+    tnsr <- .frontal.normalization(tnsr)
     dimnames(tnsr) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     list(tnsr=tnsr, pairname=Pair.name)
 }
 
-.slowPossibleCombination <- function(input, LR, celltypes, outer){
+.slowPossibleCombination <- function(input, LR, celltypes, outerfunc){
     lr <- .divLR(input, LR)
     L <- as.matrix(lr[[1]])
     R <- as.matrix(lr[[2]])
@@ -633,7 +652,7 @@
         l <- which(LR$GENEID_L[i] == rownames(L))
         r <- which(LR$GENEID_R[i] == rownames(R))
         if(length(l)==1 && length(r) == 1){
-            pre_tnsr <- base::outer(as.vector(L[l,]), as.vector(R[r,]))
+            pre_tnsr <- outer(as.vector(L[l,]), as.vector(R[r,]))
             pre_tnsr <- apply(comb, 1, function(x){
                 sum(pre_tnsr[which(names(celltypes) == x[1]),
                 which(names(celltypes) == x[2])])})
@@ -644,26 +663,27 @@
                 LR$GENEID_R[i], sep="_"))
         }
     }
+    tnsr <- .frontal.normalization(tnsr)
     dimnames(tnsr) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     list(tnsr=tnsr, pairname=Pair.name)
 }
 
 .cellCellDecomp.Third_2 <- function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+        mergeas, outerfunc, comb, num.sampling, num.perm, decomp, thr1, thr2, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(ranks[1] > max.rank || ranks[2] > max.rank){
         stop("ranks must be defined less than number of celltypes")
     }
     if(centering){
-        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outer)
+        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outerfunc)
     }else{
         if(comb == "random"){
             fout <- .fastPossibleCombination(input, LR, celltypes,
-                num.sampling, outer)
+                num.sampling, outerfunc)
         }else if(comb == "all"){
-            fout <- .slowPossibleCombination(input, LR, celltypes, outer)
+            fout <- .slowPossibleCombination(input, LR, celltypes, outerfunc)
         }
     }
     # rank check
@@ -684,9 +704,10 @@
     Pair.name <- fout$pairname
     if(decomp){
         message(paste0(paste(dim(tnsr), collapse=" * "), " Tensor is created"))
-        out <- try(NTD(X=tnsr, rank=ranks, modes=1:2, num.iter=300, algorithm="Frobenius"))
+        out <- try(NTD(X=tnsr, rank=ranks, modes=1:2, num.iter=30,
+            verbose=verbose, algorithm="Frobenius"))
         if(is(out)[1] == "try-error"){
-            out <- NTD(X=tnsr, rank=ranks, modes=1:2, num.iter=300, algorithm="Frobenius")
+            out <- NTD(X=tnsr, rank=ranks, modes=1:2, num.iter=30, algorithm="Frobenius")
         }
         A1 <- out$A[[1]]
         A2 <- out$A[[2]]
@@ -723,20 +744,20 @@
 }
 
 .cellCellDecomp.Third <- function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+        mergeas, outerfunc, comb, num.sampling, num.perm, decomp, thr1, thr2, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(ranks[1] > max.rank || ranks[2] > max.rank){
         stop("ranks must be defined less than number of celltypes")
     }
     if(centering){
-        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outer)
+        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outerfunc)
     }else{
         if(comb == "random"){
             fout <- .fastPossibleCombination(input, LR, celltypes,
-                num.sampling, outer)
+                num.sampling, outerfunc)
         }else if(comb == "all"){
-            fout <- .slowPossibleCombination(input, LR, celltypes, outer)
+            fout <- .slowPossibleCombination(input, LR, celltypes, outerfunc)
         }
     }
     # rank check
@@ -760,9 +781,11 @@
     Pair.name <- fout$pairname
     if(decomp){
         message(paste0(paste(dim(tnsr), collapse=" * "), " Tensor is created"))
-        out <- try(NTD(X=tnsr, rank=ranks, num.iter=300, algorithm="Frobenius"))
+        out <- try(NTD(X=tnsr, rank=ranks, num.iter=30,
+            verbose=verbose, algorithm="Frobenius"))
         if(is(out)[1] == "try-error"){
-            out <- NTD(X=tnsr, rank=ranks, num.iter=300, algorithm="Frobenius")
+            out <- try(NTD(X=tnsr, rank=ranks, num.iter=30,
+                verbose=verbose, algorithm="Frobenius"))
         }
         A1 <- out$A[[1]]
         A2 <- out$A[[2]]
@@ -793,20 +816,21 @@
 }
 
 .cellCellDecomp.Second <- function(input, LR, celltypes, ranks, rank,
-    centering, mergeas, outer, comb, num.sampling, decomp, thr1, thr2){
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(rank > max.rank){
         stop("ranks must be defined less than number of celltypes")
     }
     if(centering){
-        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outer)
+        fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outerfunc)
     }else{
         if(comb == "random"){
             fout <- .fastPossibleCombination(input, LR, celltypes,
-                num.sampling, outer)
+                num.sampling, outerfunc)
         }else if(comb == "all"){
-            fout <- .slowPossibleCombination(input, LR, celltypes, outer)
+            fout <- .slowPossibleCombination(input, LR, celltypes, outerfunc)
         }
     }
     tnsr <- as.tensor(fout$tnsr)
@@ -815,10 +839,7 @@
     dimnames(mat.tnsr) <- list(unique(names(celltypes)),
         unique(names(celltypes)))
     if(decomp){
-        out <- try(NMF(mat.tnsr, J=rank, num.iter=300, algorithm="Frobenius"))
-        if(is(out)[1] == "try-error"){
-            out <- NMF(mat.tnsr, J=rank, num.iter=300, algorithm="Frobenius")
-        }
+        out <- try(NMF(mat.tnsr, J=rank, num.iter=30, algorithm="Frobenius"))
         colnames(out$U) <- paste0("Dim", seq_len(rank))
         colnames(out$V) <- paste0("Dim", seq_len(rank))
         sizeU <- apply(out$U, 2, function(x){sqrt(sum(x^2))})
@@ -832,27 +853,27 @@
     }
 }
 
-.cellCellDecomp.Pearson <- function(input, LR, celltypes, ranks,
-    rank, centering, mergeas, outer, comb, num.sampling, decomp,
-    thr1, thr2){
+.cellCellDecomp.Pearson <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="pearson")
     out <- as.matrix(out)
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Spearman <- function(input, LR, celltypes, ranks,
-    rank, centering, mergeas, outer, comb, num.sampling, decomp,
-    thr1, thr2){
+.cellCellDecomp.Spearman <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="spearman")
     out <- as.matrix(out)
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Distance <- function(input, LR, celltypes, ranks,
-    rank, centering, mergeas, outer, comb, num.sampling, decomp,
-    thr1, thr2){
+.cellCellDecomp.Distance <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     out <- .cellType(input, celltypes)
     out <- 1 / dist(t(out))
     out <- as.matrix(out)
@@ -860,9 +881,9 @@
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Pearson.LR <- function(input, LR, celltypes, ranks,
-        rank, centering, mergeas, outer, comb, num.sampling, decomp,
-        thr1, thr2){
+.cellCellDecomp.Pearson.LR <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -881,9 +902,9 @@
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Spearman.LR <- function(input, LR, celltypes, ranks,
-        rank, centering, mergeas, outer, comb, num.sampling, decomp,
-        thr1, thr2){
+.cellCellDecomp.Spearman.LR <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -902,9 +923,9 @@
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.Distance.LR <- function(input, LR, celltypes, ranks,
-        rank, centering, mergeas, outer, comb, num.sampling, decomp,
-        thr1, thr2){
+.cellCellDecomp.Distance.LR <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -924,8 +945,9 @@
     return(list(cellcellpattern=out))
 }
 
-.cellCellDecomp.PossibleCombination <- function(input, LR, celltypes,
-    thr1=2^5, thr2=25){
+.cellCellDecomp.PossibleCombination <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     if(thr1 <= 0 || thr2 <= 0){
         warning("None of cell-cell interaction will be detected.")
     }
@@ -947,7 +969,7 @@
         l <- which(LR$GENEID_L[i] == rownames(L))
         r <- which(LR$GENEID_R[i] == rownames(R))
         if(length(l)==1 && length(r) == 1){
-            pre_tnsr_bin <- base::outer(as.vector(L[l,]), as.vector(R[r,]))
+            pre_tnsr_bin <- outer(as.vector(L[l,]), as.vector(R[r,]))
             pre_tnsr_bin <- apply(comb, 1, function(x){
                 sum(pre_tnsr_bin[which(names(celltypes) == x[1]),
                     which(names(celltypes) == x[2])])
@@ -969,21 +991,43 @@
     return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr_bin))
 }
 
-.celltypemergedtensor2 <- function(input, LR, celltypes, mergeas){
+
+.celltypemergedtensor <- function(input, LR, celltypes, mergeas, outerfunc){
     ct <- .cellType(input, celltypes, mergeas)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
     R <- ct[[2]]
-    base::outer(as.vector(L), as.vector(R), "+")
+    tnsr <- array(0, dim=c(ncol(L), ncol(R), 0))
+    Pair.name <- c()
+    for(i in seq_len(nrow(LR))){
+        l <- which(LR$GENEID_L[i] == rownames(L))
+        r <- which(LR$GENEID_R[i] == rownames(R))
+        if(length(l)==1 && length(r) == 1){
+            tnsr <- abind(tnsr,
+                outer(as.vector(L[l,]), as.vector(R[r,]), outerfunc), along=3)
+            Pair.name <- c(Pair.name,
+                paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
+        }
+    }
+    tnsr <- .frontal.normalization(tnsr)
+    list(tnsr=tnsr, pairname=Pair.name)
+}
+
+.celltypemergedtensor_2 <- function(input, LR, celltypes, mergeas, outerfunc){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    outer(as.vector(L), as.vector(R), outerfunc)
 }
 
 .labelpermutation <- function(observed, input, l, r, num.perm,
-    celltypes, mergeas){
+    celltypes, mergeas, outerfunc){
     perm <- array(0, dim=c(dim(observed), 0))
     for(j in seq_len(num.perm)){
-        tmp <- .celltypemergedtensor2(input,
-            data.frame(GENEID_L=l, GENEID_R=r),
-            sample(celltypes), mergeas)
+        tmp <- .celltypemergedtensor_2(input,
+            data.frame(GENEID_L=l, GENEID_R=r, stringsAsFactors=FALSE),
+            sample(celltypes), mergeas, outerfunc)
         tmp <- observed - tmp
         tmp[which(tmp >= 0)] <- 0
         tmp[which(tmp < 0)] <- 1
@@ -992,11 +1036,11 @@
     modeSum(as.tensor(perm), m=3, drop=TRUE)@data / num.perm
 }
 
-.cellCellDecomp.LabelPerm.LR <- function(input, LR, celltypes, ranks,
-    rank, centering, mergeas, outer, comb, num.sampling, decomp,
-    thr1, thr2){
+.cellCellDecomp.LabelPerm.LR <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
     fout <- .celltypemergedtensor(input, LR, celltypes,
-        mergeas="mean", outer="+")
+        mergeas, outerfunc)
     tnsr <- as.tensor(fout$tnsr)
     Pair.name <- fout$pairname
     pval <- array(0, dim=c(dim(tnsr)[1:2], 0))
@@ -1005,7 +1049,164 @@
         l <- strsplit(Pair.name[i], "_")[[1]][1]
         r <- strsplit(Pair.name[i], "_")[[1]][2]
         tmp <- .labelpermutation(tnsr[,,i]@data, input,
-            l, r, num.perm=1000, celltypes, mergeas="mean")
+            l, r, num.perm, celltypes, mergeas, outerfunc)
+        pval <- abind(pval, tmp)
+    }
+    dimnames(pval) <- list(unique(names(celltypes)),
+        unique(names(celltypes)), Pair.name)
+    tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
+    dimnames(tnsr_cc) <- list(unique(names(celltypes)),
+        unique(names(celltypes)))
+    return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr,
+        pval=pval))
+}
+
+# SingleCellSignalR
+.celltypemergedtensor.ca <- function(input, LR, celltypes, mergeas, outerfunc){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    tnsr <- array(0, dim=c(ncol(L), ncol(R), 0))
+    Pair.name <- c()
+    for(i in seq_len(nrow(LR))){
+        l <- which(LR$GENEID_L[i] == rownames(L))
+        r <- which(LR$GENEID_R[i] == rownames(R))
+        if(length(l)==1 && length(r) == 1){
+            tnsr <- abind(tnsr,
+                outer(as.vector(L[l,]), as.vector(R[r,]), outerfunc), along=3)
+            Pair.name <- c(Pair.name,
+                paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
+        }
+    }
+    tnsr <- sqrt(tnsr) / (mean(rbind(L, R)) + sqrt(tnsr))
+    list(tnsr=tnsr, pairname=Pair.name)
+}
+
+.celltypemergedtensor.ca_2 <- function(input, LR, meanC, celltypes,
+    mergeas, outerfunc){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    tmp <- outer(as.vector(L), as.vector(R), outerfunc)
+    sqrt(tmp) / (meanC + sqrt(tmp))
+}
+
+.meanC <- function(input, celltypes, mergeas, LR){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    mean(rbind(L, R))
+}
+
+.labelpermutation.ca <- function(observed, input, LR, l, r, num.perm,
+    celltypes, mergeas, outerfunc){
+    meanC <- .meanC(input, celltypes, mergeas, LR)
+    perm <- array(0, dim=c(dim(observed), 0))
+    for(j in seq_len(num.perm)){
+        tmp <- .celltypemergedtensor.ca_2(input,
+            data.frame(GENEID_L=l, GENEID_R=r, stringsAsFactors=FALSE),
+            meanC, sample(celltypes), mergeas, outerfunc)
+        tmp <- observed - tmp
+        tmp[which(tmp >= 0)] <- 0
+        tmp[which(tmp < 0)] <- 1
+        perm <- abind(perm, tmp)
+    }
+    modeSum(as.tensor(perm), m=3, drop=TRUE)@data / num.perm
+}
+
+.cellCellDecomp.CabelloAguilar <- function(input, LR, celltypes, ranks,
+    rank, centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
+    fout <- .celltypemergedtensor.ca(input, LR, celltypes,
+        mergeas, outerfunc)
+    tnsr <- as.tensor(fout$tnsr)
+    Pair.name <- fout$pairname
+    pval <- array(0, dim=c(dim(tnsr)[1:2], 0))
+    for(i in seq_along(Pair.name)){
+        cat(paste0(i, " / ", length(Pair.name), "\r"))
+        l <- strsplit(Pair.name[i], "_")[[1]][1]
+        r <- strsplit(Pair.name[i], "_")[[1]][2]
+        tmp <- .labelpermutation.ca(tnsr[,,i]@data, input,
+            LR, l, r, num.perm, celltypes, mergeas, outerfunc)
+        pval <- abind(pval, tmp)
+    }
+    dimnames(pval) <- list(unique(names(celltypes)),
+        unique(names(celltypes)), Pair.name)
+    tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
+    dimnames(tnsr_cc) <- list(unique(names(celltypes)),
+        unique(names(celltypes)))
+    return(list(cellcellpattern=tnsr_cc, cellcelllrpairpattern=tnsr,
+        pval=pval))
+}
+
+# Halpern et al.（LECs）
+.Zscaling <- function(x){
+    (x - mean(x)) / sd(x)
+}
+
+.celltypemergedtensor.hl <- function(input, LR, celltypes, mergeas, outerfunc){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    L <- ct[[1]]
+    R <- ct[[2]]
+    # Z-scaling
+    Z_L <- t(apply(L, 1, .Zscaling))
+    Z_R <- t(apply(R, 1, .Zscaling))
+    tnsr <- array(0, dim=c(ncol(L), ncol(R), 0))
+    Pair.name <- c()
+    for(i in seq_len(nrow(LR))){
+        l <- which(LR$GENEID_L[i] == rownames(L))
+        r <- which(LR$GENEID_R[i] == rownames(R))
+        if(length(l)==1 && length(r) == 1){
+            tnsr <- abind(tnsr,
+                sqrt(outer(as.vector(Z_L[l,])^2, as.vector(Z_R[r,])^2, outerfunc)), along=3)
+            Pair.name <- c(Pair.name,
+                paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
+        }
+    }
+    list(tnsr=tnsr, pairname=Pair.name)
+}
+
+.celltypemergedtensor.hl_2 <- function(input, LR, celltypes, mergeas, outerfunc){
+    ct <- .cellType(input, celltypes, mergeas)
+    ct <- .divLR(ct, LR)
+    Z_L <- .Zscaling(ct[[1]])
+    Z_R <- .Zscaling(ct[[2]])
+    sqrt(outer(as.vector(Z_L)^2, as.vector(Z_R)^2, outerfunc))
+}
+
+.labelpermutation.hl <- function(observed, input, l, r, num.perm,
+    celltypes, mergeas, outerfunc){
+    perm <- array(0, dim=c(dim(observed), 0))
+    for(j in seq_len(num.perm)){
+        tmp <- .celltypemergedtensor.hl_2(input,
+            data.frame(GENEID_L=l, GENEID_R=r, stringsAsFactors=FALSE),
+            sample(celltypes), mergeas, outerfunc)
+        tmp <- observed - tmp
+        tmp[which(tmp >= 0)] <- 0
+        tmp[which(tmp < 0)] <- 1
+        perm <- abind(perm, tmp)
+    }
+    modeSum(as.tensor(perm), m=3, drop=TRUE)@data / num.perm
+}
+
+.cellCellDecomp.Halpern <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    decomp, thr1, thr2, verbose){
+    fout <- .celltypemergedtensor.hl(input, LR, celltypes,
+        mergeas, outerfunc)
+    tnsr <- as.tensor(fout$tnsr)
+    Pair.name <- fout$pairname
+    pval <- array(0, dim=c(dim(tnsr)[1:2], 0))
+    for(i in seq_along(Pair.name)){
+        cat(paste0(i, " / ", length(Pair.name), "\r"))
+        l <- strsplit(Pair.name[i], "_")[[1]][1]
+        r <- strsplit(Pair.name[i], "_")[[1]][2]
+        tmp <- .labelpermutation.hl(tnsr[,,i]@data, input,
+            l, r, num.perm, celltypes, mergeas, outerfunc)
         pval <- abind(pval, tmp)
     }
     dimnames(pval) <- list(unique(names(celltypes)),
@@ -1039,7 +1240,11 @@
     # Other method (Euclidian Distance with LR pair)
     "distance.lr" = .cellCellDecomp.Distance.LR,
     # Other method (Celltype Label Permutation with LR pair)
-    "label.permutation" = .cellCellDecomp.LabelPerm.LR
+    "label.permutation" = .cellCellDecomp.LabelPerm.LR,
+    # Other method (SingleCellSignalR)
+    "cabello.aguilar" = .cellCellDecomp.CabelloAguilar,
+    # Other method（LECs）
+    "halpern" = .cellCellDecomp.Halpern
 )
 
 .CCIhyperGraphPlot <- function(outobj, twoDplot=NULL, vertex.size=18,
@@ -1378,48 +1583,17 @@
     91.000)[max(l, r)]
 }
 
-.smallTwoDplot <- function(input, geneid, genename, twoD, color){
-    target <- which(rownames(input) == geneid)
-    exp <- log10(input[target, ]+1)
-    if(!all(exp %in% 0)){
-        label <- smoothPalette(exp,
-            palfunc=colorRampPalette(.setColor(color), alpha=TRUE))
-    }else{
-        label <- rep(
-            colorRampPalette(
-            .setColor(color), alpha=TRUE)(1),
-            length(exp))
+.smallTwoDplot <- function(sce, assayNames, geneid, genename, color){
+    g <- schex::plot_hexbin_gene(sce, type=assayNames, gene=geneid,
+        action="mean", xlab="Dim1", ylab="Dim2",
+        title=paste0("Mean of ", genename))
+    if(color == "reds"){
+        g <- g + scale_fill_gradient(low = 'gray', high = 'red')
     }
-    # Plot
-    par(ask=FALSE)
-    par(ps=25)
-    par(oma=c(2,2,2,2))
-    plot(twoD, col=label, pch=16, cex=3, bty="n", xaxt="n", yaxt="n",
-        xlab="", ylab="", main=genename)
-    # Gradient
-    par(ask=FALSE)
-    par(new=TRUE)
-    plot(1, xlab="", ylab="", axes=FALSE, col=rgb(0,0,0,0))
-    par(new=TRUE)
-    xleft=1.42
-    ybottom=0.8
-    xright=1.45
-    ytop=1.2
-    if(!all(exp %in% 0)){
-        gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(sort(exp),
-            palfunc=colorRampPalette(.setColor(color),
-            alpha=TRUE)), gradient="y")
-    }else{
-        gradient.rect(xleft, ybottom, xright, ytop, col=smoothPalette(0,
-            palfunc=colorRampPalette(
-            .setColor(color)[1], alpha=TRUE)),
-            gradient="y")
+    if(color == "blues"){
+        g <- g + scale_fill_gradient(low = 'gray', high = 'blue')
     }
-    text(xleft-0.05, ybottom+(ytop-ybottom)*0/4, round(quantile(exp)[1], 1))
-    text(xleft-0.05, ybottom+(ytop-ybottom)*1/4, round(quantile(exp)[2], 1))
-    text(xleft-0.05, ybottom+(ytop-ybottom)*2/4, round(quantile(exp)[3], 1))
-    text(xleft-0.05, ybottom+(ytop-ybottom)*3/4, round(quantile(exp)[4], 1))
-    text(xleft-0.05, ybottom+(ytop-ybottom)*4/4, round(quantile(exp)[5], 1))
+    g
 }
 
 .annotationhub <- list(
@@ -5318,7 +5492,7 @@ names(.eachCircleColor) <- c(
         )
 }
 
-.genePlot <- function(input, twoD, out.dir, GeneInfo, LR){
+.genePlot <- function(sce, assayNames, input, out.dir, GeneInfo, LR){
     GeneName <- GeneInfo$GeneName
     LigandGeneID <- unique(LR$GENEID_L)
     ReceptorGeneID <- unique(LR$GENEID_R)
@@ -5333,10 +5507,9 @@ names(.eachCircleColor) <- c(
             LigandGeneID[x], ".png")
         target <- which(rownames(input) == LigandGeneID[x])
         if(length(target) != 0){
-            png(filename=Ligandfile, width=1000, height=1000)
-            .smallTwoDplot(input, LigandGeneID[x],
-                LigandGeneName[x], twoD, "reds")
-            dev.off()
+            g <- .smallTwoDplot(sce, assayNames, LigandGeneID[x],
+                LigandGeneName[x], "reds")
+            ggsave(Ligandfile, plot=g, dpi=200, width=6, height=6)
         }
     })
 
@@ -5346,10 +5519,9 @@ names(.eachCircleColor) <- c(
             ReceptorGeneID[x], ".png")
         target <- which(rownames(input) == ReceptorGeneID[x])
         if(length(target) != 0){
-            png(filename=Receptorfile, width=1000, height=1000)
-            .smallTwoDplot(input, ReceptorGeneID[x],
-                ReceptorGeneName[x], twoD, "blues")
-            dev.off()
+            g <- .smallTwoDplot(sce, assayNames, ReceptorGeneID[x],
+                ReceptorGeneName[x], "blues")
+            ggsave(Receptorfile, plot=g, dpi=200, width=6, height=6)
         }
     })
 }

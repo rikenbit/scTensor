@@ -65,25 +65,35 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
 # cellCellRanks
 #
 setGeneric("cellCellRanks", function(sce, centering=TRUE,
-    mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=NULL){
+    mergeas=c("mean", "sum"), outerfunc=c("*", "+"), comb=c("random", "all"),
+    num.sampling=100, num.perm=1000, assayNames="counts", verbose=FALSE,
+    num.iter1=5, num.iter2=5, num.iter3=NULL){
     standardGeneric("cellCellRanks")})
 
 setMethod("cellCellRanks",
     signature(sce="SingleCellExperiment"),
     function(sce, centering=TRUE,
-    mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames="counts", thr1=0.9, thr2=0.9, thr3=NULL){
+    mergeas=c("mean", "sum"), outerfunc=c("*", "+"), comb=c("random", "all"),
+    num.sampling=100, num.perm=1000, assayNames="counts", verbose=FALSE,
+    num.iter1=5, num.iter2=5, num.iter3=NULL){
         # Argument Check
         mergeas <- match.arg(mergeas)
-        outer <- match.arg(outer)
+        outerfunc <- match.arg(outerfunc)
         comb <- match.arg(comb)
-        .cellCellRanks(centering, mergeas, outer, comb, num.sampling,
-            assayNames, thr1, thr2, thr3, sce)
+        .cellCellRanks(centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+            assayNames, verbose, num.iter1, num.iter2, num.iter3, sce)
     })
 
-.cellCellRanks <- function(centering, mergeas, outer, comb, num.sampling,
-    assayNames, thr1, thr2, thr3=NULL, ...){
+.cellCellRanks <- function(centering, mergeas, outerfunc, comb, num.sampling, num.perm,
+    assayNames, verbose, num.iter1, num.iter2, num.iter3=NULL, ...){
+    # value-check
+    if(num.iter1 < 0){
+        stop("Please specify the num.iter1 as positive integer")
+    }
+    if(num.iter2 < 0){
+        stop("Please specify the num.iter2 as positive integer")
+    }
+
     # Import from sce object
     sce <- list(...)[[1]]
     # Import expression matrix
@@ -94,70 +104,85 @@ setMethod("cellCellRanks",
     dbDisconnect(con)
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
+    l <- length(unique(celltypes))
 
-    # Tensor is generated, and then matricised
+    # Tensor is generated
     tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(1,1,1),
-        rank=1, centering, mergeas, outer, comb, num.sampling, decomp=FALSE,
-        thr1, thr2)$cellcelllrpairpattern
-    d1 <- svd(rs_unfold(tnsr, m=1)@data)$d
-    d2 <- svd(rs_unfold(tnsr, m=2)@data)$d
-    cumd1 <- cumsum(d1) / sum(d1)
-    cumd2 <- cumsum(d2) / sum(d2)
-    rank1 <- length(which(cumd1 <= thr1))
-    rank2 <- length(which(cumd2 <= thr2))
-    # Output
-    if(rank1 == 0){
-        rank1 = 1
-    }
-    if(rank2 == 0){
-        rank2 = 1
-    }
-    if(!is.null(thr3)){
-        d3 <- svd(rs_unfold(tnsr, m=3)@data)$d
-        cumd3 <- cumsum(d3) / sum(d3)
-        rank3 <- length(which(cumd3 <= thr3))
-        if(rank3 == 0){
-            rank3 = 1
-        }
-        list(selected=c(rank1, rank2, rank3),
-            mode1=d1,
-            mode2=d2,
-            mode3=d3)
+        rank=1, centering, mergeas, outerfunc, comb, num.sampling,
+        num.perm, decomp=FALSE, thr1=log2(5), thr2=25, verbose)$cellcelllrpairpattern
+
+    # Limit
+    l1 <- min(dim(tnsr)[1], dim(tnsr)[2]*dim(tnsr)[3])
+    l2 <- min(dim(tnsr)[2], dim(tnsr)[3]*dim(tnsr)[1])
+
+    # NMF in matricised tensors in each mode
+    out1 <- NMF(cs_unfold(tnsr, m=1)@data, runtime=num.iter1, rank.method="rss", J=1:l1)
+    out2 <- NMF(cs_unfold(tnsr, m=2)@data, runtime=num.iter2, rank.method="rss", J=1:l2)
+
+    # Reconsturction Error
+    rss1 <- unlist(lapply(seq(l1), function(x, out1){
+        eval(parse(text=paste0("mean(out1$Trial$Rank", x, "$original)")))
+    }, out1=out1))
+    rss2 <- unlist(lapply(seq(l2), function(x, out2){
+        eval(parse(text=paste0("mean(out2$Trial$Rank", x, "$original)")))
+    }, out2=out2))
+
+    # Estimated rank
+    rank1 <- min(which((max(rss1) - rss1) / (max(rss1) - min(rss1)) > 0.8))
+    rank2 <- min(which((max(rss2) - rss2) / (max(rss2) - min(rss2)) > 0.8))
+
+    if(!is.null(num.iter3)){
+        # Limit
+        l3 <- min(30, dim(tnsr)[3], dim(tnsr)[1]*dim(tnsr)[2])
+        # NMF in matricised tensors in each mode
+        out3 <- NMF(cs_unfold(tnsr, m=3)@data, runtime=num.iter3, rank.method="rss", J=1:l3)
+        # Reconsturction Error
+        rss3 <- unlist(lapply(seq(l3), function(x, out3){
+            eval(parse(text=paste0("mean(out3$Trial$Rank", x, "$original)")))
+        }, out3=out3))        
+        # Estimated rank
+        rank3 <- min(which((max(rss3) - rss3) / (max(rss3) - min(rss3)) > 0.8))
+        list(selected=c(rank1, rank2, rank3))
     }else{
-        list(selected=c(rank1, rank2),
-            mode1=d1,
-            mode2=d2)
+        list(selected=c(rank1, rank2))
     }
 }
 
 #
 # cellCellDecomp
 #
-setGeneric("cellCellDecomp", function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson",
+setGeneric("cellCellDecomp", function(sce,
+    algorithm=c("ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb", "label.permutation"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25,
-    centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
-    comb=c("random", "all"), num.sampling=100, assayNames="counts", decomp=TRUE){
+    "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
+    rank=3, thr1=log2(5), thr2=25, verbose=FALSE,
+    centering=TRUE, mergeas=c("mean", "sum"), outerfunc=c("*", "+"),
+    comb=c("random", "all"), num.sampling=100, num.perm=1000,
+    assayNames="counts", decomp=TRUE){
     standardGeneric("cellCellDecomp")})
 
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
-    function(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson", "spearman", "distance",
-        "pearson.lr", "spearman.lr", "distance.lr", "pcomb", "label.permutation"), ranks=c(3,3),
-        rank=3, thr1=log2(5), thr2=25, centering=TRUE,
-        mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-        num.sampling=100, assayNames="counts", decomp=TRUE){
+    function(sce,
+        algorithm=c("ntd2", "ntd", "nmf", "pearson", "spearman", "distance",
+        "pearson.lr", "spearman.lr", "distance.lr", "pcomb",
+        "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
+        rank=3, thr1=log2(5), thr2=25, verbose=FALSE, centering=TRUE,
+        mergeas=c("mean", "sum"), outerfunc=c("*", "+"), comb=c("random", "all"),
+        num.sampling=100, num.perm=1000, assayNames="counts", decomp=TRUE){
         # Argument Check
         algorithm = match.arg(algorithm)
         mergeas = match.arg(mergeas)
-        outer = match.arg(outer)
+        outerfunc = match.arg(outerfunc)
         comb = match.arg(comb)
 
         userobjects <- deparse(substitute(sce))
         .cellCellDecomp(userobjects, algorithm, ranks, rank, thr1, thr2,
-            centering, mergeas, outer, comb, num.sampling, assayNames, decomp, sce)})
+            verbose, centering, mergeas, outerfunc, comb, num.sampling,
+            num.perm, assayNames, decomp, sce)})
 
 .cellCellDecomp <- function(userobjects, algorithm, ranks, rank, thr1,
-    thr2, centering, mergeas, outer, comb, num.sampling, assayNames, decomp,  ...){
+    thr2, verbose, centering, mergeas, outerfunc, comb, num.sampling,
+    num.perm, assayNames, decomp,  ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # Import expression matrix
@@ -192,7 +217,8 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
         stop("Please specify the appropriate algorithm\n")
     }else{
         res.sctensor <- f(input, LR, celltypes, ranks, rank, centering,
-            mergeas, outer, comb, num.sampling, decomp, thr1, thr2)
+            mergeas, outerfunc, comb, num.sampling, num.perm, decomp,
+            thr1, thr2, verbose)
     }
 
     # Data size
@@ -224,17 +250,17 @@ setGeneric("cellCellReport", function(sce, reducedDimNames,
     author="The person who runs this script", assayNames="counts", thr=100,
     top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE){
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40){
     standardGeneric("cellCellReport")})
 
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     function(sce, reducedDimNames, out.dir, html.open, title, author,
         assayNames, thr, top, p, upper, goenrich, meshenrich,
-        reactomeenrich, doenrich, ncgenrich, dgnenrich){
+        reactomeenrich, doenrich, ncgenrich, dgnenrich, nbins){
         .cellCellReport(reducedDimNames, out.dir,
             html.open, title, author, assayNames, thr, top, p, upper,
             goenrich, meshenrich, reactomeenrich,
-            doenrich, ncgenrich, dgnenrich, sce)})
+            doenrich, ncgenrich, dgnenrich, nbins, sce)})
 
 .cellCellReport <- function(reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
@@ -242,7 +268,7 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     author="The person who runs this script", assayNames="counts",
     thr=100, top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, ...){
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40, ...){
     # Import from sce object
     sce <- list(...)[[1]]
     # algorithm-check
@@ -278,12 +304,12 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     if(metadata(sce)$algorithm == "ntd"){
         .cellCellReport.Third(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
             goenrich, meshenrich, reactomeenrich,
-            doenrich, ncgenrich, dgnenrich)
+            doenrich, ncgenrich, dgnenrich, nbins)
     }
     if(metadata(sce)$algorithm == "ntd2"){
         .cellCellReport.Third_2(sce, thr, upper, assayNames, reducedDimNames, out.dir, author, title, p, top,
             goenrich, meshenrich, reactomeenrich,
-            doenrich, ncgenrich, dgnenrich)
+            doenrich, ncgenrich, dgnenrich, nbins)
     }
     # HTML Open
     message(paste0("################################################\n",

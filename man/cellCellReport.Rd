@@ -16,7 +16,7 @@ cellCellReport(sce, reducedDimNames,
     author="The person who runs this script", assayNames = "counts", thr=100,
     top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE)
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
 }
 
 \arguments{
@@ -74,6 +74,9 @@ Whether NCG-Enrichment analysis is performed (Default: TRUE)
 \item{dgnenrich}{
 Whether DGN-Enrichment analysis is performed (Default: TRUE)
 }
+\item{nbins}{
+The number of bins used for the two dimensional plot of schex (Default: 40)
+}
 }
 
 \value{
@@ -113,13 +116,14 @@ The result is saved as HTML report which contains with multiple files.
 	# Rank Estimation
 	rks <- cellCellRanks(sce, assayNames="normcounts")
 	# CCI Tensor Decomposition
+	set.seed(1234)
 	cellCellDecomp(sce, ranks=rks$selected, assayNames="normcounts")
 	# HTML Report
 	cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
 	    title="Cell-cell interaction within Germline_Male, GSE86146",
 	    author="Koki Tsuyuzaki", html.open=TRUE, upper=2,
         goenrich=TRUE, meshenrich=FALSE, reactomeenrich=FALSE,
-        doenrich=FALSE, ncgenrich=FALSE, dgnenrich=FALSE)
+        doenrich=FALSE, ncgenrich=FALSE, dgnenrich=FALSE, nbins=40)
 	if(.Device == "quartz"){
 		dev.off()
 	}

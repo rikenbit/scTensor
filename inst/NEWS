@@ -1,69 +1,79 @@
+VERSION 1.4.0 (Bioconductor 3.11)
+------------------------
+   o verbose parameter was added in cellCellRank() and cellCellDecomp()
+   o set.seed(1234) was added in example and vignette
+   o .cellCellDecomp.CabelloAguilar() and .cellCellDecomp.Halpern() were added
+   o The num.iter 300　of NTD was changed to 30
+   o schex package was imported for visualing all the two dimensional gene plots
+   o The rule of cellCellRanks() based on the singular value of SVD was changed to a reconstruction error based rule, using NMF with matricised tensor in each mode
+   o The CCI-tensor is normalized in each frontral slice so that the total value is 1 (.frontal.normalization)
+
 VERSION 1.2.1
 ------------------------
-   o Some bugs are fixed
+   o Some bugs were fixed
 
-VERSION 1.2.0
+VERSION 1.2.0 (Bioconductor 3.10)
 ------------------------
-   o goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, and dgnenrich in cellCellReport are added
-   o A bug related in sparse matrix in cellCellSetting is fixed
-   o All the vignettes are updated
-   o A vignette for reanalysis of the results of scTensor is added
-   o Some bugs are fixed
+   o goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, and dgnenrich in cellCellReport() were added
+   o A bug related in sparse matrix in cellCellSetting() was fixed
+   o All the vignettes were updated
+   o A vignette for reanalysis of the results of scTensor was added
+   o Some bugs were fixed
 
 VERSION 1.0.13
 ------------------------
-   o Gene-gene network based on visNetwork is introduced
+   o Gene-gene network based on visNetwork was introduced
 
 VERSION 1.0.11 - 1.0.12
 ------------------------
-   o Some bugs are fixed
+   o Some bugs were fixed
 
 VERSION 1.0.10
 ------------------------
-   o Tensor decomposition model is changed from non-negative Tucker3 to non-negative Tucker2
-   o assayNames option is added to specify which normalized assay data user want to use
-   o ftt option is removed
+   o The tensor decomposition model was changed from non-negative Tucker3 to non-negative Tucker2
+   o assayNames option was added to specify which normalized assay data user want to use
+   o ftt option was removed (any normalization can be performed instead)
 
 VERSION 1.0.7 - 1.0.9
 ------------------------
-   o Some bugs are fixed
+   o Some bugs were fixed
 
 VERSION 1.0.6
 ------------------------
-   o Dependency against biomaRt is replaced by AnnotationHub
+   o Replaced Dependency against biomaRt by AnnotationHub
 
 VERSION 1.0.3 - 1.0.5
 ------------------------
-   o Some bugs are fixed
+   o Some bugs were fixed
 
 VERSION 1.0.2
 ------------------------
-   o upper is added in cellCellReport
-   o Table grid lines in {ligand,receptor}*.Rmd are added
-   o Some bugs are fixed
+   o Added upper in cellCellReport()
+   o Table grid lines in {ligand,receptor}*.Rmd were added
+   o Some bugs were fixed
 
 VERSION 1.0.1
 ------------------------
-   o Some bugs are fixed
-   o Three vignettes are added
-   o convertToNCBIGeneID function to ID conversion of input matrix
+   o Some bugs were fixed
+   o Three vignettes were added
+   o convertToNCBIGeneID() to ID conversion of input matrix
 
-VERSION 1.0.0
+VERSION 1.0.0 (Bioconductor 3.9)
 ------------------------
-   o Package release (Bioconductor 3.9)
+   o Package release
 
 VERSION 0.99.22
 ------------------------
-   o newCCSParams, getParam, setParam, and cellCellSimulate are added
-   o The hyperlinks to CMap (Connectivity Map) are embedded in the HTML report
+   o newCCSParams(), getParam(), setParam(), and cellCellSimulate() were added
+   o The hyperlinks to CMap (Connectivity Map) were embedded in the HTML report
 
 VERSION 0.99.21
 ------------------------
-   o Some bugs are fixed
+   o Some bugs were fixed
 
 VERSION 0.99.18
 ------------------------
-   o Enrichment Analysis is added in cellCellReport()
+   o Added Enrichment Analysis in cellCellReport()
 
 VERSION 0.99.15
 ------------------------

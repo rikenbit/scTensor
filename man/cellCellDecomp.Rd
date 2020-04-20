@@ -12,9 +12,9 @@ All parameters is saved to metadata slot of SingleCellExperiment object.
 \usage{
 cellCellDecomp(sce, algorithm=c("ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb", "label.permutation"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25,
-    centering=TRUE, mergeas=c("mean", "sum"), outer=c("*", "+"),
-    comb=c("random", "all"), num.sampling=100, assayNames = "counts", decomp=TRUE)
+    "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25, verbose=FALSE,
+    centering=TRUE, mergeas=c("mean", "sum"), outerfunc=c("*", "+"),
+    comb=c("random", "all"), num.sampling=100, num.perm=1000, assayNames = "counts", decomp=TRUE)
 }
 
 \arguments{
@@ -42,6 +42,9 @@ The threshold used by pcomb (Default: log2(5)).
 \item{thr2}{
 The threshold used by pcomb (Default: 25).
 }
+\item{verbose}{
+The verbose parameter for nnTensor::NTD (Default: FALSE).
+}
 \item{centering}{
 When the value is TRUE, input matrix is summarized as celltype-level vectors
 (Default: TRUE).
@@ -50,7 +53,7 @@ When the value is TRUE, input matrix is summarized as celltype-level vectors
 When the centering is TRUE, "sum" (celltype-level sum vector)
 or "mean" (celltype-level average vector) is calculated (Default: "sum").
 }
-\item{outer}{
+\item{outerfunc}{
 When the centering is TRUE, "+" (Kronecker sum) or "*" (Kronecker product)
 is calculated (Default: "+").
 }
@@ -59,8 +62,10 @@ When the centering is FALSE, "random" (random cell-cell pairing)
 or "all" (all possible cell-cell pairing) is calculed (Default: "random").
 }
 \item{num.sampling}{
-The number of random sampling used
-(Default: 100).
+The number of random sampling used (Default: 100).
+}
+\item{num.perm}{
+The number of the permutation in label permutation test (Default: 1000).
 }
 \item{assayNames}{
 The unit of gene expression for using scTensor (e.g. normcounts, cpm...etc) (Default: "counts").

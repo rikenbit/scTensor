@@ -11,8 +11,9 @@ SVD is performed in each mode.
 }
 \usage{
 cellCellRanks(sce, centering=TRUE,
-    mergeas=c("mean", "sum"), outer=c("*", "+"), comb=c("random", "all"),
-    num.sampling=100, assayNames = "counts", thr1=0.9, thr2=0.9, thr3=NULL)
+    mergeas=c("mean", "sum"), outerfunc=c("*", "+"), comb=c("random", "all"),
+    num.sampling=100, num.perm=1000, assayNames = "counts", verbose=FALSE,
+    num.iter1=5, num.iter2=5, num.iter3=NULL)
 }
 
 \arguments{
@@ -27,7 +28,7 @@ When the value is TRUE, input matrix is summarized as celltype-level vectors
 When the centering is TRUE, "mean" (celltype-level mean vector)
 or "sum" (celltype-level sum vector) is calculated (Default: "mean").
 }
-\item{outer}{
+\item{outerfunc}{
 When the centering is TRUE, "*" (Kronecker product) or "+" (Kronecker sum) or is calculated (Default: "+").
 }
 \item{comb}{
@@ -35,20 +36,25 @@ When the centering is FALSE, "random" (random cell-cell pairing)
 or "all" (all possible cell-cell pairing) is calculed (Default: "random").
 }
 \item{num.sampling}{
-The number of random sampling used
-(Default: 100).
+The number of random sampling used (Default: 100).
+}
+\item{num.perm}{
+The number of the permutation in label permutation test (Default: 1000).
 }
 \item{assayNames}{
 The unit of gene expression for using scTensor (e.g. normcounts, cpm...etc) (Default: "counts").
 }
-\item{thr1}{
-The threshold for selection of top eigenvalues of mode-1 matricised data tensor (Default: 0.9 (0 to 1)).
+\item{verbose}{
+The verbose parameter for nnTensor::NTD (Default: FALSE).
 }
-\item{thr2}{
-The threshold for selection of top eigenvalues of mode-2 matricised data tensor (Default: 0.9 (0 to 1)).
+\item{num.iter1}{
+The number of iteration to estimate the rank of mode-1 matricised data tensor (Default: 5).
 }
-\item{thr3}{
-The threshold for selection of top eigenvalues of mode-3 matricised data tensor (Default: NULL (0 to 1)).
+\item{num.iter2}{
+The number of iteration to estimate the rank of mode-2 matricised data tensor (Default: 5).
+}
+\item{num.iter3}{
+The number of iteration to estimate the rank of mode-3 matricised data tensor (Default: NULL).
 }
 }
 
