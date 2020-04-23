@@ -11,24 +11,6 @@
     tnsr2
 }
 
-.searchRank <- function(objects, m){
-    l <- objects$l
-    tnsr <- objects$tnsr
-    for(i in 2:l){
-        # NMF
-        V <- NMF(cs_unfold(tnsr, m=m)@data, J=i, algorithm="KL")$V
-        # Binarlization
-        Cluster <- apply(V, 2, .HCLUST)
-        if(ncol(V) > nrow(unique(t(Cluster)))){
-            out <- i - 1
-            break
-        }else{
-           out <- i
-        }
-    }
-    out
-}
-
 .uniqueLR <- function(LR){
   targetL <- grep("GENEID", LR$GENEID_L, invert = TRUE)
   targetR <- grep("GENEID", LR$GENEID_R, invert = TRUE)
@@ -5738,5 +5720,6 @@ names(.eachCircleColor) <- c(
     return(
         list(simcount = testdata.matrix,
         LR=LR,
-        celltypes=celltypes))
+        celltypes=celltypes,
+        LR_CCI=LR_CCI))
 }

@@ -142,9 +142,17 @@ setMethod("cellCellRanks",
         }, out3=out3))        
         # Estimated rank
         rank3 <- min(which((max(rss3) - rss3) / (max(rss3) - min(rss3)) > 0.8))
-        list(selected=c(rank1, rank2, rank3))
+        list(
+            RSS=list(
+                rss1=rss1,
+                rss2=rss2,
+                rss3=rss3),
+            selected=c(rank1, rank2, rank3))
     }else{
-        list(selected=c(rank1, rank2))
+        list(RSS=list(
+                rss1=rss1,
+                rss2=rss2),
+            selected=c(rank1, rank2))
     }
 }
 

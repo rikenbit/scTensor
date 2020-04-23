@@ -312,6 +312,7 @@ core tensor. For example, c(2, 3) means The data tensor is decomposed to
 2 ligand-patterns and 3 receptor-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
+set.seed(1234)
 cellCellDecomp(sce, ranks=c(2,3))
 ```
 

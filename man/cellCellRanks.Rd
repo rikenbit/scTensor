@@ -59,7 +59,8 @@ The number of iteration to estimate the rank of mode-3 matricised data tensor (D
 }
 
 \value{
-A vector with three elements, in which each element means the estimated ranks in mode-1, 2 and 3 matricization.
+RSS: A list with three elements, in which each element means the average reconstructed error in each rank.
+selected: A vector with three elements, in which each element means the estimated ranks in mode-1, 2 and 3 matricization.
 }
 \seealso{
 \code{\link[SingleCellExperiment]{SingleCellExperiment}}.
