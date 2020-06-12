@@ -318,7 +318,7 @@ cellCellDecomp(sce, ranks=c(2,3))
 
 Although user has to specify the rank to perform cellCellDecomp,
 we implemented a simple rank estimation function based on the eigenvalues
-distribution of PCA in the matricised tensor in each mode.
+distribution of PCA in the matricised tensor in each mode in `cellCellRank`.
 rks$selected is also specified as rank parameter of `cellCellDecomp`.
 
 ```{r cellCellRank, echo=TRUE}
