@@ -1180,6 +1180,7 @@
     decomp, thr1, thr2, verbose){
     fout <- .celltypemergedtensor.hl(input, LR, celltypes,
         mergeas, outerfunc)
+    fout$tnsr[which(is.nan(fout$tnsr))] <- 0
     tnsr <- as.tensor(fout$tnsr)
     Pair.name <- fout$pairname
     pval <- array(0, dim=c(dim(tnsr)[1:2], 0))

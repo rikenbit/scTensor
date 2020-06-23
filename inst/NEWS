@@ -1,3 +1,7 @@
+VERSION 1.4.1
+------------------------
+   o A bug was fixed in .cellCellDecomp.Halpern()
+
 VERSION 1.4.0 (Bioconductor 3.11)
 ------------------------
    o verbose parameter was added in cellCellRank() and cellCellDecomp()
