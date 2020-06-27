@@ -1034,6 +1034,7 @@
             l, r, num.perm, celltypes, mergeas, outerfunc)
         pval <- abind(pval, tmp)
     }
+    pval[which(is.nan(pval))] <- 1
     dimnames(pval) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
@@ -1115,6 +1116,7 @@
             LR, l, r, num.perm, celltypes, mergeas, outerfunc)
         pval <- abind(pval, tmp)
     }
+    pval[which(is.nan(pval))] <- 1
     dimnames(pval) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
@@ -1192,6 +1194,7 @@
             l, r, num.perm, celltypes, mergeas, outerfunc)
         pval <- abind(pval, tmp)
     }
+    pval[which(is.nan(pval))] <- 1
     dimnames(pval) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     tnsr_cc <- modeSum(tnsr, m=3, drop=TRUE)@data
