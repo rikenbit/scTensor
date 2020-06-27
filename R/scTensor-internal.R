@@ -1062,6 +1062,7 @@
                 paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
         }
     }
+    tnsr[which(is.nan(tnsr))] <- 0
     tnsr <- sqrt(tnsr) / (mean(rbind(L, R)) + sqrt(tnsr))
     list(tnsr=tnsr, pairname=Pair.name)
 }
@@ -1151,6 +1152,7 @@
                 paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
         }
     }
+    tnsr[which(is.nan(tnsr))] <- 0
     list(tnsr=tnsr, pairname=Pair.name)
 }
 
