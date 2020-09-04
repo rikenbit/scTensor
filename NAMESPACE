@@ -36,6 +36,7 @@ importFrom(crayon, bold, blue, green)
 importFrom(checkmate, assertClass, assertList)
 importFrom(stats, median, cor, dist, na.omit, quantile, p.adjust, hclust, cutree, rbinom, rnbinom, var, sd)
 importFrom("utils", "data")
+importFrom("grDevices", "hcl")
 
 importFrom(visNetwork, visNetwork)
 importFrom(schex, make_hexbin, plot_hexbin_gene)

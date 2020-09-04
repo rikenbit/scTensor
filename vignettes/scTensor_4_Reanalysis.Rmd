@@ -64,7 +64,10 @@ For example, the user can perform `cellCellDecomp` with different ranks,
 and also can peform `cellCellReport` with omiting some enrichment analysis step as follows.
 
 ```{r Reanalysis, eval=FALSE}
-suppressPackageStartupMessages(library("LRBase.Hsa.eg.db"))
+if(!require(LRBase.Hsa.eg.db)){
+    BiocManager::install("LRBase.Hsa.eg.db")
+    suppressPackageStartupMessages(library(LRBase.Hsa.eg.db))
+}
 # Register the file pass of user's LRBase
 metadata(sce)$lrbase <- dbfile(LRBase.Hsa.eg.db)
 # CCI Tensor Decomposition

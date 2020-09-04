@@ -1,15 +1,15 @@
 #
 # cellCellSetting
 #
-setGeneric("cellCellSetting", function(sce, lrbase, color, label){
+setGeneric("cellCellSetting", function(sce, lrbase, label,  lr.evidence="all", color=NULL){
     standardGeneric("cellCellSetting")})
 
 setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
-    function(sce, lrbase, color, label){
+    function(sce, lrbase, label, lr.evidence="all", color=NULL){
         userobjects <- deparse(substitute(sce))
-        .cellCellSetting(userobjects, lrbase, color, label, sce)})
+        .cellCellSetting(userobjects, lrbase, label, lr.evidence, color, sce)})
 
-.cellCellSetting <- function(userobjects, lrbase, color, label, ...){
+.cellCellSetting <- function(userobjects, lrbase, label, lr.evidence, color, ...){
     sce <- list(...)[[1]]
     # class-check
     if(is(lrbase)[1] != "LRBaseDb"){
@@ -17,13 +17,22 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
         such as LRBase.Hsa.eg.db")
     }
     # size-check
-    if(length(color) != ncol(assay(sce))){
-        stop("Please specify the color as the vector which has
-            same length of nrow(assay(sce))")
-    }
-    # size-check
     if(length(label) != ncol(assay(sce))){
         stop("Please specify the label as the vector which has
+            same length of nrow(assay(sce))")
+    }
+    if(is.null(color)){
+        unique.label <- unique(label)
+        base.color <- .ggdefault_cols(length(unique.label))
+        color <- label
+        for(i in seq_along(base.color)){
+            color[which(color == unique.label[i])] <- base.color[i]
+        }
+    }
+
+    # size-check
+    if(length(color) != ncol(assay(sce))){
+        stop("Please specify the color as the vector which has
             same length of nrow(assay(sce))")
     }
     # size-check
@@ -31,6 +40,7 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
         stop("Please specify the kind of elements containing
             in color and label as same")
     }
+
     # Rowname-check
     rn <- rownames(assay(sce))
     if(length(rn) != length(unique(rn))){
@@ -57,7 +67,8 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
         stop("At least one NA element is in color\nPlease remove it.")
     }
     # Overwrite
-    metadata(sce) <- list(lrbase=lrbase$conn@dbname, color=color, label=label)
+    metadata(sce) <- list(lrbase=lrbase$conn@dbname,
+        lr.evidence=lr.evidence, label=label, color=color)
     assign(userobjects, sce, envir=.GlobalEnv)
 }
 
@@ -85,7 +96,7 @@ setMethod("cellCellRanks",
     })
 
 .cellCellRanks <- function(centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    assayNames, verbose, num.iter1, num.iter2, num.iter3=NULL, ...){
+    assayNames, verbose, num.iter1, num.iter2, num.iter3, ...){
     # value-check
     if(num.iter1 < 0){
         stop("Please specify the num.iter1 as positive integer")
@@ -98,10 +109,8 @@ setMethod("cellCellRanks",
     sce <- list(...)[[1]]
     # Import expression matrix
     input <- .importAssays(sce, assayNames)
-    con = dbConnect(SQLite(), metadata(sce)$lrbase)
-    LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
-    LR <- .uniqueLR(LR)
-    dbDisconnect(con)
+    lr.evidence <- metadata(sce)$lr.evidence
+    LR <- .extractLR(sce, lr.evidence, c("GENEID_L", "GENEID_R"))
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
     l <- length(unique(celltypes))
@@ -139,7 +148,7 @@ setMethod("cellCellRanks",
         # Reconsturction Error
         rss3 <- unlist(lapply(seq(l3), function(x, out3){
             eval(parse(text=paste0("mean(out3$Trial$Rank", x, "$original)")))
-        }, out3=out3))        
+        }, out3=out3))
         # Estimated rank
         rank3 <- min(which((max(rss3) - rss3) / (max(rss3) - min(rss3)) > 0.8))
         list(
@@ -195,10 +204,8 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     sce <- list(...)[[1]]
     # Import expression matrix
     input <- .importAssays(sce, assayNames)
-    con = dbConnect(SQLite(), metadata(sce)$lrbase)
-    LR <- dbGetQuery(con, "SELECT * FROM DATA")[, c("GENEID_L", "GENEID_R")]
-    LR <- .uniqueLR(LR)
-    dbDisconnect(con)
+    lr.evidence <- metadata(sce)$lr.evidence
+    LR <- .extractLR(sce, lr.evidence, c("GENEID_L", "GENEID_R"))
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
 
@@ -243,6 +250,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 
     # Overwrite
     metadata(sce) <- list(lrbase=metadata(sce)$lrbase,
+        lr.evidence=lr.evidence,
         color=metadata(sce)$color, label=metadata(sce)$label,
         algorithm=algorithm, sctensor=res.sctensor, ranks=ranks,
         datasize=datasize, recerror=recerror, relchange=relchange)

@@ -72,7 +72,10 @@ Although Cell Ranger is implemented by Python, starting from the files generated
 For example, according to the tutorial of Seurat ([Seurat - Guided Clustering Tutorial](https://satijalab.org/seurat/v3.0/pbmc3k_tutorial.html)), PBMC data of Cell Ranger can be imported by `Read10X` function and DGE matrix of UMI-count is available by the output of `CreateSeuratObject` function.
 
 ```{r Seurat, eval=FALSE}
-library("Seurat")
+if(!require(Seurat)){
+    BiocManager::install("Seurat")
+    library(Seurat)
+}
 
 # Load the PBMC dataset
 pbmc.data <- Read10X(data.dir = "filtered_gene_bc_matrices/hg19/")
@@ -109,7 +112,10 @@ Using the `select` function of Organism DB, the corresponding table can be retri
 
 ```{r Ensembl with Organism DB, echo=TRUE}
 suppressPackageStartupMessages(library("scTensor"))
-suppressPackageStartupMessages(library("Homo.sapiens"))
+if(!require(Homo.sapiens)){
+    BiocManager::install("Homo.sapiens")
+    suppressPackageStartupMessages(library(Homo.sapiens))
+}
 
 # 1. Input matrix
 input <- matrix(1:20, nrow=4, ncol=5)
@@ -198,7 +204,10 @@ If the user want to use `r Biocpkg("scater")` package,
 `calculateCPM` or `normalize` function can calculate the normalized expression values as follows; (see also [the vignette of scater](https://bioconductor.org/packages/release/bioc/vignettes/scater/inst/doc/vignette-intro.html)).
 
 ```{r Scater normalization, eval=FALSE}
-library("scater")
+if(!require(scater)){
+    BiocManager::install("scater")
+    library(scater)
+}
 sce <- SingleCellExperiment(assays=list(counts = input))
 cpm(sce) <- calculateCPM(sce)
 sce <- normalize(sce)

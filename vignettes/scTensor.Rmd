@@ -121,7 +121,10 @@ the result as a dataframe. See the vignette of `r Biocpkg("AnnotationDbi")`
 for more details.
 
 ```{r LRBase.XXX.eg.db, echo=FALSE}
-suppressPackageStartupMessages(library("LRBase.Hsa.eg.db"))
+if(!require(LRBase.Hsa.eg.db)){
+    BiocManager::install("LRBase.Hsa.eg.db")
+    suppressPackageStartupMessages(library(LRBase.Hsa.eg.db))
+}
 ```
 
 ```{r LRBase.XXX.eg.db2, echo=TRUE}
@@ -257,7 +260,6 @@ saved to reducedDims slot of `SingleCellExperiment` object
 ```{r scTensor, echo=FALSE}
 suppressPackageStartupMessages(library("scTensor"))
 suppressPackageStartupMessages(library("SingleCellExperiment"))
-suppressPackageStartupMessages(library("MeSH.Hsa.eg.db"))
 ```
 
 
@@ -283,8 +285,10 @@ For example, if your scRNA-Seq dataset is sampled from Mouse, load
 instead of `r Biocpkg("LRBase.Hsa.eg.db")` and `r Biocpkg("MeSH.Hsa.eg.db")`.
 
 ```{r scTensor2, echo=FALSE}
-suppressPackageStartupMessages(library("LRBase.Mmu.eg.db"))
-suppressPackageStartupMessages(library("MeSH.Mmu.eg.db"))
+if(!require(LRBase.Mmu.eg.db)){
+    BiocManager::install("LRBase.Mmu.eg.db")
+    suppressPackageStartupMessages(library(LRBase.Mmu.eg.db))
+}
 ```
 
 ### Parameter setting : cellCellSetting
@@ -301,7 +305,7 @@ is registered to the metadata slot of `SingleCellExperiment` object by
 `cellCellSetting` function.
 
 ```{r cellCellDecomp2, echo=TRUE}
-cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
+cellCellSetting(sce, LRBase.Hsa.eg.db, names(labelGermMale))
 ```
 
 ### CCI-tensor construction and decomposition : cellCellDecomp

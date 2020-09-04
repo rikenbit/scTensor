@@ -1,3 +1,38 @@
+.ggdefault_cols <- function(n){
+    hcl(h=seq(15, 375-360/n, length=n)%%360, c=100, l=65)
+}
+
+.extractLR <- function(sce, lr.evidence, cols){
+    # SQLite connection
+    con = dbConnect(SQLite(), metadata(sce)$lrbase)
+    LR <- dbGetQuery(con, "SELECT * FROM DATA")
+    dbDisconnect(con)
+    # Extract corresponding rows
+    if(lr.evidence[1] == "all"){
+        target <- seq(nrow(LR))
+    }else{
+        targetKnown <- unique(unlist(lapply(.knowndbs, function(x){grep(x, LR$SOURCEDB)})))
+        if(lr.evidence[1] == "known"){
+            target <- targetKnown
+        }else if(lr.evidence[1] == "putative"){
+            target <- setdiff(seq(nrow(LR)), targetKnown)
+        }else{
+            target <- unique(unlist(lapply(lr.evidence, function(x){
+                which(x == LR$SOURCEDB)
+            })))
+            if(length(target) == 0){
+                cat("Please specify the valid lr.evidence!\n")
+                cat("In this LRBase package, following databases are avilable as lr.evidence.\n")
+                print(as.matrix(table(LR$SOURCEDB)))
+                stop("\n")
+            }
+        }
+    }
+    .uniqueLR(LR[target, cols])
+}
+
+.knowndbs <- c("DLRP", "IUPHAR", "HPMR", "CELLPHONEDB", "SINGLECELLSIGNALR")
+
 .frontal.normalization <- function(tnsr, total=1){
     original.dim <- dim(tnsr)
     denom <- apply(tnsr, 3, sum)
@@ -82,18 +117,38 @@
         # Low dimensional data
         twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
         # Ligand-Receptor, PMID
+        lr.evidence <- metadata(sce)$lr.evidence
+        LR <- .extractLR(sce, lr.evidence,
+            c("GENEID_L", "GENEID_R", "SOURCEID"))
+        # SQLite connection
         con = dbConnect(SQLite(), metadata(sce)$lrbase)
-        LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
-            c("GENEID_L", "GENEID_R", "SOURCEID")]
-        LR <- .uniqueLR(LR)
+        taxid <- dbGetQuery(con, "SELECT * FROM METADATA")
+        taxid <- taxid[which(taxid$NAME == "TAXID"), "VALUE"]
         dbDisconnect(con)
-        # Species
-        spc <- gsub(".eg.db.sqlite", "",
-            strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
-        # biomaRt Setting
-        ah <- .annotationhub[[spc]]()
-        # GeneName, Description, GO, Reactome, MeSH
-        GeneInfo <- .geneinformation(sce, ah, spc, LR)
+        if(length(taxid) == 0){
+            ###########################################
+            # Threename based information retrieval
+            ###########################################
+            message(paste("Old LRBase is being used.",
+                "Please consider updating it to the newer version 2.0."))
+            # Species
+            spc <- gsub(".eg.db.sqlite", "",
+                strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
+            taxid <- as.character(.TAXID[spc])
+            # biomaRt Setting
+            ah <- .annotationhub[[spc]]()
+            # GeneName, Description, GO, Reactome, MeSH
+            GeneInfo <- .geneinformation(sce, ah, spc, LR)
+        }else{
+            ###########################################
+            # Taxonomy ID based information retrieval
+            ###########################################
+            # biomaRt Setting
+            ah <- .annotationhub_taxid(taxid)
+            # GeneName, Description, GO, Reactome, MeSH
+            GeneInfo <- .geneinformation_taxid(sce, ah, taxid, LR)
+        }
+
         # Cell Label
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
@@ -104,6 +159,7 @@
         # Plot Ligand/Receptor Genes
         suppressMessages(
             invisible(.genePlot(sce, assayNames, input, out.dir, GeneInfo, LR)))
+
         # Plot (Each <L,R,*>)
         out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
@@ -126,10 +182,10 @@
         e$p <- p
         e$index <- index
         e$sce <- sce
+        e$ah <- ah
         e$.HCLUST <- .HCLUST
         e$.OUTLIERS <- .OUTLIERS
         e$top <- top
-        e$spc <- spc
         e$GeneInfo <- GeneInfo
         e$out.dir <- out.dir
         e$.smallTwoDplot <- .smallTwoDplot
@@ -137,6 +193,7 @@
         e$twoD <- twoD
         e$.hyperLinks <- .hyperLinks
         e$LR <- LR
+        e$taxid <- taxid
         e$.eachVecLR <- .eachVecLR
         e$.eachRender_2 <- .eachRender_2
         e$.XYZ_HEADER1_2 <- .XYZ_HEADER1_2
@@ -165,14 +222,12 @@
         # Tagcloud
         invisible(.tagCloud_2(out.vecLR, out.dir))
         # Plot（CCI Hypergraph）
-        par(ask=FALSE)
         png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
             width=2000, height=950)
         invisible(.CCIhyperGraphPlot_2(metadata(sce)$sctensor,
             twoDplot=twoD, label=celltypes))
         dev.off()
         # Plot（Gene-wise Hypergraph）
-        par(ask=FALSE)
         invisible(g <- .geneHyperGraphPlot_2(out.vecLR, GeneInfo, out.dir))
 
         # Rmd（ligand, selected）
@@ -292,18 +347,38 @@
         # Low dimensional data
         twoD <- eval(parse(text=paste0("reducedDims(sce)$", reducedDimNames)))
         # Ligand-Receptor, PMID
+        lr.evidence <- metadata(sce)$lr.evidence
+        LR <- .extractLR(sce, lr.evidence,
+            c("GENEID_L", "GENEID_R", "SOURCEID"))
+        # SQLite connection
         con = dbConnect(SQLite(), metadata(sce)$lrbase)
-        LR <- dbGetQuery(con, "SELECT * FROM DATA")[,
-            c("GENEID_L", "GENEID_R", "SOURCEID")]
-        LR <- .uniqueLR(LR)
+        taxid <- dbGetQuery(con, "SELECT * FROM METADATA")
+        taxid <- taxid[which(taxid$NAME == "TAXID"), "VALUE"]
         dbDisconnect(con)
-        # Species
-        spc <- gsub(".eg.db.sqlite", "",
-            strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
-        # biomaRt Setting
-        ah <- .annotationhub[[spc]]()
-        # GeneName, Description, GO, Reactome, MeSH
-        GeneInfo <- .geneinformation(sce, ah, spc, LR)
+        if(length(taxid) == 0){
+            ###########################################
+            # Threename based information retrieval
+            ###########################################
+            message(paste("Old LRBase is being used.",
+                "Please update it to the newer version 2.0."))
+            # Species
+            spc <- gsub(".eg.db.sqlite", "",
+                strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
+            taxid <- as.character(.TAXID[spc])
+            # biomaRt Setting
+            ah <- .annotationhub[[spc]]()
+            # GeneName, Description, GO, Reactome, MeSH
+            GeneInfo <- .geneinformation(sce, ah, spc, LR)
+        }else{
+            ###########################################
+            # Taxonomy ID based information retrieval
+            ###########################################
+            # biomaRt Setting
+            ah <- .annotationhub_taxid(taxid)
+            # GeneName, Description, GO, Reactome, MeSH
+            GeneInfo <- .geneinformation_taxid(sce, ah, taxid, LR)
+        }
+
         # Cell Label
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
@@ -336,10 +411,10 @@
         e$p <- p
         e$index <- index
         e$sce <- sce
+        e$ah <- ah
         e$.HCLUST <- .HCLUST
         e$.OUTLIERS <- .OUTLIERS
         e$top <- top
-        e$spc <- spc
         e$GeneInfo <- GeneInfo
         e$out.dir <- out.dir
         e$.smallTwoDplot <- .smallTwoDplot
@@ -347,6 +422,7 @@
         e$twoD <- twoD
         e$.hyperLinks <- .hyperLinks
         e$LR <- LR
+        e$taxid <- taxid
         e$.eachVecLR <- .eachVecLR
         e$.eachRender <- .eachRender
         e$.XYZ_HEADER1 <- .XYZ_HEADER1
@@ -371,14 +447,12 @@
         # Tagcloud
         invisible(.tagCloud(out.vecLR, out.dir))
         # Plot（CCI Hypergraph）
-        par(ask=FALSE)
         png(filename=paste0(out.dir, "/figures/CCIHypergraph.png"),
             width=2000, height=950)
         invisible(.CCIhyperGraphPlot(metadata(sce)$sctensor,
             twoDplot=twoD, label=celltypes))
         dev.off()
         # Plot（Gene-wise Hypergraph）
-        par(ask=FALSE)
         invisible(g <- .geneHyperGraphPlot(out.vecLR, GeneInfo, out.dir))
 
         # Rmd（ligand, selected）
@@ -1304,7 +1378,6 @@
     mylayout <- cbind(x, y)
 
     # Network Plot
-    par(ask=FALSE)
     par(oma=c(2,2,2,2))
     plot.igraph(g,
         layout=mylayout,
@@ -1317,7 +1390,6 @@
         edge.width=E(g)$weight)
 
     # Gradient
-    par(ask=FALSE)
     gradient.rect(xleft, ybottom, xright, ytop,
         col=smoothPalette(sort(weight),
         palfunc=colorRampPalette(.setColor("greens"), alpha=TRUE)),
@@ -1378,7 +1450,6 @@
                     }, 0.0))
                 label.receptor[] <- smoothPalette(label.receptor,
                     palfunc=colorRampPalette(col.receptor, alpha=TRUE))
-                par(ask=FALSE)
                 par(new=TRUE)
                 par(oma = c(ROMA_1, ROMA_2+(i-1)*omasize,
                     ROMA_3, oma4-omasize*i))
@@ -1464,7 +1535,6 @@
     mylayout <- cbind(x, y)
 
     # Network Plot
-    par(ask=FALSE)
     par(oma=c(2,2,2,2))
     plot.igraph(g,
         layout=mylayout,
@@ -1477,7 +1547,6 @@
         edge.width=E(g)$weight)
 
     # Gradient
-    par(ask=FALSE)
     gradient.rect(xleft, ybottom, xright, ytop,
         col=smoothPalette(sort(weight),
         palfunc=colorRampPalette(.setColor("greens"), alpha=TRUE)),
@@ -1538,7 +1607,6 @@
                     }, 0.0))
                 label.receptor[] <- smoothPalette(label.receptor,
                     palfunc=colorRampPalette(col.receptor, alpha=TRUE))
-                par(ask=FALSE)
                 par(new=TRUE)
                 par(oma = c(ROMA_1, ROMA_2+(i-1)*omasize,
                     ROMA_3, oma4-omasize*i))
@@ -1584,6 +1652,52 @@
     g
 }
 
+.annotationhub_taxid <- function(taxid){
+    ###################################
+    # OrgDb Search
+    ###################################
+    ahub <- AnnotationHub()
+    target1 <- which(mcols(ahub)[, "taxonomyid"] == taxid)
+    target2 <- which(mcols(ahub)[, "rdataclass"] %in% c("OrgDb"))
+    target <- intersect(target1, target2)
+    ah_ids <- rev(rownames(mcols(ahub))[target])
+    hit <- FALSE
+    for(i in seq_along(ah_ids)){
+        ah_id <- ah_ids[i]
+        ah <- ahub[[ah_id]]
+        check <- length(which(AnnotationDbi::columns(ah) == "ENTREZID")) == 1
+        if(check){
+            hit <- TRUE
+            break
+        }
+    }
+    if(hit){
+        ah
+    }else{
+        ###################################
+        # EnsDb Search
+        ###################################
+        target3 <- which(mcols(ahub)[, "rdataclass"] %in% c("EnsDb"))
+        target <- intersect(target1, target3)
+        ah_ids <- rev(rownames(mcols(ahub))[target])
+        hit <- FALSE
+        for(i in seq_along(ah_ids)){
+            ah_id <- ah_ids[i]
+            ah <- ahub[[ah_id]]
+            check <- length(which(AnnotationDbi::columns(ah) == "ENTREZID")) == 1
+            if(check){
+                hit <- TRUE
+                break
+            }
+        }
+        if(hit){
+            ah
+        }else{
+            NULL
+        }
+    }
+}
+
 .annotationhub <- list(
     "Hsa" = function(){
         query(AnnotationHub(), c("OrgDb", "Homo sapiens", "org.Hs.eg.db.sqlite"))[[1]]
@@ -1622,6 +1736,120 @@
         query(AnnotationHub(), c("OrgDb", "Sus scrofa", "org.Ss.eg.db.sqlite"))[[1]]
     }
 )
+
+.geneinformation_taxid <- function(sce, ah, taxid, LR){
+    targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
+
+    # Gene symbol
+    if("SYMBOL" %in% AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related gene names are retrieved from AnnotationHub...")
+        GeneName <- AnnotationDbi::select(ah, columns=c("SYMBOL", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        GeneName <- unique(GeneName)
+        nonna1 <- which(!is.na(GeneName[,1]))
+        nonna2 <- which(!is.na(GeneName[,2]))
+        GeneName <- GeneName[intersect(nonna1, nonna2), ]
+        # Bipartite Matching
+        g <- graph.data.frame(as.data.frame(GeneName), directed=FALSE)
+        V(g)$type <- bipartite_mapping(g)$type
+        g <- max_bipartite_match(g)
+        target <- as.character(unique(GeneName[,2]))
+        GeneName <- data.frame(
+            ENTREZID=as.character(g$matching[target]),
+            SYMBOL=target,
+            stringsAsFactors = FALSE)
+        GeneName <- GeneName[, c("ENTREZID", "SYMBOL")]         
+    }else{
+        GeneName <- NULL
+    }
+
+    # GENENAME
+    if("GENENAME" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related gene descriptions are retrieved from AnnotationHub...")
+        Description <- AnnotationDbi::select(ah, columns=c("GENENAME", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        Description <- Description[, c("ENTREZID", "GENENAME")]
+    }else{
+        Description <- NULL
+    }
+
+    # GO
+    if("GO" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related GO IDs are retrieved from AnnotationHub...")
+        GO <- AnnotationDbi::select(ah, columns=c("GO", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        GO <- GO[, c("ENTREZID", "GO")]
+    }else{
+        GO <- NULL
+    }
+
+    # ENSG
+    if("ENSEMBL" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related Ensembl Gene IDs are retrieved from AnnotationHub...")
+        ENSG <- AnnotationDbi::select(ah, columns=c("ENSEMBL", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSG <- ENSG[, c("ENTREZID", "ENSEMBL")]
+    }else{
+        ENSG <- NULL
+    }
+
+    # ENSP
+    if("ENSEMBLPROT" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related Ensembl Protein IDs are retrieved from AnnotationHub...")
+        ENSP <- AnnotationDbi::select(ah, columns=c("ENSEMBLPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        ENSP <- ENSP[, c("ENTREZID", "ENSEMBLPROT")]
+    }else{
+        ENSP <- NULL
+    }
+
+    # UniProtKB
+    if("UNIPROT" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related UniProtKB IDs are retrieved from AnnotationHub...")
+        UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROT", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROT")]
+    }else{
+        UniProtKB <- NULL
+    }
+
+    # MeSH
+    MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
+        strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    if(class(MeSH.load) == "try-error"){
+        MeSH.dl <- eval(parse(text=paste0("try(BiocManager::install('",
+            MeSHname, "'))")))
+    }
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    if(class(MeSH.load2) != "try-error"){
+        message(paste0("Related MeSH IDs are retrieved from ",
+            "MeSH.XXX.eg.db-type package..."))
+        MeSHobj <- eval(parse(text=MeSHname))
+        MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
+            keytype="GENEID",
+            keys=targetGeneID)
+    }else{
+        MeSH <- NULL
+    }
+
+    # Reactome
+    Reactome <- toTable(reactomeEXTID2PATHID)
+    targetReactome <- unlist(lapply(targetGeneID,
+        function(x){which(Reactome$gene_id == x)}))
+    if(length(targetReactome) != 0){
+        message(paste0("Related Reactome IDs are retrieved from ",
+            "reactome.db package..."))
+        Reactome <- Reactome[targetReactome, ]
+    }else{
+        Reactome <- NULL
+    }
+
+    # Output
+    list(GeneName=GeneName, Description=Description, GO=GO,
+        ENSG=ENSG, ENSP=ENSP, UniProtKB=UniProtKB,
+        Reactome=Reactome, MeSH=MeSH)
+}
 
 '%ni%' <- Negate('%in%')
 
@@ -1696,15 +1924,27 @@
         ENSP <- NULL
         UniProtKB <- NULL
     }
+
     # MeSH
-    message(paste0("Related MeSH IDs are retrieved from ",
-        "MeSH.XXX.eg.db-type package..."))
     MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
-    MeSHobj <- eval(parse(text=MeSHname))
-    MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
-        keytype="GENEID",
-        keys=targetGeneID)
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    if(class(MeSH.load) == "try-error"){
+        MeSH.dl <- eval(parse(text=paste0("try(BiocManager::install('",
+            MeSHname, "'))")))
+    }
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    if(class(MeSH.load2) != "try-error"){
+        message(paste0("Related MeSH IDs are retrieved from ",
+            "MeSH.XXX.eg.db-type package..."))
+        MeSHobj <- eval(parse(text=MeSHname))
+        MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
+            keytype="GENEID",
+            keys=targetGeneID)
+    }else{
+        MeSH <- NULL
+    }
+
     if(spc != "Pab"){
         # Reactome
         message(paste0("Related Reactome IDs are retrieved from ",
@@ -1722,6 +1962,7 @@
         Reactome=Reactome, MeSH=MeSH)
 }
 
+# For previous LRBase (v-1.0.0 - v-1.2.0)
 .TAXID <- c(
     "Hsa" = 9606,
     "Mmu" = 10090,
@@ -1738,7 +1979,7 @@
 )
 
 .hyperLinks <- function(ranking, ligandGeneID, receptorGeneID,
-    lr, value, percentage, spc, geneInfo, pvalue, qvalue){
+    lr, taxid, value, percentage, geneInfo, pvalue, qvalue){
     ## helper for vector dividing
     div <- function(x, d=1) {""
         delta <- ceiling(length(x) / d)
@@ -1748,7 +1989,7 @@
         return(y)
     }
 
-    embedLink <- function(spc, genename1, geneid1, description1,
+    embedLink <- function(genename1, geneid1, description1,
                 go1, reactome1, mesh1,
                 uni1, string1, refex1,
                 ea1, sea1, scdb1, panglao1, cmap1,
@@ -1793,73 +2034,89 @@
     }
 
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(is.null(genename)){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(is.null(genename)){
+                genename = geneid
+            }else{
+                if(is.na(genename)){
+                    genename = geneid
+                }
+                if(length(genename) == 0 || genename == ""){
+                    genename = geneid
+                }
+            }            
         }else{
-            if(is.na(genename)){
-                genename = geneid
-            }
-            if(length(genename) == 0 || genename == ""){
-                genename = geneid
-            }
+            genename = ""
         }
         genename
     }
 
     convertGeneDescription <- function(geneid, geneInfo){
-        description <- geneInfo$Description[
-            which(geneInfo$Description$ENTREZID ==
-                geneid), "GENENAME"][1]
-        if(length(description) == 0 || is.na(description)){
+        if(!is.null(geneInfo$Description)){
+            description <- geneInfo$Description[
+                which(geneInfo$Description$ENTREZID ==
+                    geneid), "GENENAME"][1]
+            if(length(description) == 0 || is.na(description)){
+                description = ""
+            }
+            description
+        }else{
             description = ""
         }
-        description
     }
 
     convertGeneOntology <- function(geneid, geneInfo){
-        GO <- unique(unlist(geneInfo$GO[
-            which(geneInfo$GO$ENTREZID == geneid),
-            "GO"]))
-        GO <- GO[which(GO != "")]
-        GO <- gsub(":", "%3A", GO)
-        if(length(GO) != 0){
-            GO_loc <- div(seq_along(GO), ceiling(length(GO) / 100))
-            GO <- lapply(GO_loc, function(x){
-                mi <- min(x)
-                ma <- max(x)
-                paste0("[", mi, "-", ma, "](",
-                    "http://amigo.geneontology.org/",
-                    "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
-                    paste0(GO[mi:ma], collapse="%27+OR+acc%3D%27"),
-                    "%27%3B&mirror=bbop)")
-                })
-            GO <- paste(unlist(GO), collapse=" ")
+        if(!is.null(geneInfo$GO)){
+            GO <- unique(unlist(geneInfo$GO[
+                which(geneInfo$GO$ENTREZID == geneid),
+                "GO"]))
+            GO <- GO[which(GO != "")]
+            GO <- gsub(":", "%3A", GO)
+            if(length(GO) != 0){
+                GO_loc <- div(seq_along(GO), ceiling(length(GO) / 100))
+                GO <- lapply(GO_loc, function(x){
+                    mi <- min(x)
+                    ma <- max(x)
+                    paste0("[", mi, "-", ma, "](",
+                        "http://amigo.geneontology.org/",
+                        "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
+                        paste0(GO[mi:ma], collapse="%27+OR+acc%3D%27"),
+                        "%27%3B&mirror=bbop)")
+                    })
+                GO <- paste(unlist(GO), collapse=" ")
+            }else{
+                GO <- ""
+            }            
         }else{
-            GO <- ""
+            GO = ""
         }
         GO
     }
 
     convertReactome <- function(geneid, geneInfo){
-        Reactome <- unique(unlist(geneInfo$Reactome[
-            which(geneInfo$Reactome$gene_id ==
-            geneid), "DB_ID"]))
-        Reactome <- Reactome[which(Reactome != "")]
-        if(length(Reactome) != 0){
-            Reactome_loc <- div(seq_along(Reactome),
-                ceiling(length(Reactome) / 100))
-            Reactome <- lapply(Reactome_loc, function(x){
-                mi <- min(x)
-                ma <- max(x)
-                paste0("[", mi, "-", ma, "](",
-                    "https://reactome.org/content/query?q=",
-                    paste0(Reactome[mi:ma], collapse="+"),
-                    "&types=Pathway&cluster=true)")
-            })
-            Reactome = paste(unlist(Reactome), collapse=" ")
+        if(!is.null(geneInfo$Reactome)){
+            Reactome <- unique(unlist(geneInfo$Reactome[
+                which(geneInfo$Reactome$gene_id ==
+                geneid), "DB_ID"]))
+            Reactome <- Reactome[which(Reactome != "")]
+            if(length(Reactome) != 0){
+                Reactome_loc <- div(seq_along(Reactome),
+                    ceiling(length(Reactome) / 100))
+                Reactome <- lapply(Reactome_loc, function(x){
+                    mi <- min(x)
+                    ma <- max(x)
+                    paste0("[", mi, "-", ma, "](",
+                        "https://reactome.org/content/query?q=",
+                        paste0(Reactome[mi:ma], collapse="+"),
+                        "&types=Pathway&cluster=true)")
+                })
+                Reactome = paste(unlist(Reactome), collapse=" ")
+            }else{
+                Reactome = ""
+            }
         }else{
             Reactome = ""
         }
@@ -1867,19 +2124,23 @@
     }
 
     convertMeSH <- function(geneid, geneInfo){
-        MeSH <- geneInfo$MeSH[which(geneInfo$MeSH$GENEID == geneid),
-            "MESHID"]
-        MeSH <- MeSH[which(MeSH != "")]
-        if(length(MeSH) != 0){
-            MeSH_loc <- div(seq_along(MeSH), ceiling(length(MeSH) / 100))
-            MeSH <- lapply(MeSH_loc, function(x){
-                mi <- min(x)
-                ma <- max(x)
-                paste0("[", mi, "-", ma, "](",
-                    "https://www.ncbi.nlm.nih.gov/mesh?term=",
-                    paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
-                })
-            MeSH = paste(unlist(MeSH), collapse=" ")
+        if(!is.null(geneInfo$MeSH)){
+            MeSH <- geneInfo$MeSH[which(geneInfo$MeSH$GENEID == geneid),
+                "MESHID"]
+            MeSH <- MeSH[which(MeSH != "")]
+            if(length(MeSH) != 0){
+                MeSH_loc <- div(seq_along(MeSH), ceiling(length(MeSH) / 100))
+                MeSH <- lapply(MeSH_loc, function(x){
+                    mi <- min(x)
+                    ma <- max(x)
+                    paste0("[", mi, "-", ma, "](",
+                        "https://www.ncbi.nlm.nih.gov/mesh?term=",
+                        paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
+                    })
+                MeSH = paste(unlist(MeSH), collapse=" ")
+            }else{
+                MeSH = ""
+            }
         }else{
             MeSH = ""
         }
@@ -1887,58 +2148,70 @@
     }
 
     convertUniProtKB <- function(geneid, geneInfo){
-        UniProtKB <- unique(unlist(geneInfo$UniProtKB[
-            which(geneInfo$UniProtKB$ENTREZID == geneid),
-            "UNIPROT"]))
-        UniProtKB <- UniProtKB[which(UniProtKB != "")]
-        if(length(UniProtKB) != 0){
-            UniProtKB_loc <- div(seq_along(UniProtKB),
-                ceiling(length(UniProtKB) / 100))
-            UniProtKB <- lapply(UniProtKB_loc, function(x){
-                mi <- min(x)
-                ma <- max(x)
-                paste0("[", mi, "-", ma, "](",
-                    "https://www.uniprot.org/uniprot/?query=",
-                    paste0(UniProtKB[mi:ma], collapse="+OR+"),
-                    "&sort=score)")
-                })
-            UniProtKB <- paste(unlist(UniProtKB), collapse=" ")
+        if(!is.null(geneInfo$UniProtKB)){
+            UniProtKB <- unique(unlist(geneInfo$UniProtKB[
+                which(geneInfo$UniProtKB$ENTREZID == geneid),
+                "UNIPROT"]))
+            UniProtKB <- UniProtKB[which(UniProtKB != "")]
+            if(length(UniProtKB) != 0){
+                UniProtKB_loc <- div(seq_along(UniProtKB),
+                    ceiling(length(UniProtKB) / 100))
+                UniProtKB <- lapply(UniProtKB_loc, function(x){
+                    mi <- min(x)
+                    ma <- max(x)
+                    paste0("[", mi, "-", ma, "](",
+                        "https://www.uniprot.org/uniprot/?query=",
+                        paste0(UniProtKB[mi:ma], collapse="+OR+"),
+                        "&sort=score)")
+                    })
+                UniProtKB <- paste(unlist(UniProtKB), collapse=" ")
+            }else{
+                UniProtKB <- ""
+            }
         }else{
-            UniProtKB <- ""
+            UniProtKB = ""
         }
         UniProtKB
     }
 
-    convertSTRING <- function(geneid, geneInfo, spc){
-        ENSP <- unique(unlist(geneInfo$ENSP[
-            which(geneInfo$ENSP$ENTREZID == geneid),
-            "ENSEMBLPROT"]))
-        ENSP <- ENSP[which(ENSP != "")]
-        TAXID <- .TAXID[spc]
-        if(length(ENSP) != 0 && !is.na(TAXID)){
-            STRING <- paste0("https://string-db.org/network/",
-                TAXID, ".", ENSP)
-            STRING <- paste(
-                paste0("[", seq_along(STRING), "](", STRING, ")"),
-                collapse=" ")
+    # taxidあるかチェック
+    convertSTRING <- function(geneid, geneInfo, taxid){
+        if(!is.null(geneInfo$ENSP)){
+            ENSP <- unique(unlist(geneInfo$ENSP[
+                which(geneInfo$ENSP$ENTREZID == geneid),
+                "ENSEMBLPROT"]))
+            ENSP <- ENSP[which(ENSP != "")]
+            if(length(ENSP) != 0 && !is.na(taxid)){
+                STRING <- paste0("https://string-db.org/network/",
+                    taxid, ".", ENSP)
+                STRING <- paste(
+                    paste0("[", seq_along(STRING), "](", STRING, ")"),
+                    collapse=" ")
+            }else{
+                STRING <- ""
+            }
         }else{
-            STRING <- ""
+            STRING = ""
         }
         STRING
     }
 
-    convertRefEx <- function(geneid, geneInfo, spc){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) != 0){
-            ref <- "http://refex.dbcls.jp/genelist.php?gene_name%5B%5D="
-            if(spc == "Hsa"){
-                paste0(ref, genename, "&lang=en&db=human")
-            }else if(spc == "Mmu"){
-                paste0(ref, genename, "&lang=en&db=mouse")
-            }else if(spc == "Rno"){
-                paste0(ref, genename, "&lang=en&db=rat")
+    convertRefEx <- function(geneid, geneInfo, taxid){
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) != 0){
+                ref <- "http://refex.dbcls.jp/genelist.php?gene_name%5B%5D="
+                if(taxid == "9606"){
+                    paste0(ref, genename, "&lang=en&db=human")
+                }else if(taxid == "10090"){
+                    paste0(ref, genename, "&lang=en&db=mouse")
+                }else if(taxid == "10116"){
+                    paste0(ref, genename, "&lang=en&db=rat")
+                }else{
+                    ""
+                }
             }else{
                 ""
             }
@@ -1948,52 +2221,12 @@
     }
 
     convertEA <- function(geneid, geneInfo){
-        ENSG <- geneInfo$ENSG[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "ENSEMBL"][1]
-        if(length(ENSG) != 0){
-            paste0("https://www.ebi.ac.uk/gxa/genes/", tolower(ENSG))
-        }else{
-            ""
-        }
-    }
-
-    convertSEA <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) != 0){
-            paste0("https://www.ebi.ac.uk/gxa/sc/search?species=&q=",
-                genename)
-        }else{
-            ""
-        }
-    }
-
-    convertSCDB <- function(geneid, geneInfo, spc){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) != 0 && spc == "Hsa"){
-            paste0("https://bioinfo.uth.edu/scrnaseqdb/",
-                "index.php?r=site/rankGene&gene=",
-                genename,
-                "&check=0")
-        }else{
-            ""
-        }
-    }
-
-    convertPANGLAO <- function(geneid, geneInfo, spc){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) != 0){
-            ref <- "https://panglaodb.se/search.html?query="
-            if(spc == "Hsa"){
-                paste0(ref, genename, "&species=3")
-            }else if(spc == "Mmu"){
-                paste0(ref, genename, "&species=2")
+        if(!is.null(geneInfo$ENSG)){
+            ENSG <- geneInfo$ENSG[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "ENSEMBL"][1]
+            if(length(ENSG) != 0){
+                paste0("https://www.ebi.ac.uk/gxa/genes/", tolower(ENSG))
             }else{
                 ""
             }
@@ -2002,14 +2235,74 @@
         }
     }
 
-    convertCMAP <- function(geneid, geneInfo, spc){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) != 0){
-            ref <- "https://clue.io/command?q="
-            if(spc == "Hsa"){
-                paste0(ref, genename)
+    convertSEA <- function(geneid, geneInfo){
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) != 0){
+                paste0("https://www.ebi.ac.uk/gxa/sc/search?species=&q=",
+                    genename)
+            }else{
+                ""
+            }
+        }else{
+            ""
+        }
+    }
+
+    convertSCDB <- function(geneid, geneInfo, taxid){
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) != 0 && taxid == "9606"){
+                paste0("https://bioinfo.uth.edu/scrnaseqdb/",
+                    "index.php?r=site/rankGene&gene=",
+                    genename,
+                    "&check=0")
+            }else{
+                ""
+            }
+        }else{
+            ""
+        }
+    }
+
+    convertPANGLAO <- function(geneid, geneInfo, taxid){
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) != 0){
+                ref <- "https://panglaodb.se/search.html?query="
+                if(taxid == "9606"){
+                    paste0(ref, genename, "&species=3")
+                }else if(taxid == "10090"){
+                    paste0(ref, genename, "&species=2")
+                }else{
+                    ""
+                }
+            }else{
+                ""
+            }
+        }else{
+            ""
+        }
+    }
+
+    convertCMAP <- function(geneid, geneInfo, taxid){
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) != 0){
+                ref <- "https://clue.io/command?q="
+                if(taxid == "9606"){
+                    paste0(ref, genename)
+                }else{
+                    ""
+                }
             }else{
                 ""
             }
@@ -2071,13 +2364,13 @@
     # UniProtKB（Receptor）
     UniProtKB_R <- convertUniProtKB(receptorGeneID, geneInfo)
     # STRING（Ligand）
-    STRING_L <- convertSTRING(ligandGeneID, geneInfo, spc)
+    STRING_L <- convertSTRING(ligandGeneID, geneInfo, taxid)
     # STRING（Receptor）
-    STRING_R <- convertSTRING(receptorGeneID, geneInfo, spc)
+    STRING_R <- convertSTRING(receptorGeneID, geneInfo, taxid)
     # RefEx（Ligand）
-    RefEx_L <- convertRefEx(ligandGeneID, geneInfo, spc)
+    RefEx_L <- convertRefEx(ligandGeneID, geneInfo, taxid)
     # RefEx（Receptor）
-    RefEx_R <- convertRefEx(receptorGeneID, geneInfo, spc)
+    RefEx_R <- convertRefEx(receptorGeneID, geneInfo, taxid)
     # EA（Ligand）
     EA_L <- convertEA(ligandGeneID, geneInfo)
     # EA（Receptor）
@@ -2087,24 +2380,23 @@
     # SEA（Receptor）
     SEA_R <- convertSEA(receptorGeneID, geneInfo)
     # SCDB（Ligand）
-    SCDB_L <- convertSCDB(ligandGeneID, geneInfo, spc)
+    SCDB_L <- convertSCDB(ligandGeneID, geneInfo, taxid)
     # SCDB（Receptor）
-    SCDB_R <- convertSCDB(receptorGeneID, geneInfo, spc)
+    SCDB_R <- convertSCDB(receptorGeneID, geneInfo, taxid)
     # PANGLAO（Ligand）
-    PANGLAO_L <- convertPANGLAO(ligandGeneID, geneInfo, spc)
+    PANGLAO_L <- convertPANGLAO(ligandGeneID, geneInfo, taxid)
     # PANGLAO（Receptor）
-    PANGLAO_R <- convertPANGLAO(receptorGeneID, geneInfo, spc)
+    PANGLAO_R <- convertPANGLAO(receptorGeneID, geneInfo, taxid)
     # CMAP（Ligand）
-    CMAP_L <- convertCMAP(ligandGeneID, geneInfo, spc)
+    CMAP_L <- convertCMAP(ligandGeneID, geneInfo, taxid)
     # CMAP（Receptor）
-    CMAP_R <- convertCMAP(receptorGeneID, geneInfo, spc)
+    CMAP_R <- convertCMAP(receptorGeneID, geneInfo, taxid)
     # PubMed (L and R)
     PubMed <- convertPubMed(ligandGeneID, receptorGeneID, lr)
 
     # Embedding
     paste0(XYZ,
-        embedLink(spc,
-            GeneName_L, ligandGeneID, Description_L,
+        embedLink(GeneName_L, ligandGeneID, Description_L,
             GO_L, Reactome_L, MeSH_L,
             UniProtKB_L, STRING_L, RefEx_L,
             EA_L, SEA_L, SCDB_L, PANGLAO_L, CMAP_L,
@@ -2470,31 +2762,6 @@
     "plot_ly(x=seq_along(corevalue), y=corevalue, ",
     "type=\"bar\", color=names(corevalue), text=corenames, ",
     "colors = c(\"#999999\", \"#E41A1C\"))\n",
-    "```\n", # Bottom
-    "\n\n## Distribution of mode-1 matricised tensor (Ligand-Cell Direction)\n\n",
-    "```{r}\n", # Top
-    "rks <- cellCellRanks(sce)\n",
-    "mode1value <- rks$mode1\n",
-    "names(mode1value)[seq_len(length(mode1value))] <- \"not selected\"\n",
-    "names(mode1value)[seq_len(max(index[, \"Mode1\"]))] <- \"selected\"\n",
-    "plot_ly(x=seq_along(rks$mode1), y=rks$mode1, type=\"bar\",\n",
-    "    color=names(mode1value), colors = c(\"#999999\", \"#E41A1C\"))\n",
-    "```\n", # Bottom
-    "\n\n## Distribution of mode-2 matricised tensor (Receptor-Cell Direction)\n\n",
-    "```{r}\n", # Top
-    "mode2value <- rks$mode2\n",
-    "names(mode2value)[seq_len(length(mode2value))] <- \"not selected\"\n",
-    "names(mode2value)[seq_len(max(index[, \"Mode2\"]))] <- \"selected\"\n",
-    "plot_ly(x=seq_along(rks$mode2), y=rks$mode2, type=\"bar\",\n",
-    "    color=names(mode2value), colors = c(\"#999999\", \"#E41A1C\"))\n",
-    "```\n", # Bottom
-    "\n\n## Distribution of mode-3 matricised tensor (LR-pair Direction)\n\n",
-    "```{r}\n", # Top
-    "mode3value <- rks$mode3\n",
-    "names(mode3value)[seq_len(length(mode3value))] <- \"not selected\"\n",
-    "names(mode3value)[seq_len(max(index[, \"Mode3\"]))] <- \"selected\"\n",
-    "plot_ly(x=seq_along(rks$mode3), y=rks$mode3, type=\"bar\",\n",
-    "    color=names(mode3value), colors = c(\"#999999\", \"#E41A1C\"))\n",
     "```\n" # Bottom
     )
 
@@ -2663,6 +2930,7 @@
 "```{r}\n", # Top
 "lr <- metadata(sce)$sctensor$lrpair\n",
 "rownames(lr) <- paste0(\"(*,*,\",seq_len(nrow(lr)), \")\")\n",
+"if(!is.null(GeneInfo$GeneName)){\n",
 "GeneName <- GeneInfo$GeneName\n",
 "Ligand <- vapply(colnames(lr), function(x){\n",
 "    vapply(strsplit(x, \"_\")[[1]][1], function(xx){\n",
@@ -2674,6 +2942,10 @@
 "    GeneName[which(GeneName[,2] == xx), 1][1]\n",
 "    }, \"\")\n",
 "}, \"\")\n",
+"}else{\n",
+"Ligand <- vapply(colnames(lr), function(x){strsplit(x, \"_\")[[1]][1]}, \"\")\n",
+"Receptor <- vapply(colnames(lr), function(x){strsplit(x, \"_\")[[1]][2]}, \"\")\n",
+"}\n",
 "colnames(lr) <- vapply(seq_along(Ligand), function(x){\n",
 "    paste(c(Ligand[x], Receptor[x]), collapse=\" - \")\n",
 "}, \"\")\n",
@@ -2763,34 +3035,6 @@
     "[Artistic License 2.0](",
     "http://www.perlfoundation.org/artistic_license_2_0)\n")
 
-.GOANNOTATION <- list(
-    "Hsa" = "org.Hs.eg.db",
-    "Mmu" = "org.Mm.eg.db",
-    "Ath" = "org.At.tair.db",
-    "Rno" = "org.Rn.eg.db",
-    "Bta" = "org.Bt.eg.db",
-    "Cel" = "org.Ce.eg.db",
-    "Dme" = "org.Dm.eg.db",
-    "Dre" = "org.Dr.eg.db",
-    "Gga" = "org.Gg.eg.db",
-    "Ssc" = "org.Sc.sgd.db"
-)
-
-.MESHANNOTATION <- list(
-    "Hsa" = "MeSH.Hsa.eg.db",
-    "Mmu" = "MeSH.Mmu.eg.db",
-    "Ath" = "MeSH.Ath.eg.db",
-    "Rno" = "MeSH.Rno.eg.db",
-    "Bta" = "MeSH.Bta.eg.db",
-    "Cel" = "MeSH.Cel.eg.db",
-    "Dme" = "MeSH.Dme.eg.db",
-    "Dre" = "MeSH.Dre.eg.db",
-    "Gga" = "MeSH.Gga.eg.db",
-    "Pab" = "MeSH.Pab.eg.db",
-    "Xtr" = "MeSH.Xtr.eg.db",
-    "Ssc" = "MeSH.Ssc.eg.db"
-)
-
 .REACTOMESPC <- list(
     "Aga" = "anopheles",
     "Ath" = "arabidopsis",
@@ -2814,10 +3058,10 @@
     p <- e$p
     index <- e$index
     sce <- e$sce
+    ah <- e$ah
     .HCLUST <- e$.HCLUST
     .OUTLIERS <- e$.OUTLIERS
     top <- e$top
-    spc <- e$spc
     GeneInfo <- e$GeneInfo
     out.dir <- e$out.dir
     .smallTwoDplot <- e$.smallTwoDplot
@@ -2825,6 +3069,7 @@
     twoD <- e$twoD
     .hyperLinks <- e$.hyperLinks
     LR <- e$LR
+    taxid <- e$taxid
     .eachRender <- e$.eachRender
     .XYZ_HEADER1 <- e$.XYZ_HEADER1
     .XYZ_HEADER2 <- e$.XYZ_HEADER2
@@ -2865,28 +3110,31 @@
     # Enrichment (Too Heavy)
     all <- unique(unlist(strsplit(names(vecLR), "_")))
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
-    goannotation <- .GOANNOTATION[[spc]]
-    meshannotation <- .MESHANNOTATION[[spc]]
+    spc <- gsub(".eg.db.sqlite", "",
+        strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
+    meshpkg <- paste0("MeSH.", spc, ".eg.db")
+    if(!requireNamespace(meshpkg, quietly=TRUE)){
+        eval(parse(text=paste0("try(BiocManager::install(", meshpkg, "))")))
+        mesh.load <- eval(parse(text=paste0("try(requireNamespace('", meshpkg, "', quietly=TRUE))")))
+        if(class(mesh.load) != "try-error"){
+            meshannotation <- meshpkg
+        }else{
+            meshenrich <- FALSE
+            meshannotation <- NA
+        }
+    }else{
+        meshannotation <- meshpkg
+    }
     reactomespc <- .REACTOMESPC[[spc]]
-    if(!requireNamespace(goannotation, quietly=TRUE)){
-        install(goannotation)
+    if(taxid != "9606"){
+        doenrich <- FALSE
+        ncgenrich <- FALSE
+        dgnenrich <- FALSE
     }
-    if(!requireNamespace(meshannotation, quietly=TRUE)){
-        install(meshannotation)
-    }
-    dospc <- 0L
-    ncgspc <- 0L
-    dgnspc <- 0L
-    names(dospc) <- "Hsa"
-    names(ncgspc) <- "Hsa"
-    names(dgnspc) <- "Hsa"
-    dospc <- dospc[spc]
-    ncgspc <- ncgspc[spc]
-    dgnspc <- dgnspc[spc]
-    Enrich <- suppressWarnings(.ENRICHMENT(all, sig, goannotation,
-        meshannotation, reactomespc, dospc, ncgspc, dgnspc,
-        goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich,
-        p))
+    Enrich <- suppressWarnings(.ENRICHMENT(all, sig,
+        meshannotation, reactomespc,
+        goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p, ah))
+
     # Eigen Value
     # Each LR-Pattern Vector
     if(algorithm == "ntd2"){
@@ -2899,28 +3147,38 @@
     }
     # Hyper Link (Too Heavy)
     cat("Hyper-links are embedded...\n")
-    GeneName <- GeneInfo$GeneName[, c("SYMBOL", "ENTREZID")]
+    if(!is.null(GeneInfo$GeneName)){
+        GeneName <- GeneInfo$GeneName[, c("SYMBOL", "ENTREZID")]
+    }else{
+        GeneName <- rep(FALSE, length=length(TARGET))
+    }
     LINKS <- vapply(seq_along(TARGET), function(xx){
-            # IDs
-            Ranking <- xx
-            L_R <- strsplit(names(TARGET[xx]), "_")
-            LigandGeneID <- L_R[[1]][1]
-            ReceptorGeneID <- L_R[[1]][2]
+        # IDs
+        Ranking <- xx
+        L_R <- strsplit(names(TARGET[xx]), "_")
+        LigandGeneID <- L_R[[1]][1]
+        ReceptorGeneID <- L_R[[1]][2]
+        if(!is.null(GeneInfo$GeneName)){
             LigandGeneName <- GeneName[which(GeneName[,2] == LigandGeneID), 1]
             ReceptorGeneName <- GeneName[which(GeneName[,2] == ReceptorGeneID), 1]
+
             if(length(LigandGeneName) == 0 || LigandGeneName == ""){
                 LigandGeneName <- LigandGeneID
             }
             if(length(ReceptorGeneName) == 0 || ReceptorGeneName == ""){
                 ReceptorGeneName <- ReceptorGeneID
             }
-            # Return Hyper links
-            .hyperLinks(Ranking, LigandGeneID,
-            ReceptorGeneID, LR, Value[xx],
-            Percentage[xx],
-            spc, GeneInfo, PvalueLR[xx],
-            QvalueLR[xx])
-        }, "")
+        }else{
+            LigandGeneName <- LigandGeneID
+            ReceptorGeneName <- ReceptorGeneID
+        }
+        # Return Hyper links
+        .hyperLinks(Ranking, LigandGeneID,
+        ReceptorGeneID, LR, taxid, Value[xx],
+        Percentage[xx],
+        GeneInfo, PvalueLR[xx],
+        QvalueLR[xx])
+    }, "")
     LINKS <- paste(LINKS, collapse="")
 
     # Output object
@@ -3063,13 +3321,17 @@
 .geneHyperGraphPlot_2 <- function(out.vecLR, GeneInfo, out.dir){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            genename            
+        }else{
+            geneid            
         }
-        genename
     }
 
     # Node
@@ -3143,9 +3405,7 @@
     # All Pattern
     png(filename=paste0(out.dir, "/figures/GeneHypergraph.png"),
         width=2500, height=2500)
-    par(ask=FALSE)
     plot.igraph(g, layout=l)
-    par(ask=FALSE)
     legend("topleft",
         legend=c("ligand", "receptor",
             names(out.vecLR)),
@@ -3176,11 +3436,9 @@
             gsub("pattern", "", names(out.vecLR)[x]),
             ".png"),
             width=2500, height=2500)
-        par(ask=FALSE)
         plot.igraph(g,
             vertex.color=tmp_nodecolor,
             edge.color=tmp_edgecolor, layout=l)
-        par(ask=FALSE)
         legend("topleft",
             legend=c("ligand", "receptor",
                 names(out.vecLR)[x]),
@@ -3195,13 +3453,17 @@
 .geneHyperGraphPlot <- function(out.vecLR, GeneInfo, out.dir){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"][1]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"][1]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            genename
+        }else{
+            geneid
         }
-        genename
     }
 
     # Node
@@ -3275,9 +3537,7 @@
     # All Pattern
     png(filename=paste0(out.dir, "/figures/GeneHypergraph.png"),
         width=2500, height=2500)
-    par(ask=FALSE)
     plot.igraph(g, layout=l)
-    par(ask=FALSE)
     legend("topleft",
         legend=c("ligand", "receptor",
             colnames(out.vecLR)),
@@ -3308,11 +3568,9 @@
             gsub("pattern", "", colnames(out.vecLR)[x]),
             ".png"),
             width=2500, height=2500)
-        par(ask=FALSE)
         plot.igraph(g,
             vertex.color=tmp_nodecolor,
             edge.color=tmp_edgecolor, layout=l)
-        par(ask=FALSE)
         legend("topleft",
             legend=c("ligand", "receptor",
                 colnames(out.vecLR)[x]),
@@ -3365,16 +3623,20 @@
 .LIGAND_BODY_2 <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            if(length(genename) != 1){
+                # Black list
+                genename = setdiff(genename, "cxcl11.6")[1]
+            }
+            genename
+        }else{
+            geneid
         }
-        if(length(genename) != 1){
-            # Black list
-            genename = setdiff(genename, "cxcl11.6")[1]
-        }
-        genename
     }
 
     # Node
@@ -3469,16 +3731,20 @@
 .LIGAND_BODY <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            if(length(genename) != 1){
+                # Black list
+                genename = setdiff(genename, "cxcl11.6")[1]
+            }
+            genename
+        }else{
+            geneid
         }
-        if(length(genename) != 1){
-            # Black list
-            genename = setdiff(genename, "cxcl11.6")[1]
-        }
-        genename
     }
 
     # Node
@@ -3586,17 +3852,21 @@
 .RECEPTOR_BODY_2 <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            if(length(genename) != 1){
+                # Black list
+                genename = setdiff(genename, "cxcl11.6")[1]
+            }
+            genename
+        }else{
+            geneid
         }
-        if(length(genename) != 1){
-            # Black list
-            genename = setdiff(genename, "cxcl11.6")[1]
-        }
-        genename
     }
 
     # Node
@@ -3691,17 +3961,21 @@
 .RECEPTOR_BODY <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
     convertGeneName <- function(geneid, geneInfo){
-        genename <- geneInfo$GeneName[
-            which(geneInfo$GeneName$ENTREZID == geneid),
-            "SYMBOL"]
-        if(length(genename) == 0){
-            genename = geneid
+        if(!is.null(geneInfo$GeneName)){
+            genename <- geneInfo$GeneName[
+                which(geneInfo$GeneName$ENTREZID == geneid),
+                "SYMBOL"]
+            if(length(genename) == 0){
+                genename = geneid
+            }
+            if(length(genename) != 1){
+                # Black list
+                genename = setdiff(genename, "cxcl11.6")[1]
+            }
+            genename
+        }else{
+            geneid
         }
-        if(length(genename) != 1){
-            # Black list
-            genename = setdiff(genename, "cxcl11.6")[1]
-        }
-        genename
     }
 
     # Node
@@ -3833,16 +4107,21 @@
 )
 
 .LIGANDALL_BODY <- function(GeneInfo, LR, input){
-    GeneName <- GeneInfo$GeneName
-    LigandGeneID <- unique(LR$GENEID_L)
-    LigandGeneName <- vapply(LigandGeneID, function(x){
-        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
-    naposition <- which(vapply(LigandGeneName, is.na, TRUE))
-    LigandGeneName[naposition] <- LigandGeneID[naposition]
-    # Sort by Alphabet of the ligand genes
-    orderLigand <- order(LigandGeneName)
-    LigandGeneID <- LigandGeneID[orderLigand]
-    LigandGeneName <- LigandGeneName[orderLigand]
+    if(!is.null(GeneInfo$GeneName)){
+        GeneName <- GeneInfo$GeneName
+        LigandGeneID <- unique(LR$GENEID_L)
+        LigandGeneName <- vapply(LigandGeneID, function(x){
+            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
+        naposition <- which(vapply(LigandGeneName, is.na, TRUE))
+        LigandGeneName[naposition] <- LigandGeneID[naposition]
+        # Sort by Alphabet of the ligand genes
+        orderLigand <- order(LigandGeneName)
+        LigandGeneID <- LigandGeneID[orderLigand]
+        LigandGeneName <- LigandGeneName[orderLigand]
+    }else{
+        LigandGeneName <- LigandGeneID  
+    }
+
     # Ligand Link
     Ligand <- vapply(seq_along(LigandGeneID), function(x){
         target <- which(rownames(input) == LigandGeneID[x])
@@ -3858,15 +4137,20 @@
                 LigandGeneID[x], ")")
         }
     }, "")
+
     # Receptor Link
     Receptor <- vapply(seq_along(LigandGeneID), function(x){
         target <- which(LR$GENEID_L == LigandGeneID[x])
         ReceptorGeneID <- unique(LR$GENEID_R[target])
-        ReceptorGeneName <- vapply(ReceptorGeneID, function(xx){
-            GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
-        }, "")
-        naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
-        ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
+        if(!is.null(GeneInfo$GeneName)){
+            ReceptorGeneName <- vapply(ReceptorGeneID, function(xx){
+                GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
+            }, "")
+            naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
+            ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
+        }else{
+            ReceptorGeneName <- ReceptorGeneID
+        }
         paste(paste0("[", ReceptorGeneName,
             "](https://www.ncbi.nlm.nih.gov/gene/",
             ReceptorGeneID, ")"),
@@ -3879,16 +4163,21 @@
 }
 
 .RECEPTORALL_BODY <- function(GeneInfo, LR, input){
-    GeneName <- GeneInfo$GeneName
-    ReceptorGeneID <- unique(LR$GENEID_R)
-    ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
-        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
-    naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
-    ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
-    # Sort by Alphabet of the Receptor genes
-    orderReceptor <- order(ReceptorGeneName)
-    ReceptorGeneID <- ReceptorGeneID[orderReceptor]
-    ReceptorGeneName <- ReceptorGeneName[orderReceptor]
+    if(!is.null(GeneInfo$GeneName)){
+        GeneName <- GeneInfo$GeneName
+        ReceptorGeneID <- unique(LR$GENEID_R)
+        ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
+            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
+        naposition <- which(vapply(ReceptorGeneName, is.na, TRUE))
+        ReceptorGeneName[naposition] <- ReceptorGeneID[naposition]
+        # Sort by Alphabet of the Receptor genes
+        orderReceptor <- order(ReceptorGeneName)
+        ReceptorGeneID <- ReceptorGeneID[orderReceptor]
+        ReceptorGeneName <- ReceptorGeneName[orderReceptor]
+    }else{
+        ReceptorGeneName <- ReceptorGeneID
+    }
+
     # Receptor Link
     Receptor <- vapply(seq_along(ReceptorGeneID), function(x){
         target <- which(rownames(input) == ReceptorGeneID[x])
@@ -3904,45 +4193,51 @@
                 ReceptorGeneID[x], ")")
         }
     }, "")
+
     # Ligand Link
     Ligand <- vapply(seq_along(ReceptorGeneID), function(x){
         target <- which(LR$GENEID_R == ReceptorGeneID[x])
         LigandGeneID <- unique(LR$GENEID_L[target])
-        LigandGeneName <- vapply(LigandGeneID, function(xx){
-            GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
-        }, "")
-        naposition <- which(vapply(LigandGeneName, is.na, TRUE))
-        LigandGeneName[naposition] <- LigandGeneID[naposition]
+        if(!is.null(GeneInfo$GeneName)){
+            LigandGeneName <- vapply(LigandGeneID, function(xx){
+                GeneName[which(GeneName$ENTREZID == xx)[1], "SYMBOL"]
+            }, "")
+            naposition <- which(vapply(LigandGeneName, is.na, TRUE))
+            LigandGeneName[naposition] <- LigandGeneID[naposition]
+        }else{
+            LigandGeneName <- LigandGeneID
+        }
         paste(paste0("[", LigandGeneName,
             "](https://www.ncbi.nlm.nih.gov/gene/",
             LigandGeneID, ")"),
             collapse=" ")
     }, "")
+
     # Output
     paste0(
     "|", Receptor,
     "|", Ligand, "|\n", collapse="")
 }
 
-.GOENRICHMENT <- function(all, sig, goannotation, category, p){
-    if(is.na(goannotation)){
-        list(Term=NULL, Pvalue=NULL)
-    }else{
-        goParams <- new("GOHyperGParams",
-            geneIds=sig,
-            universeGeneIds=all,
-            annotation=goannotation,
-            ontology=category,
-            pvalueCutoff=p,
-            conditional=FALSE,
-            testDirection="over")
+.GOENRICHMENT <- function(all, sig, ah, category, p){
+    goParams <- try(new("GOHyperGParams",
+        geneIds=sig,
+        universeGeneIds=all,
+        annotation=ah,
+        ontology=category,
+        pvalueCutoff=p,
+        conditional=FALSE,
+        testDirection="over"))
+    if(class(goParams) != "try-error"){
         # Hyper geometric p-value
         out <- try(summary(hyperGTest(goParams)), silent=TRUE)
         if(is(out)[1] == "try-error"){
             list(Term=NULL, Pvalue=NULL)
         }else{
             list(Term=out$Term, Pvalue=out$Pvalue)
-        }
+        }        
+    }else{
+        list(Term=NULL, Pvalue=NULL)        
     }
 }
 
@@ -3990,70 +4285,56 @@
     }
 }
 
-.DOENRICHMENT <- function(all, sig, dospc, p){
-    if(is.na(dospc)){
+.DOENRICHMENT <- function(all, sig, p){
+    out <- try(enrichDO(gene=sig,
+      pvalueCutoff=p, readable=TRUE), silent=TRUE)
+    if(is(out)[1] == "try-error"){
+        list(Term=NULL, Pvalue=NULL)
+    }else if(is.null(out)){
         list(Term=NULL, Pvalue=NULL)
     }else{
-        out <- try(enrichDO(gene=sig,
-          pvalueCutoff=p, readable=TRUE), silent=TRUE)
-        if(is(out)[1] == "try-error"){
-            list(Term=NULL, Pvalue=NULL)
-        }else if(is.null(out)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            list(Term=out@result$Description,
-                Pvalue=out@result$pvalue)
-        }
+        list(Term=out@result$Description,
+            Pvalue=out@result$pvalue)
     }
 }
 
-.NCGENRICHMENT <- function(all, sig, ncgspc, p){
-    if(is.na(ncgspc)){
+.NCGENRICHMENT <- function(all, sig, p){
+    out <- try(enrichNCG(gene=sig,
+      pvalueCutoff=p, readable=TRUE), silent=TRUE)
+    if(is(out)[1] == "try-error"){
+        list(Term=NULL, Pvalue=NULL)
+    }else if(is.null(out)){
         list(Term=NULL, Pvalue=NULL)
     }else{
-        out <- try(enrichNCG(gene=sig,
-          pvalueCutoff=p, readable=TRUE), silent=TRUE)
-        if(is(out)[1] == "try-error"){
-            list(Term=NULL, Pvalue=NULL)
-        }else if(is.null(out)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            list(Term=out@result$Description,
-                Pvalue=out@result$pvalue)
-        }
+        list(Term=out@result$Description,
+            Pvalue=out@result$pvalue)
     }
 }
 
-.DGNENRICHMENT <- function(all, sig, dgnspc, p){
-    if(is.na(dgnspc)){
+.DGNENRICHMENT <- function(all, sig, p){
+    out <- try(enrichDGN(gene=sig,
+      pvalueCutoff=p, readable=TRUE), silent=TRUE)
+    if(is(out)[1] == "try-error"){
+        list(Term=NULL, Pvalue=NULL)
+    }else if(is.null(out)){
         list(Term=NULL, Pvalue=NULL)
     }else{
-        out <- try(enrichDGN(gene=sig,
-          pvalueCutoff=p, readable=TRUE), silent=TRUE)
-        if(is(out)[1] == "try-error"){
-            list(Term=NULL, Pvalue=NULL)
-        }else if(is.null(out)){
-            list(Term=NULL, Pvalue=NULL)
-        }else{
-            list(Term=out@result$Description,
-                Pvalue=out@result$pvalue)
-        }
+        list(Term=out@result$Description,
+            Pvalue=out@result$pvalue)
     }
 }
 
 .NOSIG <- list(Term=NULL, PValue=NULL)
 
-.ENRICHMENT <- function(all, sig, goannotation, meshannotation, reactomespc,
-    dospc, ncgspc, dgnspc,
-    goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p){
+.ENRICHMENT <- function(all, sig, meshannotation, reactomespc, goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p, ah){
     # GO
     if(goenrich){
         cat("GO-Enrichment Analysis is running...(1/3)\n")
-        BP <- .GOENRICHMENT(all, sig, goannotation, "BP", p)
+        BP <- .GOENRICHMENT(all, sig, ah, "BP", p)
         cat("GO-Enrichment Analysis is running...(2/3)\n")
-        MF <- .GOENRICHMENT(all, sig, goannotation, "MF", p)
+        MF <- .GOENRICHMENT(all, sig, ah, "MF", p)
         cat("GO-Enrichment Analysis is running...(3/3)\n")
-        CC <- .GOENRICHMENT(all, sig, goannotation, "CC", p)
+        CC <- .GOENRICHMENT(all, sig, ah, "CC", p)
     }else{
         BP <- .NOSIG
         MF <- .NOSIG
@@ -4121,21 +4402,21 @@
     # DO
     if(doenrich){
         cat("DO-Enrichment Analysis is running...(1/1)\n")
-        DO <- .DOENRICHMENT(all, sig, dospc, p)
+        DO <- .DOENRICHMENT(all, sig, p)
     }else{
         DO <- .NOSIG
     }
     # NCG
     if(ncgenrich){
         cat("NCG-Enrichment Analysis is running...(1/1)\n")
-        NCG <- .NCGENRICHMENT(all, sig, ncgspc, p)
+        NCG <- .NCGENRICHMENT(all, sig, p)
     }else{
         NCG <- .NOSIG
     }
     # DGN
     if(dgnenrich){
         cat("DGN-Enrichment Analysis is running...(1/1)\n")
-        DGN <- .DGNENRICHMENT(all, sig, dgnspc, p)
+        DGN <- .DGNENRICHMENT(all, sig, p)
     }else{
         DGN <- .NOSIG
     }
@@ -4245,7 +4526,6 @@ names(.eachCircleColor) <- c(
             }else if(length(pval) == 1){
                 # background circle
                 for(i in 1:120){
-                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -4254,7 +4534,6 @@ names(.eachCircleColor) <- c(
             }else{
                 # background circle
                 for(i in 1:120){
-                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -4265,7 +4544,6 @@ names(.eachCircleColor) <- c(
                 }else{
                     t <- sapply(t, function(x){.shrink2(x, thr=25)})
                 }
-                par(ask=FALSE)
                 tagcloud(t[target], weights = negLogPval[target],
                 col = smoothPalette(negLogPval[target], palfunc = .palf),
                 order = "size", algorithm = "oval",
@@ -4344,7 +4622,6 @@ names(.eachCircleColor) <- c(
             }else if(length(pval) == 1){
                 # background circle
                 for(i in 1:120){
-                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -4353,7 +4630,6 @@ names(.eachCircleColor) <- c(
             }else{
                 # background circle
                 for(i in 1:120){
-                    par(ask=FALSE)
                     plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
                     par(new=TRUE)
                 }
@@ -4364,7 +4640,6 @@ names(.eachCircleColor) <- c(
                 }else{
                     t <- sapply(t, function(x){.shrink2(x, thr=25)})
                 }
-                par(ask=FALSE)
                 tagcloud(t[target], weights = negLogPval[target],
                 col = smoothPalette(negLogPval[target], palfunc = .palf),
                 order = "size", algorithm = "oval",
@@ -4376,14 +4651,12 @@ names(.eachCircleColor) <- c(
 }
 
 .NULLPlot <- function(){
-    par(ask=FALSE)
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=100)
     text(1, 1, "None", col=rgb(0,0,0,0.5))
 }
 
 .SinglePlot <- function(x){
-    par(ask=FALSE)
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=100)
     text(1, 1, x, col="red")
@@ -5484,10 +5757,15 @@ names(.eachCircleColor) <- c(
     GeneName <- GeneInfo$GeneName
     LigandGeneID <- unique(LR$GENEID_L)
     ReceptorGeneID <- unique(LR$GENEID_R)
-    LigandGeneName <- vapply(LigandGeneID, function(x){
-        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
-    ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
-        GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
+    if(!is.null(GeneName)){
+        LigandGeneName <- vapply(LigandGeneID, function(x){
+            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
+        ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
+            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")        
+    }else{
+        LigandGeneName <- LigandGeneID
+        ReceptorGeneName <- ReceptorGeneID
+    }
 
     # Plot (Ligand)
     lapply(seq_along(LigandGeneID), function(x){
@@ -5522,7 +5800,6 @@ names(.eachCircleColor) <- c(
             palfunc=colorRampPalette(col.ligand, alpha=TRUE))
         LPatternfile <- paste0(out.dir, "/figures/Pattern_", i, "__", ".png")
         png(filename=LPatternfile, width=1000, height=1000, bg="transparent")
-        par(ask=FALSE)
         par(ps=20)
         plot(twoD, col=label.ligand, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",
@@ -5539,7 +5816,6 @@ names(.eachCircleColor) <- c(
             palfunc=colorRampPalette(col.receptor, alpha=TRUE))
         RPatternfile = paste0(out.dir, "/figures/Pattern__", i, "_", ".png")
         png(filename=RPatternfile, width=1000, height=1000, bg="transparent")
-        par(ask=FALSE)
         par(ps=20)
         plot(twoD, col=label.receptor, pch=16, cex=2, bty="n",
             xaxt="n", yaxt="n", xlab="", ylab="",

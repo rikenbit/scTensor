@@ -92,8 +92,10 @@ The result is saved as HTML report which contains with multiple files.
 	if(interactive()){
 	# Package Loading
 	library("SingleCellExperiment")
-	library("LRBase.Hsa.eg.db")
-	library("MeSH.Hsa.eg.db")
+	if(!require(LRBase.Hsa.eg.db)){
+	    BiocManager::install("LRBase.Hsa.eg.db")
+	    library(LRBase.Hsa.eg.db)
+	}
 
 	# Data Loading
 	data(GermMale)
@@ -111,22 +113,29 @@ The result is saved as HTML report which contains with multiple files.
 	}
 	# Normalization
 	normcounts(sce) <- log10(CPMED(counts(sce)) + 1)
+
 	# Registration of required information into metadata(sce)
-	cellCellSetting(sce, LRBase.Hsa.eg.db, labelGermMale, names(labelGermMale))
+	cellCellSetting(sce, LRBase.Hsa.eg.db, names(labelGermMale))
+
 	# Rank Estimation
 	rks <- cellCellRanks(sce, assayNames="normcounts")
+
 	# CCI Tensor Decomposition
 	set.seed(1234)
 	cellCellDecomp(sce, ranks=rks$selected, assayNames="normcounts")
+
 	# HTML Report
-	cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
-	    title="Cell-cell interaction within Germline_Male, GSE86146",
-	    author="Koki Tsuyuzaki", html.open=TRUE, upper=2,
-        goenrich=TRUE, meshenrich=FALSE, reactomeenrich=FALSE,
-        doenrich=FALSE, ncgenrich=FALSE, dgnenrich=FALSE, nbins=40)
-	if(.Device == "quartz"){
-		dev.off()
-	}
+	options(device.ask.default = FALSE)
+	cellCellReport(sce, reducedDimNames="TSNE",
+        out.dir=tempdir(), html.open=FALSE,
+        title="The result of scTensor",
+        author="The person who runs this script",
+        assayNames="counts", thr=100,
+        top="full", p=0.05, upper=2,
+        goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
+        doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
+    }else{
+        showMethods("cellCellReport")
     }
 }
 
