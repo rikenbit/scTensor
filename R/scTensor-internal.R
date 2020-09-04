@@ -1817,12 +1817,13 @@
     MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
     MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
-    if(class(MeSH.load) == "try-error"){
-        MeSH.dl <- eval(parse(text=paste0("try(BiocManager::install('",
+    if(!MeSH.load){
+        eval(parse(text=paste0("try(BiocManager::install('",
             MeSHname, "'))")))
     }
     MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
-    if(class(MeSH.load2) != "try-error"){
+    if(MeSH.load2){
+        eval(parse(text=paste0("library(", MeSHname, ")")))
         message(paste0("Related MeSH IDs are retrieved from ",
             "MeSH.XXX.eg.db-type package..."))
         MeSHobj <- eval(parse(text=MeSHname))
@@ -1929,12 +1930,13 @@
     MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
     MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
-    if(class(MeSH.load) == "try-error"){
-        MeSH.dl <- eval(parse(text=paste0("try(BiocManager::install('",
+    if(!MeSH.load){
+        eval(parse(text=paste0("try(BiocManager::install('",
             MeSHname, "'))")))
     }
     MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
-    if(class(MeSH.load2) != "try-error"){
+    if(MeSH.load2){
+        eval(parse(text=paste0("library(", MeSHname, ")")))
         message(paste0("Related MeSH IDs are retrieved from ",
             "MeSH.XXX.eg.db-type package..."))
         MeSHobj <- eval(parse(text=MeSHname))
