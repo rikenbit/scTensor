@@ -299,7 +299,7 @@
             paste0(paste(c("pattern", index[x, seq_len(2)]),
                 collapse="_"), ".Rmd")
         }, "")
-        message("index.Rmd is created...")
+        message("\nindex.Rmd is created...")
         outIdx <- file(paste0(out.dir, "/index.Rmd"), "w")
         writeLines(.MAINHEADER(author, title), outIdx, sep="\n")
         writeLines(.BODY1_2, outIdx, sep="\n")
@@ -317,7 +317,7 @@
         close(outIdx)
 
         # Rendering
-        message("index.Rmd is compiled to index.html...")
+        message("index.Rmd is compiled to index.html...\n")
         render(paste0(out.dir, "/index.Rmd"), quiet=TRUE)
     }
 }
@@ -1819,7 +1819,7 @@
     MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
     if(!MeSH.load){
         eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "'))")))
+            MeSHname, "', update=FALSE, ask=FALSE))")))
     }
     MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
     if(MeSH.load2){
@@ -1932,7 +1932,7 @@
     MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
     if(!MeSH.load){
         eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "'))")))
+            MeSHname, "', update=FALSE, ask=FALSE))")))
     }
     MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
     if(MeSH.load2){
@@ -3114,20 +3114,24 @@
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
     spc <- gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
-    meshpkg <- paste0("MeSH.", spc, ".eg.db")
-    if(!requireNamespace(meshpkg, quietly=TRUE)){
-        eval(parse(text=paste0("try(BiocManager::install(", meshpkg, "))")))
-        mesh.load <- eval(parse(text=paste0("try(requireNamespace('", meshpkg, "', quietly=TRUE))")))
-        if(class(mesh.load) != "try-error"){
-            meshannotation <- meshpkg
-        }else{
-            meshenrich <- FALSE
-            meshannotation <- NA
-        }
+    MeSHname <- paste0("MeSH.", spc, ".eg.db")
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    if(!MeSH.load){
+        eval(parse(text=paste0("try(BiocManager::install('",
+            MeSHname, "', update=FALSE, ask=FALSE))")))
+    }
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    if(MeSH.load2){
+        eval(parse(text=paste0("library(", MeSHname, ")")))
+        meshannotation <- MeSHname
     }else{
-        meshannotation <- meshpkg
+        meshenrich <- FALSE
+        meshannotation <- NA
     }
     reactomespc <- .REACTOMESPC[[spc]]
+    if(is.null(reactomespc)){
+        reactomeenrich <- FALSE
+    }
     if(taxid != "9606"){
         doenrich <- FALSE
         ncgenrich <- FALSE
