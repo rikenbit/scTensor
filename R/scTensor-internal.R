@@ -138,7 +138,7 @@
             # biomaRt Setting
             ah <- .annotationhub[[spc]]()
             # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneinformation(sce, ah, spc, LR)
+            GeneInfo <- .geneInformation(sce, ah, spc, LR)
         }else{
             ###########################################
             # Taxonomy ID based information retrieval
@@ -146,7 +146,7 @@
             # biomaRt Setting
             ah <- .annotationhub_taxid(taxid)
             # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneinformation_taxid(sce, ah, taxid, LR)
+            GeneInfo <- .geneInformation_taxid(sce, ah, taxid, LR)
         }
 
         # Cell Label
@@ -368,7 +368,7 @@
             # biomaRt Setting
             ah <- .annotationhub[[spc]]()
             # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneinformation(sce, ah, spc, LR)
+            GeneInfo <- .geneInformation(sce, ah, spc, LR)
         }else{
             ###########################################
             # Taxonomy ID based information retrieval
@@ -376,7 +376,7 @@
             # biomaRt Setting
             ah <- .annotationhub_taxid(taxid)
             # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneinformation_taxid(sce, ah, taxid, LR)
+            GeneInfo <- .geneInformation_taxid(sce, ah, taxid, LR)
         }
 
         # Cell Label
@@ -1737,7 +1737,7 @@
     }
 )
 
-.geneinformation_taxid <- function(sce, ah, taxid, LR){
+.geneInformation_taxid <- function(sce, ah, taxid, LR){
     targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
 
     # Gene symbol
@@ -1758,7 +1758,6 @@
             ENTREZID=as.character(g$matching[target]),
             SYMBOL=target,
             stringsAsFactors = FALSE)
-        GeneName <- GeneName[, c("ENTREZID", "SYMBOL")]         
     }else{
         GeneName <- NULL
     }
@@ -1809,6 +1808,12 @@
         UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROT", "ENTREZID"),
             keytype="ENTREZID", keys=targetGeneID)
         UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROT")]
+    }else if("UNIPROTID" %in%  AnnotationDbi::columns(ah) && !is.null(ah)){
+        message("Related UniProtKB IDs are retrieved from AnnotationHub...")
+        UniProtKB <- AnnotationDbi::select(ah, columns=c("UNIPROTID", "ENTREZID"),
+            keytype="ENTREZID", keys=targetGeneID)
+        UniProtKB <- UniProtKB[, c("ENTREZID", "UNIPROTID")]
+        colnames(UniProtKB) <- c("ENTREZID", "UNIPROT")
     }else{
         UniProtKB <- NULL
     }
@@ -1816,12 +1821,12 @@
     # MeSH
     MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
-    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(!MeSH.load){
         eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "', update=FALSE, ask=FALSE))")))
+            MeSHname, "', update=FALSE, ask=FALSE), silent=TRUE)")))
     }
-    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(MeSH.load2){
         eval(parse(text=paste0("library(", MeSHname, ")")))
         message(paste0("Related MeSH IDs are retrieved from ",
@@ -1854,7 +1859,7 @@
 
 '%ni%' <- Negate('%in%')
 
-.geneinformation <- function(sce, ah, spc, LR){
+.geneInformation <- function(sce, ah, spc, LR){
     targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
     if(!is.null(ah)){
         # Gene Name
@@ -1874,7 +1879,6 @@
             ENTREZID=as.character(g$matching[target]),
             SYMBOL=target,
             stringsAsFactors = FALSE)
-        GeneName <- GeneName[, c("ENTREZID", "SYMBOL")]
 
         # Description
         message("Related gene descriptions are retrieved from AnnotationHub...")
@@ -1929,12 +1933,12 @@
     # MeSH
     MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
-    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(!MeSH.load){
         eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "', update=FALSE, ask=FALSE))")))
+            MeSHname, "', update=FALSE, ask=FALSE), silent=TRUE)")))
     }
-    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(MeSH.load2){
         eval(parse(text=paste0("library(", MeSHname, ")")))
         message(paste0("Related MeSH IDs are retrieved from ",
@@ -1981,7 +1985,7 @@
 )
 
 .hyperLinks <- function(ranking, ligandGeneID, receptorGeneID,
-    lr, taxid, value, percentage, geneInfo, pvalue, qvalue){
+    lr, taxid, value, percentage, GeneInfo, pvalue, qvalue){
     ## helper for vector dividing
     div <- function(x, d=1) {""
         delta <- ceiling(length(x) / d)
@@ -2035,10 +2039,10 @@
             )
     }
 
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(is.null(genename)){
                 genename = geneid
@@ -2046,7 +2050,7 @@
                 if(is.na(genename)){
                     genename = geneid
                 }
-                if(length(genename) == 0 || genename == ""){
+                if(length(genename) == 0 || genename %in% c("", NA)){
                     genename = geneid
                 }
             }            
@@ -2056,12 +2060,12 @@
         genename
     }
 
-    convertGeneDescription <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$Description)){
-            description <- geneInfo$Description[
-                which(geneInfo$Description$ENTREZID ==
+    convertGeneDescription <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$Description)){
+            description <- GeneInfo$Description[
+                which(GeneInfo$Description$ENTREZID ==
                     geneid), "GENENAME"][1]
-            if(length(description) == 0 || is.na(description)){
+            if(length(description) == 0 || description %in% c("", NA)){
                 description = ""
             }
             description
@@ -2070,10 +2074,10 @@
         }
     }
 
-    convertGeneOntology <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GO)){
-            GO <- unique(unlist(geneInfo$GO[
-                which(geneInfo$GO$ENTREZID == geneid),
+    convertGeneOntology <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GO)){
+            GO <- unique(unlist(GeneInfo$GO[
+                which(GeneInfo$GO$ENTREZID == geneid),
                 "GO"]))
             GO <- GO[which(GO != "")]
             GO <- gsub(":", "%3A", GO)
@@ -2098,10 +2102,10 @@
         GO
     }
 
-    convertReactome <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$Reactome)){
-            Reactome <- unique(unlist(geneInfo$Reactome[
-                which(geneInfo$Reactome$gene_id ==
+    convertReactome <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$Reactome)){
+            Reactome <- unique(unlist(GeneInfo$Reactome[
+                which(GeneInfo$Reactome$gene_id ==
                 geneid), "DB_ID"]))
             Reactome <- Reactome[which(Reactome != "")]
             if(length(Reactome) != 0){
@@ -2125,9 +2129,9 @@
         Reactome
     }
 
-    convertMeSH <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$MeSH)){
-            MeSH <- geneInfo$MeSH[which(geneInfo$MeSH$GENEID == geneid),
+    convertMeSH <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$MeSH)){
+            MeSH <- GeneInfo$MeSH[which(GeneInfo$MeSH$GENEID == geneid),
                 "MESHID"]
             MeSH <- MeSH[which(MeSH != "")]
             if(length(MeSH) != 0){
@@ -2149,10 +2153,10 @@
         MeSH
     }
 
-    convertUniProtKB <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$UniProtKB)){
-            UniProtKB <- unique(unlist(geneInfo$UniProtKB[
-                which(geneInfo$UniProtKB$ENTREZID == geneid),
+    convertUniProtKB <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$UniProtKB)){
+            UniProtKB <- unique(unlist(GeneInfo$UniProtKB[
+                which(GeneInfo$UniProtKB$ENTREZID == geneid),
                 "UNIPROT"]))
             UniProtKB <- UniProtKB[which(UniProtKB != "")]
             if(length(UniProtKB) != 0){
@@ -2177,10 +2181,10 @@
     }
 
     # taxidあるかチェック
-    convertSTRING <- function(geneid, geneInfo, taxid){
-        if(!is.null(geneInfo$ENSP)){
-            ENSP <- unique(unlist(geneInfo$ENSP[
-                which(geneInfo$ENSP$ENTREZID == geneid),
+    convertSTRING <- function(geneid, GeneInfo, taxid){
+        if(!is.null(GeneInfo$ENSP)){
+            ENSP <- unique(unlist(GeneInfo$ENSP[
+                which(GeneInfo$ENSP$ENTREZID == geneid),
                 "ENSEMBLPROT"]))
             ENSP <- ENSP[which(ENSP != "")]
             if(length(ENSP) != 0 && !is.na(taxid)){
@@ -2198,10 +2202,10 @@
         STRING
     }
 
-    convertRefEx <- function(geneid, geneInfo, taxid){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertRefEx <- function(geneid, GeneInfo, taxid){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(length(genename) != 0){
                 ref <- "http://refex.dbcls.jp/genelist.php?gene_name%5B%5D="
@@ -2222,10 +2226,10 @@
         }
     }
 
-    convertEA <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$ENSG)){
-            ENSG <- geneInfo$ENSG[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertEA <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$ENSG)){
+            ENSG <- GeneInfo$ENSG[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "ENSEMBL"][1]
             if(length(ENSG) != 0){
                 paste0("https://www.ebi.ac.uk/gxa/genes/", tolower(ENSG))
@@ -2237,10 +2241,10 @@
         }
     }
 
-    convertSEA <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertSEA <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(length(genename) != 0){
                 paste0("https://www.ebi.ac.uk/gxa/sc/search?species=&q=",
@@ -2253,10 +2257,10 @@
         }
     }
 
-    convertSCDB <- function(geneid, geneInfo, taxid){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertSCDB <- function(geneid, GeneInfo, taxid){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(length(genename) != 0 && taxid == "9606"){
                 paste0("https://bioinfo.uth.edu/scrnaseqdb/",
@@ -2271,10 +2275,10 @@
         }
     }
 
-    convertPANGLAO <- function(geneid, geneInfo, taxid){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertPANGLAO <- function(geneid, GeneInfo, taxid){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(length(genename) != 0){
                 ref <- "https://panglaodb.se/search.html?query="
@@ -2293,10 +2297,10 @@
         }
     }
 
-    convertCMAP <- function(geneid, geneInfo, taxid){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertCMAP <- function(geneid, GeneInfo, taxid){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
             if(length(genename) != 0){
                 ref <- "https://clue.io/command?q="
@@ -2342,57 +2346,57 @@
     # ranking
     XYZ <- paste0("|", ranking, "|")
     # Gene Name (Ligand)
-    GeneName_L <- convertGeneName(ligandGeneID, geneInfo)
+    GeneName_L <- convertGeneName(ligandGeneID, GeneInfo)
     # Gene Name (Receptor)
-    GeneName_R <- convertGeneName(receptorGeneID, geneInfo)
+    GeneName_R <- convertGeneName(receptorGeneID, GeneInfo)
     # Description (Ligand)
-    Description_L <- convertGeneDescription(ligandGeneID, geneInfo)
+    Description_L <- convertGeneDescription(ligandGeneID, GeneInfo)
     # Description (Receptor)
-    Description_R <- convertGeneDescription(receptorGeneID, geneInfo)
+    Description_R <- convertGeneDescription(receptorGeneID, GeneInfo)
     # Gene Ontology (Ligand)
-    GO_L <- convertGeneOntology(ligandGeneID, geneInfo)
+    GO_L <- convertGeneOntology(ligandGeneID, GeneInfo)
     # Gene Ontology (Receptor)
-    GO_R <- convertGeneOntology(receptorGeneID, geneInfo)
+    GO_R <- convertGeneOntology(receptorGeneID, GeneInfo)
     # Reactome (Ligand)
-    Reactome_L <- convertReactome(ligandGeneID, geneInfo)
+    Reactome_L <- convertReactome(ligandGeneID, GeneInfo)
     # Reactome (Receptor)
-    Reactome_R <- convertReactome(receptorGeneID, geneInfo)
+    Reactome_R <- convertReactome(receptorGeneID, GeneInfo)
     # MeSH (Ligand)
-    MeSH_L <- convertMeSH(ligandGeneID, geneInfo)
+    MeSH_L <- convertMeSH(ligandGeneID, GeneInfo)
     # MeSH (Receptor)
-    MeSH_R <- convertMeSH(receptorGeneID, geneInfo)
+    MeSH_R <- convertMeSH(receptorGeneID, GeneInfo)
     # UniProtKB（Ligand）
-    UniProtKB_L <- convertUniProtKB(ligandGeneID, geneInfo)
+    UniProtKB_L <- convertUniProtKB(ligandGeneID, GeneInfo)
     # UniProtKB（Receptor）
-    UniProtKB_R <- convertUniProtKB(receptorGeneID, geneInfo)
+    UniProtKB_R <- convertUniProtKB(receptorGeneID, GeneInfo)
     # STRING（Ligand）
-    STRING_L <- convertSTRING(ligandGeneID, geneInfo, taxid)
+    STRING_L <- convertSTRING(ligandGeneID, GeneInfo, taxid)
     # STRING（Receptor）
-    STRING_R <- convertSTRING(receptorGeneID, geneInfo, taxid)
+    STRING_R <- convertSTRING(receptorGeneID, GeneInfo, taxid)
     # RefEx（Ligand）
-    RefEx_L <- convertRefEx(ligandGeneID, geneInfo, taxid)
+    RefEx_L <- convertRefEx(ligandGeneID, GeneInfo, taxid)
     # RefEx（Receptor）
-    RefEx_R <- convertRefEx(receptorGeneID, geneInfo, taxid)
+    RefEx_R <- convertRefEx(receptorGeneID, GeneInfo, taxid)
     # EA（Ligand）
-    EA_L <- convertEA(ligandGeneID, geneInfo)
+    EA_L <- convertEA(ligandGeneID, GeneInfo)
     # EA（Receptor）
-    EA_R <- convertEA(receptorGeneID, geneInfo)
+    EA_R <- convertEA(receptorGeneID, GeneInfo)
     # SEA（Ligand）
-    SEA_L <- convertSEA(ligandGeneID, geneInfo)
+    SEA_L <- convertSEA(ligandGeneID, GeneInfo)
     # SEA（Receptor）
-    SEA_R <- convertSEA(receptorGeneID, geneInfo)
+    SEA_R <- convertSEA(receptorGeneID, GeneInfo)
     # SCDB（Ligand）
-    SCDB_L <- convertSCDB(ligandGeneID, geneInfo, taxid)
+    SCDB_L <- convertSCDB(ligandGeneID, GeneInfo, taxid)
     # SCDB（Receptor）
-    SCDB_R <- convertSCDB(receptorGeneID, geneInfo, taxid)
+    SCDB_R <- convertSCDB(receptorGeneID, GeneInfo, taxid)
     # PANGLAO（Ligand）
-    PANGLAO_L <- convertPANGLAO(ligandGeneID, geneInfo, taxid)
+    PANGLAO_L <- convertPANGLAO(ligandGeneID, GeneInfo, taxid)
     # PANGLAO（Receptor）
-    PANGLAO_R <- convertPANGLAO(receptorGeneID, geneInfo, taxid)
+    PANGLAO_R <- convertPANGLAO(receptorGeneID, GeneInfo, taxid)
     # CMAP（Ligand）
-    CMAP_L <- convertCMAP(ligandGeneID, geneInfo, taxid)
+    CMAP_L <- convertCMAP(ligandGeneID, GeneInfo, taxid)
     # CMAP（Receptor）
-    CMAP_R <- convertCMAP(receptorGeneID, geneInfo, taxid)
+    CMAP_R <- convertCMAP(receptorGeneID, GeneInfo, taxid)
     # PubMed (L and R)
     PubMed <- convertPubMed(ligandGeneID, receptorGeneID, lr)
 
@@ -3114,13 +3118,18 @@
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
     spc <- gsub(".eg.db.sqlite", "",
         strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
+    # GO-Check
+    if("GO" %ni% AnnotationDbi::columns(ah)){
+        goenrich <- FALSE
+    }
+    # MeSH-Check
     MeSHname <- paste0("MeSH.", spc, ".eg.db")
-    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(!MeSH.load){
         eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "', update=FALSE, ask=FALSE))")))
+            MeSHname, "', update=FALSE, ask=FALSE), silent=TRUE)")))
     }
-    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE))")))
+    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
     if(MeSH.load2){
         eval(parse(text=paste0("library(", MeSHname, ")")))
         meshannotation <- MeSHname
@@ -3128,10 +3137,12 @@
         meshenrich <- FALSE
         meshannotation <- NA
     }
+    # Reactome-Check
     reactomespc <- .REACTOMESPC[[spc]]
     if(is.null(reactomespc)){
         reactomeenrich <- FALSE
     }
+    # DO/NCG/DGN-Check
     if(taxid != "9606"){
         doenrich <- FALSE
         ncgenrich <- FALSE
@@ -3168,10 +3179,10 @@
             LigandGeneName <- GeneName[which(GeneName[,2] == LigandGeneID), 1]
             ReceptorGeneName <- GeneName[which(GeneName[,2] == ReceptorGeneID), 1]
 
-            if(length(LigandGeneName) == 0 || LigandGeneName == ""){
+            if(length(LigandGeneName) == 0 || LigandGeneName %in% c("", NA)){
                 LigandGeneName <- LigandGeneID
             }
-            if(length(ReceptorGeneName) == 0 || ReceptorGeneName == ""){
+            if(length(ReceptorGeneName) == 0 || ReceptorGeneName %in% c("", NA)){
                 ReceptorGeneName <- ReceptorGeneID
             }
         }else{
@@ -3326,12 +3337,12 @@
 
 .geneHyperGraphPlot_2 <- function(out.vecLR, GeneInfo, out.dir){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
-            if(length(genename) == 0){
+            if(is.na(genename[1])){
                 genename = geneid
             }
             genename            
@@ -3458,12 +3469,12 @@
 
 .geneHyperGraphPlot <- function(out.vecLR, GeneInfo, out.dir){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"][1]
-            if(length(genename) == 0){
+            if(length(genename) == 0 || genename %in% c("", NA)){
                 genename = geneid
             }
             genename
@@ -3628,11 +3639,11 @@
 
 .LIGAND_BODY_2 <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
-            if(length(genename) == 0){
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
+            if(length(genename) == 0 || genename %in% c("", NA)){
                 genename = geneid
             }
             if(length(genename) != 1){
@@ -3736,11 +3747,11 @@
 
 .LIGAND_BODY <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
-            if(length(genename) == 0){
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid), "SYMBOL"]
+            if(length(genename) == 0 || genename %in% c("", NA)){
                 genename = geneid
             }
             if(length(genename) != 1){
@@ -3857,12 +3868,12 @@
 
 .RECEPTOR_BODY_2 <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"]
-            if(length(genename) == 0){
+            if(length(genename) == 0 || genename %in% c("", NA)){
                 genename = geneid
             }
             if(length(genename) != 1){
@@ -3966,12 +3977,12 @@
 
 .RECEPTOR_BODY <- function(out.vecLR, GeneInfo, index, selected){
     # Setting
-    convertGeneName <- function(geneid, geneInfo){
-        if(!is.null(geneInfo$GeneName)){
-            genename <- geneInfo$GeneName[
-                which(geneInfo$GeneName$ENTREZID == geneid),
+    convertGeneName <- function(geneid, GeneInfo){
+        if(!is.null(GeneInfo$GeneName)){
+            genename <- GeneInfo$GeneName[
+                which(GeneInfo$GeneName$ENTREZID == geneid),
                 "SYMBOL"]
-            if(length(genename) == 0){
+            if(length(genename) == 0 || genename %in% c("", NA)){
                 genename = geneid
             }
             if(length(genename) != 1){
@@ -4233,7 +4244,7 @@
         ontology=category,
         pvalueCutoff=p,
         conditional=FALSE,
-        testDirection="over"))
+        testDirection="over"), silent=TRUE)
     if(class(goParams) != "try-error"){
         # Hyper geometric p-value
         out <- try(summary(hyperGTest(goParams)), silent=TRUE)
