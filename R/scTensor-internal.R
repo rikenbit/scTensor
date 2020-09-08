@@ -1753,10 +1753,10 @@
         g <- graph.data.frame(as.data.frame(GeneName), directed=FALSE)
         V(g)$type <- bipartite_mapping(g)$type
         g <- max_bipartite_match(g)
-        target <- as.character(unique(GeneName[,2]))
+        target <- as.character(unique(GeneName[, "ENTREZID"]))
         GeneName <- data.frame(
-            ENTREZID=as.character(g$matching[target]),
-            SYMBOL=target,
+            ENTREZID=target,
+            SYMBOL=as.character(g$matching[target]),
             stringsAsFactors = FALSE)
     }else{
         GeneName <- NULL
@@ -1874,10 +1874,10 @@
         g <- graph.data.frame(as.data.frame(GeneName), directed=FALSE)
         V(g)$type <- bipartite_mapping(g)$type
         g <- max_bipartite_match(g)
-        target <- as.character(unique(GeneName[,2]))
+        target <- as.character(unique(GeneName[, "ENTREZID"]))
         GeneName <- data.frame(
-            ENTREZID=as.character(g$matching[target]),
-            SYMBOL=target,
+            ENTREZID=target,
+            SYMBOL=as.character(g$matching[target]),
             stringsAsFactors = FALSE)
 
         # Description
