@@ -14,7 +14,7 @@ cellCellReport(sce, reducedDimNames,
     out.dir=tempdir(), html.open=FALSE,
     title="The result of scTensor",
     author="The person who runs this script", assayNames = "counts", thr=100,
-    top="full", p=0.05, upper=2,
+    top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
     doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
 }
@@ -131,7 +131,7 @@ The result is saved as HTML report which contains with multiple files.
         title="The result of scTensor",
         author="The person who runs this script",
         assayNames="counts", thr=100,
-        top="full", p=0.05, upper=2,
+        top="full", p=0.05, upper=20,
         goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
         doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
     }else{
