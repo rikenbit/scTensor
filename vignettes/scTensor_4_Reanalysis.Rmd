@@ -3,13 +3,13 @@ title: "How to reanalyze the results of scTensor"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Manabu Ishii
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Itoshi Nikaido
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
   email: k.t.the-answer@hotmail.co.jp
 package: scTensor
 output:
@@ -58,10 +58,11 @@ After performing `cellCellReport`, some R objects are saved in the reanalysis.RD
 
 # Execution of scTensor with the different options
 
-Using the reanalysis.RData, some user may want to perform `r Biocpkg("scTensor")` with different parameters.
+Using the `reanalysis.RData`, some users may want to perform `r Biocpkg("scTensor")` with different parameters.
 
-For example, the user can perform `cellCellDecomp` with different ranks,
-and also can peform `cellCellReport` with omiting some enrichment analysis step as follows.
+For example, some users want to perform `cellCellDecomp` with different ranks, perform `cellCellReport` with omitting some enrichment analysis, provide the results to their collaborators.
+
+To do such tasks, just type like belows.
 
 ```{r Reanalysis, eval=FALSE}
 if(!require(LRBase.Hsa.eg.db)){

@@ -377,53 +377,6 @@ cellCellSimulate <- function(params = newCCSParams(), verbose = TRUE){
 #
 # convertToNCBIGeneID
 #
-convertToNCBIGeneID <- function(input, rowID, LefttoRight){
-    # Argument check
-    if(dim(input)[1] != length(rowID)){
-        stop("The number of rows of input and the length of rowID must be same.")
-    }
-    # NA check
-    nr <- nrow(input)
-    nc <- ncol(input)
-    notNA <- which(!is.na(rowID))
-    input <- input[notNA,]
-    rowID <- rowID[notNA]
-    LefttoRight <- LefttoRight[which(!is.na(LefttoRight[,1])), ]
-    LefttoRight <- LefttoRight[which(!is.na(LefttoRight[,2])), ]
-    # Statistics of input matrix
-    original.var <- apply(input, 1, var)
-    original.mean <- apply(input, 1, mean)
-    score <- original.var * original.mean
-    # Common ID
-    names(original.var) <- rowID
-    search.ID <- intersect(unique(rowID), unique(LefttoRight[,1]))
-    if(length(search.ID) == 0){
-        stop("There are none of common ID in rowID and LefttoRight[,1].")
-    }
-    # ID Conversion
-    targetGeneID <- unlist(lapply(search.ID, function(x){
-        target <- which(LefttoRight[,1] == x)[1]
-        LefttoRight[target, 2]
-    }))
-    names(targetGeneID) <- search.ID
-    position.input <- unlist(lapply(seq_along(targetGeneID), function(x){
-        target <- which(rowID == names(targetGeneID)[x])
-        if(length(target) != 1){
-            targetID <- target[which(score[target] == max(score[target]))[1]]
-        }else{
-            targetID <- target
-        }
-        targetID
-    }))
-    input <- input[position.input, ]
-    rownames(input) <- targetGeneID
-    input <- as.matrix(input)
-    # Before <-> After
-    dif <- nr - nrow(input)
-    if(dif > 0){
-        message(paste0(dif, " of genes are removed from input matrix (",
-            nr, "*", nc, "),\n",
-            "and only ", nrow(input), " of genes are kept."))
-    }
-    input
+convertToNCBIGeneID <- function(input, rowID, LefttoRight) {
+  .Deprecated(msg = "`scTensor::convertToNCBIGeneID` is deprecated; use `scTGIF::convertRowID` instead.")
 }

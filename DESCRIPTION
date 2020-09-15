@@ -48,6 +48,7 @@ Suggests: testthat,
     LRBase.Mmu.eg.db,
     LRBaseDbi,
     Seurat,
+    scTGIF,
     Homo.sapiens
 Description: The algorithm is based on the non-negative tucker decomposition (NTD2) of nnTensor.
 License: Artistic-2.0

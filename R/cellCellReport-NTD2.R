@@ -25,7 +25,7 @@
         # Ligand-Receptor, PMID
         lr.evidence <- metadata(sce)$lr.evidence
         LR <- .extractLR(sce, lr.evidence,
-            c("GENEID_L", "GENEID_R", "SOURCEID"))
+            c("GENEID_L", "GENEID_R", "SOURCEID", "SOURCEDB"))
         # SQLite connection
         con = dbConnect(SQLite(), metadata(sce)$lrbase)
         taxid <- dbGetQuery(con, "SELECT * FROM METADATA")
@@ -45,6 +45,8 @@
             ah <- .annotationhub[[spc]]()
             # GeneName, Description, GO, Reactome, MeSH
             GeneInfo <- .geneInformation(sce, ah, spc, LR)
+            # The version of LRBase.XXX.eg.db
+            lrversion <- 1
         }else{
             ###########################################
             # Taxonomy ID based information retrieval
@@ -53,6 +55,8 @@
             ah <- .annotationhub_taxid(taxid)
             # GeneName, Description, GO, Reactome, MeSH
             GeneInfo <- .geneInformation_taxid(sce, ah, taxid, LR)
+            # The version of LRBase.XXX.eg.db
+            lrversion <- 2
         }
 
         # Cell Label
@@ -113,6 +117,7 @@
         e$doenrich <- doenrich
         e$ncgenrich <- ncgenrich
         e$dgnenrich <- dgnenrich
+        e$lrversion <- lrversion
 
         # EachVec（Heavy...）
         if(is.vector(SelectedLR)){
@@ -140,15 +145,13 @@
         message("ligand.Rmd is created...")
         outLg <- file(paste0(out.dir, "/ligand.Rmd"), "w")
         writeLines(.LIGAND_HEADER, outLg, sep="\n")
-        writeLines(.LIGAND_BODY_2(out.vecLR, GeneInfo, index, selected),
-            outLg, sep="\n")
+        writeLines(.LIGAND_BODY_2(out.vecLR, GeneInfo, index, selected), outLg, sep="\n")
         close(outLg)
         # Rmd（receptor, selected）
         message("receptor.Rmd is created...")
         outRp <- file(paste0(out.dir, "/receptor.Rmd"), "w")
         writeLines(.RECEPTOR_HEADER, outRp, sep="\n")
-        writeLines(.RECEPTOR_BODY_2(out.vecLR, GeneInfo, index, selected),
-            outRp, sep="\n")
+        writeLines(.RECEPTOR_BODY_2(out.vecLR, GeneInfo, index, selected), outRp, sep="\n")
         close(outRp)
         # Rmd（ligand, all）
         message("ligand_all.Rmd is created...")
@@ -577,38 +580,28 @@
             # Term
             t <- as.character(eval(parse(text=paste0("Terms$", xx))))
             # Plot
-            png(filename=paste0(out.dir, "/figures/Tagcloud/", xx,
-                "_", names(out.vecLR)[x],
-                ".png"), width=1000, height=1000)
-            if(is.null(pval)){
-                .NULLPlot()
-            }else if(length(pval) == 1){
-                # background circle
-                for(i in 1:120){
-                    plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
-                    par(new=TRUE)
-                }
-                t <- sapply(t, function(x){.shrink2(x, thr=7)})
-                .SinglePlot(t)
-            }else{
-                # background circle
-                for(i in 1:120){
-                    plot(1,1, cex=(120:1)[i], pch=16, col=.eachCircleColor[xx], xlab="", ylab="", xaxt="n", yaxt="n", bty="n")
-                    par(new=TRUE)
-                }
-                negLogPval <- -log10(pval+1E-10)
-                target <- seq_len(min(100, length(pval)))
-                if(length(pval) <= 5){
-                    t <- sapply(t, function(x){.shrink2(x, thr=10)})
+            if(!is.null(pval)){                
+                png(filename=paste0(out.dir, "/figures/Tagcloud/", xx,
+                    "_", names(out.vecLR)[x],
+                    ".png"), width=1000, height=1000)
+                if(length(pval) == 1){
+                    t <- sapply(t, function(x){.shrink2(x, thr=7)})
+                    .SinglePlot(t)
                 }else{
-                    t <- sapply(t, function(x){.shrink2(x, thr=25)})
+                    negLogPval <- -log10(pval+1E-10)
+                    target <- seq_len(min(100, length(pval)))
+                    if(length(pval) <= 5){
+                        t <- sapply(t, function(x){.shrink2(x, thr=10)})
+                    }else{
+                        t <- sapply(t, function(x){.shrink2(x, thr=25)})
+                    }
+                    tagcloud(t[target], weights = negLogPval[target],
+                    col = smoothPalette(negLogPval[target], palfunc = .palf),
+                    order = "size", algorithm = "fill",
+                    scale.multiplier=0.8)
                 }
-                tagcloud(t[target], weights = negLogPval[target],
-                col = smoothPalette(negLogPval[target], palfunc = .palf),
-                order = "size", algorithm = "oval",
-                scale.multiplier=0.8)
+                dev.off()
             }
-            dev.off()
         })
     })
 }

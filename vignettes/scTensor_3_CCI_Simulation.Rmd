@@ -3,13 +3,13 @@ title: "How to perform CCI simulation by `cellCellSimulate` function"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Manabu Ishii
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Itoshi Nikaido
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
   email: k.t.the-answer@hotmail.co.jp
 package: scTensor
 output:

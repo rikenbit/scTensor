@@ -3,13 +3,13 @@ title: "Detection and visualization of cell-cell interactions using `LRBaseDbi`,
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Manabu Ishii
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
 - name: Itoshi Nikaido
   affiliation: Laboratory for Bioinformatics Research,
-    RIKEN Center for Biosystems Dynamics Reseach
+    RIKEN Center for Biosystems Dynamics Research
   email: k.t.the-answer@hotmail.co.jp
 package: scTensor
 output:
@@ -46,8 +46,14 @@ The project proposed the L-R-candidate genes by following two reasons.
 The project also merged the data with previous L-R database such as
 IUPHAR/DLRP/HPMR and filter out the list without PMIDs.
 
-Here, we extend a similar approach to the construction of the L-R-pair lists
-of 12 organisms and implemented as multiple R/_Bioconductor_ annotation
+Besides, the recent L-R databases such as CellPhoneDB and SingleCellSignalR
+manually curated L-R pairs, which are not listed in IUPHAR/DLRP/HPMR.
+
+In Bader Laboratory, many putative L-R databases are predicted by their standards.
+
+In our framework, we expanded such L-R databases for 134 organisms based on the
+ortholog relationships.
+We implemented such a framework as multiple R/_Bioconductor_ annotation
 packages for sustainable maintenance (`r Biocpkg("LRBaseDbi")` and
 LRBase.XXX.eg.db-type packages (Figure 1).
 XXX is the abbreviation of the scientific
@@ -67,44 +73,21 @@ Our framework is composed of some annotation packages and software
 packages (Figure 1).
 
 `r Biocpkg("LRBaseDbi")` package defines the class "LRBaseDb" for
-LRBase.XXX.eg.db-type packages such as `r Biocpkg("LRBase.Hsa.eg.db")` and unify
-the object's behavior such as column function. `r CRANpkg("nnTensor")` which is
+LRBase.XXX.eg.db-type packages such as `r Biocpkg("LRBase.Hsa.eg.db")` or
+`r Biocpkg("LRBase.Mmu.eg.db")` and unify the object's behavior such as
+column function. `r CRANpkg("nnTensor")` which is
 a CRAN package, performs non-negative tensor decomposition, and
 `r Biocpkg("scTensor")` internally imports the nnTensor. `r CRANpkg("scTensor")`
 constructs CCI-tensor from a LRBase.XXX.eg.db package and scRNA-Seq dataset,
 decomposes to core tensor and factor matrices, and outputs HTML reports.
-See the next usage section for the details.
+See the following usage section for the details.
 
 # Usage
-## LRBase.XXX.eg.db (ligand-receptor database of 12 organisms)
+## LRBase.XXX.eg.db-type packages (ligand-receptor database for 134 organisms)
 
-To create the L-R-list of 12 organisms, we used the information about the
-subcellular localization of proteins from SWISSPROT (knowledge database) and
-TREMBL (computational prediction). We also used the PPI information from the STRING
-database  (Figure 1). The proteins which are assigned to the term **"Secreted"**
-and **"Cellular Membrane"** are retrieved as candidate ligand and receptor,
-respectively. Finally, the L-R-pairs which is registered in STRING is extracted
-as candidate L-R-lists.
-
-Following 12 organisms are implemented as LRBase.XXX.eg.db-type packages.
-
-| Organisms | Package Name | # Swiss-Prot (Secreted / Membrane) | # TrEMBL (Secreted / Membrane)| # STRING (PPI) | # Pair (Swiss-Prot ?? STRING) | # Pair (TrEMBL ?? STRING) |
-|:-----------|:-----------|:-----------|:-----------|:-----------|:-----------|:-----------|:-----------|
-| $\textit{Homo sapiens}$ | LRBase.Hsa.eg.db | 1592 / 2269 | 176 / 334 | 18838 | 21882 | 472 |
-| $\textit{Mus musculus}$ | LRBase.Mmu.eg.db | 1309 / 1806 | 325 / 1555 | 19715 | 16386 | 476 |
-| $\textit{Arabidopsis thaliana}$ | LRBase.Ath.eg.db | 1260 / 1001 | 244 / 80 | 24174 | 8697 | 94 |
-| $\textit{Rattus norvegicus}$ | LRBase.Rno.eg.db | 643 / 983 | 232 / 1229 | 19963 | 5270 | 65 |
-| $\textit{Bos taurus}$ | LRBase.Bta.eg.db | 517 / 448 | 192 / 390 | 18349 | 2220 | 237 |
-| $\textit{Caenorhabditis elegans}$ | LRBase.Cel.eg.db | 198 / 247 | 28 / 60 | 13545 | 106 | 1 |
-| $\textit{Drosophila melanogaster}$ | LRBase.Dme.eg.db | 249 / 333 | 89 / 148 | 11903 | 384 | 9 |
-| $\textit{Danio rerio}$ | LRBase.Dre.eg.db | 119 / 169 | 318 / 376 | 21746 | 99 | 432 |
-| $\textit{Gallus gallus}$ | LRBase.Gga.eg.db | 175 / 173 | 185 / 154 | 13084 | 140 | 105 |
-| $\textit{Pongo abelii}$ | LRBase.Pab.eg.db | 80 / 134 | 212 / 211 | 16691 | 34 | 184 |
-| $\textit{Xenopus Silurana tropicalis}$ | LRBase.Xtr.eg.db | 57 / 83 | 141 / 114 | 15338 | 19 | 107 |
-| $\textit{Sus scrofa}$ | LRBase.Ssc.eg.db | 223 / 153 | 202 / 445 | 18683 | 277 | 130 |
-
-: (\#tab:table) The summary of 12 organisms of
-LRBase$_\cdot$XXX$_\cdot$eg$_\cdot$db packages.
+To create the L-R-list of 134 organisms, we introduced 36 approarches including known/putative L-R pairing.
+Please see the evidence code of lrbase-workflow, which is the Snakemake workflow to create LRBase.XXX.eg.db.
+https://github.com/rikenbit/lrbase-workflow
 
 ### columns, keytypes, keys, and select
 

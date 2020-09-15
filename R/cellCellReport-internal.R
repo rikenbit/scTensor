@@ -1,23 +1,3 @@
-.eachCircleColor <- c(
-    rep(rgb(0, 1, 0, 5E-3), 3),
-    rep(rgb(0.5, 0, 1, 5E-3), 16),
-    rgb(1, 0.2, 0.4, 5E-3),
-    rep(rgb(1, 1, 0, 1E-2), 3))
-
-names(.eachCircleColor) <- c(
-    "GO_BP", "GO_MF", "GO_CC",
-    "MeSH_A", "MeSH_B", "MeSH_C", "MeSH_D", "MeSH_E", "MeSH_F",
-    "MeSH_G", "MeSH_H", "MeSH_I", "MeSH_J", "MeSH_K", "MeSH_L",
-    "MeSH_M", "MeSH_N", "MeSH_V", "MeSH_Z",
-    "Reactome",
-    "DO", "NCG", "DGN")
-
-.NULLPlot <- function(){
-    plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
-    par(ps=100)
-    text(1, 1, "None", col=rgb(0,0,0,0.5))
-}
-
 .SinglePlot <- function(x){
     plot(1, 1, col="white", ann=FALSE, xaxt="n", yaxt="n", axes=FALSE)
     par(ps=100)
@@ -96,6 +76,21 @@ names(.eachCircleColor) <- c(
     hcl(h=seq(15, 375-360/n, length=n)%%360, c=100, l=65)
 }
 
+.knowndbs <- c("DLRP", "IUPHAR", "HPMR", "CELLPHONEDB", "SINGLECELLSIGNALR")
+
+.frontal.normalization <- function(tnsr, total=1){
+    original.dim <- dim(tnsr)
+    denom <- apply(tnsr, 3, sum)
+    dim(tnsr) <- c(prod(original.dim[1:2]), original.dim[3])
+    tnsr2 <- vapply(seq(ncol(tnsr)), function(x, y){
+        y$data[,x] / y$denom[x] * y$total
+        }, y=list(data=tnsr, denom=denom, total=total),
+        FUN.VALUE=tnsr[,1])
+    tnsr2[which(is.nan(tnsr2))] <- 0
+    dim(tnsr2) <- original.dim
+    tnsr2
+}
+
 .extractLR <- function(sce, lr.evidence, cols){
     # SQLite connection
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
@@ -125,30 +120,54 @@ names(.eachCircleColor) <- c(
     .uniqueLR(LR[target, cols])
 }
 
-.knowndbs <- c("DLRP", "IUPHAR", "HPMR", "CELLPHONEDB", "SINGLECELLSIGNALR")
-
-.frontal.normalization <- function(tnsr, total=1){
-    original.dim <- dim(tnsr)
-    denom <- apply(tnsr, 3, sum)
-    dim(tnsr) <- c(prod(original.dim[1:2]), original.dim[3])
-    tnsr2 <- vapply(seq(ncol(tnsr)), function(x, y){
-        y$data[,x] / y$denom[x] * y$total
-        }, y=list(data=tnsr, denom=denom, total=total),
-        FUN.VALUE=tnsr[,1])
-    tnsr2[which(is.nan(tnsr2))] <- 0
-    dim(tnsr2) <- original.dim
-    tnsr2
+.uniqueLR <- function(LR){
+    # Filtering
+    targetL <- grep("GENEID", LR$GENEID_L, invert = TRUE)
+    targetR <- grep("GENEID", LR$GENEID_R, invert = TRUE)
+    targetNotNAL <- which(!is.na(LR$GENEID_L))
+    targetNotNAR <- which(!is.na(LR$GENEID_R))
+    target <- intersect(targetL,
+                intersect(targetR,
+                    intersect(targetNotNAL, targetNotNAR)))
+    .shrinkLR(unique(LR[target, ]))
 }
 
-.uniqueLR <- function(LR){
-  targetL <- grep("GENEID", LR$GENEID_L, invert = TRUE)
-  targetR <- grep("GENEID", LR$GENEID_R, invert = TRUE)
-  targetNotNAL <- which(!is.na(LR$GENEID_L))
-  targetNotNAR <- which(!is.na(LR$GENEID_R))
-  target <- intersect(targetL,
-    intersect(targetR,
-      intersect(targetNotNAL, targetNotNAR)))
-  unique(LR[target, ])
+.shrinkLR <- function(LR){
+    targetShrink <- setdiff(colnames(LR), c("GENEID_L", "GENEID_R"))
+    if(length(targetShrink) != 0){
+        left <- unique(LR[, c("GENEID_L", "GENEID_R")])
+        for(i in seq_along(targetShrink)){
+            if(i == 1){
+                right <- .shrinkNonLR(LR, left, targetShrink[i])
+            }else{
+                right <- cbind(right,
+                    .shrinkNonLR(LR, left, targetShrink[i]))
+            }
+        }
+        out <- cbind(left, right)
+        colnames(out) <- c("GENEID_L", "GENEID_R", targetShrink)
+        out
+    }else{
+        LR
+    }
+}
+
+.shrinkNonLR <- function(LR, left, nonLR){
+    obj <- list(LR=LR, nonLR=nonLR)
+    apply(left, 1, function(x, obj){
+        LR = obj$LR
+        nonLR = obj$nonLR
+        targetL = which(LR$GENEID_L == as.character(x[1]))
+        targetR = which(LR$GENEID_R == as.character(x[2]))
+        target = intersect(targetL, targetR)
+        if(length(target) != 1){
+            out <- paste(LR[target, nonLR], collapse="|")
+            out <- unique(strsplit(out, "\\|")[[1]])
+            paste(setdiff(out, c("-", "")), collapse=" ")
+        }else{
+            LR[target, nonLR]
+        }
+    }, obj=obj)
 }
 
 .myvisNetwork <- function(g, col=NULL){
@@ -233,7 +252,7 @@ names(.eachCircleColor) <- c(
 )
 
 .hyperLinks <- function(ranking, ligandGeneID, receptorGeneID,
-    lr, taxid, value, percentage, GeneInfo, pvalue, qvalue){
+    lr, taxid, value, percentage, GeneInfo, pvalue, qvalue, evidence){
     ## helper for vector dividing
     div <- function(x, d=1) {""
         delta <- ceiling(length(x) / d)
@@ -251,40 +270,92 @@ names(.eachCircleColor) <- c(
                 go2, reactome2, mesh2,
                 uni2, string2, refex2,
                 ea2, sea2, scdb2, panglao2, cmap2){
-            paste0(
-                "[", genename1,
-                "](https://www.ncbi.nlm.nih.gov/gene/",
-                geneid1, ")<br>",
-                "Description: ", description1, "<br>",
-                "GO: ", go1, "<br>",
-                "Reactome: ", reactome1, "<br>",
-                "UniProtKB: ", uni1, "<br>",
-                "STRING: ", string1, "<br>",
-                "RefEx: [", genename1, "](", refex1, ")<br>",
-                "Expression Atlas: [", genename1, "](", ea1, ")<br>",
-                "Single Cell Expression Atlas: [", genename1, "](", sea1, ")<br>",
-                "scRNASeqDB: [", genename1, "](", scdb1, ")<br>",
-                "PanglaoDB: [", genename1, "](", panglao1, ")<br>",
-                "CMap: [", genename1, "](", cmap1, ")<br>",
-                "MeSH: ", mesh1,
-                "|",
-                "[", genename2,
-                "](https://www.ncbi.nlm.nih.gov/gene/",
-                geneid2, ")<br>",
-                "Description: ", description2, "<br>",
-                "GO: ", go2, "<br>",
-                "Reactome: ", reactome2, "<br>",
-                "UniProtKB: ", uni2, "<br>",
-                "STRING: ", string2, "<br>",
-                "RefEx: [", genename2, "](", refex2, ")<br>",
-                "Expression Atlas: [", genename2, "](", ea2, ")<br>",
-                "Single Cell Expression Atlas: [", genename2, "](", sea2, ")<br>",
-                "scRNASeqDB: [", genename2, "](", scdb2, ")<br>",
-                "PanglaoDB: [", genename2, "](", panglao2, ")<br>",
-                "CMap: [", genename2, "](", cmap2, ")<br>",
-                "MeSH: ", mesh2,
-                "|"
-            )
+        if(description1 != ""){
+            description1 <- paste0("Description: ", genename1, description1, "<br>")
+        }
+        if(description2 != ""){
+            description2 <- paste0("Description: ", genename1, description2, "<br>")
+        }
+        if(go1 != ""){
+            go1 <- paste0("GO: ", go1, "<br>")
+        }
+        if(go2 != ""){
+            go2 <- paste0("GO: ", go2, "<br>")
+        }
+        if(reactome1 != ""){
+            reactome1 <- paste0("Reactome: ", reactome1, "<br>")
+        }
+        if(reactome2 != ""){
+            reactome2 <- paste0("Reactome: ", reactome2, "<br>")
+        }
+        if(uni1 != ""){
+            uni1 <- paste0("UniProtKB: ", uni1, "<br>")
+        }
+        if(uni2 != ""){
+            uni2 <- paste0("UniProtKB: ", uni2, "<br>")
+        }
+        if(string1 != ""){
+            string1 <- paste0("STRING: ", string1, "<br>")
+        }
+        if(string2 != ""){
+            string2 <- paste0("STRING: ", string2, "<br>")
+        }
+        if(refex1 != ""){
+            refex1 <- paste0("RefEx: [", genename1, "](", refex1, ")<br>")
+        }
+        if(refex2 != ""){
+            refex2 <- paste0("RefEx: [", genename1, "](", refex2, ")<br>")
+        }
+        if(ea1 != ""){
+            ea1 <- paste0("Expression Atlas: [", genename1, "](", ea1, ")<br>")
+        }
+        if(ea2 != ""){
+            ea2 <- paste0("Expression Atlas: [", genename2, "](", ea2, ")<br>")
+        }
+        if(sea1 != ""){
+            sea1 <- paste0("Single Cell Expression Atlas: [", genename1, "](", sea1, ")<br>")
+        }
+        if(sea2 != ""){
+            sea2 <- paste0("Single Cell Expression Atlas: [", genename2, "](", sea2, ")<br>")
+        }
+        if(scdb1 != ""){
+            scdb1 <- paste0("scRNASeqDB: [", genename1, "](", scdb1, ")<br>")
+        }
+        if(scdb2 != ""){
+            scdb2 <- paste0("scRNASeqDB: [", genename2, "](", scdb2, ")<br>")
+        }
+        if(panglao1 != ""){
+            panglao1 <- paste0("PanglaoDB: [", genename1, "](", panglao1, ")<br>")
+        }
+        if(panglao2 != ""){
+            panglao2 <- paste0("PanglaoDB: [", genename2, "](", panglao2, ")<br>")
+        }
+        if(cmap1 != ""){
+            cmap1 <- paste0("CMap: [", genename1, "](", cmap1, ")<br>")
+        }
+        if(cmap2 != ""){
+            cmap2 <- paste0("CMap: [", genename2, "](", cmap2, ")<br>")
+        }
+        if(mesh1 != ""){
+            mesh1 <- paste0("MeSH: ", mesh1)
+        }
+        if(mesh2 != ""){
+            mesh2 <- paste0("MeSH: ", mesh2)
+        }
+
+        # Output
+        paste0(
+            "[", genename1, "](https://www.ncbi.nlm.nih.gov/gene/",
+            geneid1, ")<br>",
+            description1, go1, reactome1, uni1, string1, refex1,
+            ea1, sea1, scdb1, panglao1, cmap1, mesh1,
+            "|",
+            "[", genename2, "](https://www.ncbi.nlm.nih.gov/gene/",
+            geneid2, ")<br>",
+            description2, go2, reactome2, uni2, string2, refex2,
+            ea2, sea2, scdb2, panglao2, cmap2, mesh2,
+            "|"
+        )
     }
 
     convertGeneName <- function(geneid, GeneInfo){
@@ -334,12 +405,16 @@ names(.eachCircleColor) <- c(
                 GO <- lapply(GO_loc, function(x){
                     mi <- min(x)
                     ma <- max(x)
-                    paste0("[", mi, "-", ma, "](",
-                        "http://amigo.geneontology.org/",
-                        "goose?query=SELECT+*+FROM+term+WHERE+acc%3D%27",
-                        paste0(GO[mi:ma], collapse="%27+OR+acc%3D%27"),
-                        "%27%3B&mirror=bbop)")
-                    })
+                    if(ma == 1){
+                        paste0("[", mi, "](",
+                            "http://amigo.geneontology.org/amigo/search/ontology?q=",
+                            paste0(GO[mi:ma], collapse="%20"), ")")
+                    }else{
+                        paste0("[", mi, "-", ma, "](",
+                            "http://amigo.geneontology.org/amigo/search/ontology?q=",
+                            paste0(GO[mi:ma], collapse="%20"), ")")
+                    }
+                })
                 GO <- paste(unlist(GO), collapse=" ")
             }else{
                 GO <- ""
@@ -362,10 +437,17 @@ names(.eachCircleColor) <- c(
                 Reactome <- lapply(Reactome_loc, function(x){
                     mi <- min(x)
                     ma <- max(x)
+                    if(ma == 1){
+                    paste0("[", mi, "](",
+                        "https://reactome.org/content/query?q=",
+                        paste0(Reactome[mi:ma], collapse="+"),
+                        "&types=Pathway&cluster=true)")
+                    }else{
                     paste0("[", mi, "-", ma, "](",
                         "https://reactome.org/content/query?q=",
                         paste0(Reactome[mi:ma], collapse="+"),
                         "&types=Pathway&cluster=true)")
+                    }
                 })
                 Reactome = paste(unlist(Reactome), collapse=" ")
             }else{
@@ -387,9 +469,15 @@ names(.eachCircleColor) <- c(
                 MeSH <- lapply(MeSH_loc, function(x){
                     mi <- min(x)
                     ma <- max(x)
-                    paste0("[", mi, "-", ma, "](",
-                        "https://www.ncbi.nlm.nih.gov/mesh?term=",
-                        paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
+                    if(ma == 1){
+                        paste0("[", mi, "](",
+                            "https://www.ncbi.nlm.nih.gov/mesh?term=",
+                            paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
+                    }else{
+                        paste0("[", mi, "-", ma, "](",
+                            "https://www.ncbi.nlm.nih.gov/mesh?term=",
+                            paste0(MeSH[mi:ma], collapse="%20OR%20"), ")")
+                    }
                     })
                 MeSH = paste(unlist(MeSH), collapse=" ")
             }else{
@@ -413,10 +501,17 @@ names(.eachCircleColor) <- c(
                 UniProtKB <- lapply(UniProtKB_loc, function(x){
                     mi <- min(x)
                     ma <- max(x)
-                    paste0("[", mi, "-", ma, "](",
-                        "https://www.uniprot.org/uniprot/?query=",
-                        paste0(UniProtKB[mi:ma], collapse="+OR+"),
-                        "&sort=score)")
+                    if(ma == 1){
+                        paste0("[", mi, "](",
+                            "https://www.uniprot.org/uniprot/?query=",
+                            paste0(UniProtKB[mi:ma], collapse="+OR+"),
+                            "&sort=score)")
+                    }else{
+                        paste0("[", mi, "-", ma, "](",
+                            "https://www.uniprot.org/uniprot/?query=",
+                            paste0(UniProtKB[mi:ma], collapse="+OR+"),
+                            "&sort=score)")                        
+                    }
                     })
                 UniProtKB <- paste(unlist(UniProtKB), collapse=" ")
             }else{
@@ -428,7 +523,7 @@ names(.eachCircleColor) <- c(
         UniProtKB
     }
 
-    # taxidあるかチェック
+    # taxidでの生物種フィルタリングが必要
     convertSTRING <- function(geneid, GeneInfo, taxid){
         if(!is.null(GeneInfo$ENSP)){
             ENSP <- unique(unlist(GeneInfo$ENSP[
@@ -474,6 +569,7 @@ names(.eachCircleColor) <- c(
         }
     }
 
+    # taxidでの生物種フィルタリングが必要
     convertEA <- function(geneid, GeneInfo){
         if(!is.null(GeneInfo$ENSG)){
             ENSG <- GeneInfo$ENSG[
@@ -580,9 +676,15 @@ names(.eachCircleColor) <- c(
             PubMed <- lapply(PubMed_loc, function(x){
                 mi <- min(x)
                 ma <- max(x)
-                paste0("[", mi, "-", ma, "](",
-                    "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
-                    paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")
+                if(ma == 1){
+                    paste0("[", mi, "](",
+                        "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
+                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")                    
+                }else{
+                    paste0("[", mi, "-", ma, "](",
+                        "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
+                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")                    
+                }
             })
             PubMed = paste(unlist(PubMed), collapse=" ")
         }else{
@@ -664,6 +766,7 @@ names(.eachCircleColor) <- c(
         round(value, 3), " (", round(percentage, 3), "%)",
         "|", round(pvalue, 3),
         "|", round(qvalue, 3),
+        "|", evidence, 
         "|", PubMed, "|\n")
 }
 
@@ -748,6 +851,7 @@ names(.eachCircleColor) <- c(
     doenrich <- e$doenrich
     ncgenrich <- e$ncgenrich
     dgnenrich <- e$dgnenrich
+    lrversion <- e$lrversion
 
     # Each LR-Pattern Vector
     if(algorithm == "ntd2"){
@@ -772,6 +876,22 @@ names(.eachCircleColor) <- c(
     }else{
         TOP <- "full"
     }
+    # L-R evidence
+    if(lrversion != 1){
+        targetL <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][1]}))
+        targetR <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][2]}))
+        targetL <- unlist(lapply(targetL, function(x){
+            which(LR$GENEID_L == x)
+        }))
+        targetR <- unlist(lapply(targetR, function(x){
+            which(LR$GENEID_R == x)
+        }))
+        target <- intersect(targetL, targetR)
+        Evidence <- LR[target, "SOURCEDB"]        
+    }else{
+        Evidence <- rep("", length=length(TARGET))
+    }
+
     # Enrichment (Too Heavy)
     all <- unique(unlist(strsplit(names(vecLR), "_")))
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
@@ -853,7 +973,7 @@ names(.eachCircleColor) <- c(
         ReceptorGeneID, LR, taxid, Value[xx],
         Percentage[xx],
         GeneInfo, PvalueLR[xx],
-        QvalueLR[xx])
+        QvalueLR[xx], Evidence[xx])
     }, "")
     LINKS <- paste(LINKS, collapse="")
 

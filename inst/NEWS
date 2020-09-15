@@ -1,10 +1,15 @@
 VERSION 2.0.0
 ------------------------
    o Extended to use the version 2.0.0 of LRBase.XXX.eg.db-type packages
-   o Omit typing Enter-key so many times to visualize, when performing example('cellCellReport')
+   o Omitted typing Enter-key many times to perform example('cellCellReport')
    o lr.evidence option was added in cellCellRanks() and cellCellDecomp() to select ligand-receptor databases to construct CCI-tensor (cf. Evidence code: https://github.com/rikenbit/lrbase-workflow)
-   o Auto library installation/loading for LRBase.XXX.eg.db/MeSH.XXX.eg.db. Note that this function is based on the NCBI Taxonomy ID embedded in METATDATA table in the sqlite3 file of LRBase.XXX.eg.db. If Taxonomy ID is not specified (e.g. older LRBase.XXX.eg.db), a HTML report without gene-wise annotation is generated.
+   o The L-R evidence was embeded in the HTML report.
+   o The bug related to the hyper-link was fixed in .hyperLinks.
+   o Auto library installation/loading for MeSH.XXX.eg.db. Note that this function is based on the NCBI Taxonomy ID embedded in METATDATA table in the sqlite3 file of LRBase.XXX.eg.db.
    o The order of the parameters of cellCellSetting were changed as cellCellSetting(sce, lrbase, label, lr.evidence="all", color=NULL), and color parameter was changed as a optional parameter. If it is not specified, the color is automatically selected.
+   o The way to specify the celltype label was changed in cellCellSetting.
+   o The vignettes were modified.
+   o The convertNCBIGeneID is deprecated. The same functionality can be available as scTGIF::convertRowID instead.
 
 VERSION 1.4.1-3
 ------------------------
