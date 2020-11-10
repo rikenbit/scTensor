@@ -112,7 +112,6 @@
                 LR$GENEID_R[i], sep="_"))
         }
     }
-    tnsr <- .frontal.normalization(tnsr)
     dimnames(tnsr) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     list(tnsr=tnsr, pairname=Pair.name)
@@ -142,7 +141,6 @@
                 LR$GENEID_R[i], sep="_"))
         }
     }
-    tnsr <- .frontal.normalization(tnsr)
     dimnames(tnsr) <- list(unique(names(celltypes)),
         unique(names(celltypes)), Pair.name)
     list(tnsr=tnsr, pairname=Pair.name)
@@ -488,7 +486,6 @@
                 paste(LR$GENEID_L[i], LR$GENEID_R[i], sep="_"))
         }
     }
-    tnsr <- .frontal.normalization(tnsr)
     list(tnsr=tnsr, pairname=Pair.name)
 }
 

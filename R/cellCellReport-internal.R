@@ -78,19 +78,6 @@
 
 .knowndbs <- c("DLRP", "IUPHAR", "HPMR", "CELLPHONEDB", "SINGLECELLSIGNALR")
 
-.frontal.normalization <- function(tnsr, total=1){
-    original.dim <- dim(tnsr)
-    denom <- apply(tnsr, 3, sum)
-    dim(tnsr) <- c(prod(original.dim[1:2]), original.dim[3])
-    tnsr2 <- vapply(seq(ncol(tnsr)), function(x, y){
-        y$data[,x] / y$denom[x] * y$total
-        }, y=list(data=tnsr, denom=denom, total=total),
-        FUN.VALUE=tnsr[,1])
-    tnsr2[which(is.nan(tnsr2))] <- 0
-    dim(tnsr2) <- original.dim
-    tnsr2
-}
-
 .extractLR <- function(sce, lr.evidence, cols){
     # SQLite connection
     con = dbConnect(SQLite(), metadata(sce)$lrbase)
@@ -372,7 +359,7 @@
                 if(length(genename) == 0 || genename %in% c("", NA)){
                     genename = geneid
                 }
-            }            
+            }
         }else{
             genename = ""
         }
@@ -418,7 +405,7 @@
                 GO <- paste(unlist(GO), collapse=" ")
             }else{
                 GO <- ""
-            }            
+            }
         }else{
             GO = ""
         }
@@ -510,7 +497,7 @@
                         paste0("[", mi, "-", ma, "](",
                             "https://www.uniprot.org/uniprot/?query=",
                             paste0(UniProtKB[mi:ma], collapse="+OR+"),
-                            "&sort=score)")                        
+                            "&sort=score)")
                     }
                     })
                 UniProtKB <- paste(unlist(UniProtKB), collapse=" ")
@@ -679,11 +666,11 @@
                 if(ma == 1){
                     paste0("[", mi, "](",
                         "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
-                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")                    
+                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")
                 }else{
                     paste0("[", mi, "-", ma, "](",
                         "https://www.ncbi.nlm.nih.gov/pubmed/?term=",
-                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")                    
+                        paste0(PubMed[mi:ma], collapse="%20OR%20"), ")")
                 }
             })
             PubMed = paste(unlist(PubMed), collapse=" ")
@@ -766,7 +753,7 @@
         round(value, 3), " (", round(percentage, 3), "%)",
         "|", round(pvalue, 3),
         "|", round(qvalue, 3),
-        "|", evidence, 
+        "|", evidence,
         "|", PubMed, "|\n")
 }
 
@@ -887,7 +874,7 @@
             which(LR$GENEID_R == x)
         }))
         target <- intersect(targetL, targetR)
-        Evidence <- LR[target, "SOURCEDB"]        
+        Evidence <- LR[target, "SOURCEDB"]
     }else{
         Evidence <- rep("", length=length(TARGET))
     }
@@ -999,7 +986,7 @@
         LigandGeneName <- vapply(LigandGeneID, function(x){
             GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
         ReceptorGeneName <- vapply(ReceptorGeneID, function(x){
-            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")        
+            GeneName[which(GeneName$ENTREZID == x)[1], "SYMBOL"]}, "")
     }else{
         LigandGeneName <- LigandGeneID
         ReceptorGeneName <- ReceptorGeneID
