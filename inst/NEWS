@@ -1,3 +1,8 @@
+VERSION 2.4.0
+------------------------
+   o Regularizer parameter (L2_A/L1_A) was added in cellCellDecomp() ("ntd", "ntd2").
+   o Multilinear CX Decompotision was added in cellCellDecomp() ("cx").
+
 VERSION 2.0.0
 ------------------------
    o Extended to use the version 2.0.0 of LRBase.XXX.eg.db-type packages

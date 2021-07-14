@@ -25,6 +25,7 @@ importFrom(graphics, par, plot, text, legend)
 importFrom(utils, browseURL, txtProgressBar, setTxtProgressBar)
 importFrom(outliers, grubbs.test, chisq.out.test)
 importFrom(nnTensor, NMF, NTD, recTensor)
+importFrom(ccTensor, MultiCX)
 importFrom(Category, hyperGTest)
 
 importFrom(meshr, meshHyperGTest)
