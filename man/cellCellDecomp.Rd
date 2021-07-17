@@ -12,7 +12,7 @@ All parameters is saved to metadata slot of SingleCellExperiment object.
 \usage{
 cellCellDecomp(sce, algorithm=c("cx", "ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
-    "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25, L1_A=0, L2_A=0, verbose=FALSE,
+    "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3), rank=3, thr1=log2(5), thr2=25, thr3=0.95, L1_A=0, L2_A=0, verbose=FALSE,
     centering=TRUE, mergeas=c("mean", "sum"), outerfunc=c("*", "+"),
     comb=c("random", "all"), num.sampling=100, num.perm=1000, assayNames = "counts", decomp=TRUE)
 }
@@ -41,6 +41,9 @@ The threshold used by pcomb (Default: log2(5)).
 }
 \item{thr2}{
 The threshold used by pcomb (Default: 25).
+}
+\item{thr3}{
+The threshold used by cx (Default: 0.95).
 }
 \item{L1_A}{
 The parameter to control the sparseness (Default: 0).

@@ -146,8 +146,9 @@
     list(tnsr=tnsr, pairname=Pair.name)
 }
 
-.cellCellDecomp.Third_3 <- function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outerfunc, comb, num.sampling, num.perm, decomp, thr1, thr2, L1_A, L2_A, verbose){
+.cellCellDecomp.Third_3 <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm, decomp,
+    thr1, thr2, thr3, L1_A, L2_A, verbose){
     if(centering){
         fout <- .celltypemergedtensor(input, LR, celltypes, mergeas, outerfunc)
     }else{
@@ -200,9 +201,9 @@
     }
 }
 
-.cellCellDecomp.Third_2 <- function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outerfunc, comb, num.sampling, num.perm, decomp, thr1, thr2,
-        L1_A, L2_A, verbose){
+.cellCellDecomp.Third_2 <- function(input, LR, celltypes, ranks, rank,
+    centering, mergeas, outerfunc, comb, num.sampling, num.perm, decomp,
+    thr1, thr2, thr3, L1_A, L2_A, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(ranks[1] > max.rank || ranks[2] > max.rank){
@@ -278,8 +279,8 @@
 }
 
 .cellCellDecomp.Third <- function(input, LR, celltypes, ranks, rank, centering,
-        mergeas, outerfunc, comb, num.sampling, num.perm, decomp, thr1, thr2,
-        L1_A, L2_A, verbose){
+        mergeas, outerfunc, comb, num.sampling, num.perm, decomp,
+        thr1, thr2, thr3, L1_A, L2_A, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(ranks[1] > max.rank || ranks[2] > max.rank){
@@ -354,7 +355,7 @@
 
 .cellCellDecomp.Second <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     # ranks-check
     max.rank <- length(unique(celltypes))
     if(rank > max.rank){
@@ -392,7 +393,7 @@
 
 .cellCellDecomp.Pearson <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="pearson")
     out <- as.matrix(out)
@@ -401,7 +402,7 @@
 
 .cellCellDecomp.Spearman <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     out <- .cellType(input, celltypes)
     out <- cor(out, method="spearman")
     out <- as.matrix(out)
@@ -410,7 +411,7 @@
 
 .cellCellDecomp.Distance <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     out <- .cellType(input, celltypes)
     out <- 1 / dist(t(out))
     out <- as.matrix(out)
@@ -420,7 +421,7 @@
 
 .cellCellDecomp.Pearson.LR <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -441,7 +442,7 @@
 
 .cellCellDecomp.Spearman.LR <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -462,7 +463,7 @@
 
 .cellCellDecomp.Distance.LR <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     ct <- .cellType(input, celltypes)
     ct <- .divLR(ct, LR)
     L <- ct[[1]]
@@ -484,7 +485,7 @@
 
 .cellCellDecomp.PossibleCombination <- function(input, LR, celltypes, ranks,
     rank, centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     if(thr1 <= 0 || thr2 <= 0){
         warning("None of cell-cell interaction will be detected.")
     }
@@ -574,7 +575,7 @@
 
 .cellCellDecomp.LabelPerm.LR <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     fout <- .celltypemergedtensor(input, LR, celltypes,
         mergeas, outerfunc)
     tnsr <- as.tensor(fout$tnsr)
@@ -657,7 +658,7 @@
 
 .cellCellDecomp.CabelloAguilar <- function(input, LR, celltypes, ranks,
     rank, centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     fout <- .celltypemergedtensor.ca(input, LR, celltypes,
         mergeas, outerfunc)
     tnsr <- as.tensor(fout$tnsr)
@@ -735,7 +736,7 @@
 
 .cellCellDecomp.Halpern <- function(input, LR, celltypes, ranks, rank,
     centering, mergeas, outerfunc, comb, num.sampling, num.perm,
-    decomp, thr1, thr2, L1_A, L2_A, verbose){
+    decomp, thr1, thr2, thr3, L1_A, L2_A, verbose){
     fout <- .celltypemergedtensor.hl(input, LR, celltypes,
         mergeas, outerfunc)
     fout$tnsr[which(is.nan(fout$tnsr))] <- 0

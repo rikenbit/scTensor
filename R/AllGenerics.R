@@ -118,7 +118,7 @@ setMethod("cellCellRanks",
     # Tensor is generated
     tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(1,1,1),
         rank=1, centering, mergeas, outerfunc, comb, num.sampling,
-        num.perm, decomp=FALSE, thr1=log2(5), thr2=25, verbose)$cellcelllrpairpattern
+        num.perm, decomp=FALSE, thr1=log2(5), thr2=25, thr3=0.95, verbose)$cellcelllrpairpattern
 
     # Limit
     l1 <- min(dim(tnsr)[1], dim(tnsr)[2]*dim(tnsr)[3])
@@ -172,7 +172,7 @@ setGeneric("cellCellDecomp", function(sce,
     algorithm=c("cx", "ntd2", "ntd", "nmf", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
     "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
-    rank=3, thr1=log2(5), thr2=25, L1_A=0, L2_A=0, verbose=FALSE,
+    rank=3, thr1=log2(5), thr2=25, thr3=0.95, L1_A=0, L2_A=0, verbose=FALSE,
     centering=TRUE, mergeas=c("mean", "sum"), outerfunc=c("*", "+"),
     comb=c("random", "all"), num.sampling=100, num.perm=1000,
     assayNames="counts", decomp=TRUE){
@@ -183,7 +183,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
         algorithm=c("cx", "ntd2", "ntd", "nmf", "pearson", "spearman",
         "distance", "pearson.lr", "spearman.lr", "distance.lr", "pcomb",
         "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
-        rank=3, thr1=log2(5), thr2=25, L1_A=0, L2_A=0,
+        rank=3, thr1=log2(5), thr2=25, thr3=0.95, L1_A=0, L2_A=0,
         verbose=FALSE, centering=TRUE, mergeas=c("mean", "sum"),
         outerfunc=c("*", "+"), comb=c("random", "all"),
         num.sampling=100, num.perm=1000, assayNames="counts", decomp=TRUE){
@@ -195,12 +195,12 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 
         userobjects <- deparse(substitute(sce))
         .cellCellDecomp(userobjects, algorithm, ranks, rank,
-            thr1, thr2, L1_A, L2_A, verbose, centering, mergeas,
+            thr1, thr2, thr3, L1_A, L2_A, verbose, centering, mergeas,
             outerfunc, comb, num.sampling,
             num.perm, assayNames, decomp, sce)})
 
 .cellCellDecomp <- function(userobjects, algorithm, ranks, rank,
-    thr1, thr2, L1_A, L2_A, verbose, centering, mergeas, outerfunc,
+    thr1, thr2, thr3, L1_A, L2_A, verbose, centering, mergeas, outerfunc,
     comb, num.sampling, num.perm, assayNames, decomp, ...){
     # Import from sce object
     sce <- list(...)[[1]]
@@ -235,7 +235,7 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     }else{
         res.sctensor <- f(input, LR, celltypes, ranks, rank, centering,
             mergeas, outerfunc, comb, num.sampling, num.perm, decomp,
-            thr1, thr2, L1_A, L2_A, verbose)
+            thr1, thr2, thr3, L1_A, L2_A, verbose)
     }
 
     # Data size
