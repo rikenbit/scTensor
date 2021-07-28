@@ -163,9 +163,9 @@
     Pair.name <- fout$pairname
     if(decomp){
         message(paste0(paste(dim(tnsr), collapse=" * "), " Tensor is created"))
-        out <- try(MultiCX(Y=tnsr, modes=1:2, thr=thr3))
+        out <- try(MultiCX(Y=tnsr, modes=1:2, thr=thr3, c.method="random"))
         if(is(out)[1] == "try-error"){
-            out <- MultiCX(Y=tnsr, modes=1:2, thr=thr3)
+            out <- MultiCX(Y=tnsr, modes=1:2, thr=thr3, c.method="random")
         }
         A1 <- t(out$C[[1]]$C)
         A2 <- t(out$C[[2]]$C)
