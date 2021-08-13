@@ -238,11 +238,15 @@
     if(decomp){
         message(paste0(paste(dim(tnsr), collapse=" * "), " Tensor is created"))
         out <- try(NTD(X=tnsr, L1_A=L1_A, L2_A=L2_A,
-            rank=ranks, modes=1:2, num.iter=30,
-            verbose=verbose, algorithm="Frobenius"))
+            algorithm="NMF", nmf.algorithm="NHR",
+            num.iter=10, num.iter2=10))
+            # rank=ranks, modes=1:2, num.iter=30,
+            # verbose=verbose, algorithm="Frobenius"))
         if(is(out)[1] == "try-error"){
             out <- NTD(X=tnsr, L1_A=L1_A, L2_A=L2_A,
-                rank=ranks, modes=1:2, num.iter=30, algorithm="Frobenius")
+            algorithm="NMF", nmf.algorithm="NHR",
+            num.iter=10, num.iter2=10)
+                # rank=ranks, modes=1:2, num.iter=30, algorithm="Frobenius")
         }
         A1 <- out$A[[1]]
         A2 <- out$A[[2]]
