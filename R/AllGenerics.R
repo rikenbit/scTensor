@@ -169,7 +169,7 @@ setMethod("cellCellRanks",
 # cellCellDecomp
 #
 setGeneric("cellCellDecomp", function(sce,
-    algorithm=c("cx", "ntd2", "ntd", "nmf", "pearson",
+    algorithm=c("ntd2", "ntd", "nmf", "cx", "pearson",
     "spearman", "distance", "pearson.lr", "spearman.lr", "distance.lr",
     "pcomb", "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
     rank=3, thr1=log2(5), thr2=25, thr3=0.95, L1_A=0, L2_A=0, verbose=FALSE,
@@ -180,7 +180,7 @@ setGeneric("cellCellDecomp", function(sce,
 
 setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
     function(sce,
-        algorithm=c("cx", "ntd2", "ntd", "nmf", "pearson", "spearman",
+        algorithm=c("ntd2", "ntd", "nmf", "cx", "pearson", "spearman",
         "distance", "pearson.lr", "spearman.lr", "distance.lr", "pcomb",
         "label.permutation", "cabello.aguilar", "halpern"), ranks=c(3,3),
         rank=3, thr1=log2(5), thr2=25, thr3=0.95, L1_A=0, L2_A=0,
