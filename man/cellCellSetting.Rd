@@ -10,7 +10,7 @@ Parameter setting for scTensor
 All parameters is saved to metadata slot of SingleCellExperiment object.
 }
 \usage{
-cellCellSetting(sce, lrbase, label, lr.evidence="all", color=NULL)
+cellCellSetting(sce, lrbase, label, lr.evidence="known", color=NULL)
 }
 
 \arguments{
@@ -25,7 +25,7 @@ Cellular label information for distingusishing
 which cells belong to common celltypes.
 }
 \item{lr.evidence}{
-The evidence code for L-R pair list (Default: "all").
+The evidence code for L-R pair list (Default: "known").
 When you specify "known", DLRP, IUPHAR, HPMR, CELLPHONEDB, SINGLECELLSIGNALR are searched, and other databases are searched, when you specify "putative".
 You can also specify multiple databases at once (e.g. c("SWISSPROT_STRING", "TREMBL_STRING")).
 cf. https://github.com/rikenbit/lrbase-workflow

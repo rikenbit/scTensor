@@ -1,5 +1,5 @@
 ---
-title: "Detection and visualization of cell-cell interactions using `LRBaseDbi`, `LRBase.XXX.eg.db`, and `scTensor` package"
+title: "Detection and visualization of cell-cell interactions using `LRBase` and `scTensor`"
 author:
 - name: Koki Tsuyuzaki
   affiliation: Laboratory for Bioinformatics Research,
@@ -20,20 +20,21 @@ vignette: |
   %\VignetteEncoding{UTF-8}
 ---
 
+This vignette has been changed in BioC 3.14, when each data package (LRBase.XXX.eg.db) is deprecated and the way to provide LRBase data has changed to AnnotationHub-style.
+
+# Specification change of `LRBase` and `scTensor` from BioC 3.14 (Nov. 2021)
+This section is for the users of previous LRBase.XXX.eg.db-type packages and scTensor. The specifications of the LRBase.XXX.eg.db and scTensor have changed significantly since BioC 3.14. Specifically, the distribution of all LRBase.XXX.eg.db-type packages will be abolished, and the policy has been switched to one where the data is placed on a cloud server called AnnotationHub, and users are allowed to retrieve the data only when they really need it. The following are the advantages of this AnnotationHub-style.
+
+- The installation time of the entire Bioconductor packages will be reduced.
+- Old data will be archived.
+- Data reproducibility is ensured (e.g. the version of the data can be specified, such as "v001").
+
 # Introduction
-## About Cell-Cell Interaction (CCI)
+## About Cell-Cell Interaction (CCI) databases
 
-Due to the rapid development of single-cell RNA-Seq (scRNA-Seq) technologies,
-wide variety of cell types such as multiple organs of a healthy person,
-stem cell niche and cancer stem cell have been found.
-Such complex systems are composed of communication between cells
-(cell-cell interaction or CCI).
+Due to the rapid development of single-cell RNA-Seq (scRNA-Seq) technologies, wide variety of cell types such as multiple organs of a healthy person, stem cell niche and cancer stem cell have been found. Such complex systems are composed of communication between cells (cell-cell interaction or CCI).
 
-Many CCI studies are based on the ligand-receptor (L-R)-pair list of FANTOM5
-project^[Jordan A. Ramilowski, A draft network of ligand-receptor-mediated multicellular signaling in human, Nature Communications, 2015]
-as the evidence of CCI
-(http://fantom.gsc.riken.jp/5/suppl/Ramilowski_et_al_2015/data/PairsLigRec.txt).
-The project proposed the L-R-candidate genes by following two reasons.
+Many CCI studies are based on the ligand-receptor (L-R)-pair list of FANTOM5 project^[Jordan A. Ramilowski, A draft network of ligand-receptor-mediated multicellular signaling in human, Nature Communications, 2015] as the evidence of CCI (http://fantom.gsc.riken.jp/5/suppl/Ramilowski_et_al_2015/data/PairsLigRec.txt). The project proposed the L-R-candidate genes by following two basises.
 
 1. **Subcellular Localization**
     1. Known Annotation (UniProtKB and HPRD) : The term **"Secreted"** for
@@ -44,73 +45,53 @@ The project proposed the L-R-candidate genes by following two reasons.
     (protein-protein interaction) information of HPRD and STRING
 
 The project also merged the data with previous L-R database such as
-IUPHAR/DLRP/HPMR and filter out the list without PMIDs.
+IUPHAR/DLRP/HPMR and filter out the list without PMIDs. The recent L-R databases such as CellPhoneDB and SingleCellSignalR also manually curated L-R pairs, which are not listed in IUPHAR/DLRP/HPMR. In Bader Laboratory, many putative L-R databases are predicted by their standards. In our framework, we expanded such L-R databases for **134** organisms based on the ortholog relationships. For the details, check the summary of rikenbit/lrbase-workflow^[https://github.com/rikenbit/lrbase-workflow#summary], which is the Snakemake workflow to create LRBase data in each bi-annual update of Bioconductor.
 
-Besides, the recent L-R databases such as CellPhoneDB and SingleCellSignalR
-manually curated L-R pairs, which are not listed in IUPHAR/DLRP/HPMR.
+## `LRBase` and `scTensor` framework
 
-In Bader Laboratory, many putative L-R databases are predicted by their standards.
-
-In our framework, we expanded such L-R databases for 134 organisms based on the
-ortholog relationships.
-We implemented such a framework as multiple R/_Bioconductor_ annotation
-packages for sustainable maintenance (`r Biocpkg("LRBaseDbi")` and
-LRBase.XXX.eg.db-type packages (Figure 1).
-XXX is the abbreviation of the scientific
-name of organisms such as `r Biocpkg("LRBase.Hsa.eg.db")` for
-L-R database of Homo sapiens.
-Besides, we also developed `r Biocpkg("scTensor")`, which is a method to
-detect CCI and the CCI-related L-R pairs simultaneously.
-This document provides the way to use
-`r Biocpkg("LRBaseDbi")`, LRBase.XXX.eg.db-type packages, and
-`r CRANpkg("scTensor")` package.
+Our L-R databases (`LRBase`) are provided a cloud server called AnnotationHub, and users are allowed to retrieve the data only when they really need it. Downloaded data is stored as a cache file on our local machines by the `r Biocpkg("BiocFileCache")` mechanism. Then, the data is converted to LRBase object by `r Biocpkg("LRBaseDbi")`. We also developed `r Biocpkg("scTensor")`, which is a method to detect CCI and the CCI-related L-R pairs simultaneously. This document provides the way to use `r Biocpkg("LRBaseDbi")`, LRBase objects, and `r Biocpkg("scTensor")` (Figure 1).
 
 ![Figure 1 : Workflow of L-R-related packages](Workflow_2.png)
 
-## Dependencies of CCI-related Packages
-
-Our framework is composed of some annotation packages and software
-packages (Figure 1).
-
-`r Biocpkg("LRBaseDbi")` package defines the class "LRBaseDb" for
-LRBase.XXX.eg.db-type packages such as `r Biocpkg("LRBase.Hsa.eg.db")` or
-`r Biocpkg("LRBase.Mmu.eg.db")` and unify the object's behavior such as
-column function. `r CRANpkg("nnTensor")` which is
-a CRAN package, performs non-negative tensor decomposition, and
-`r Biocpkg("scTensor")` internally imports the nnTensor. `r CRANpkg("scTensor")`
-constructs CCI-tensor from a LRBase.XXX.eg.db package and scRNA-Seq dataset,
-decomposes to core tensor and factor matrices, and outputs HTML reports.
-See the following usage section for the details.
-
 # Usage
-## LRBase.XXX.eg.db-type packages (ligand-receptor database for 134 organisms)
+## LRBase objects (ligand-receptor database for 134 organisms)
 
-To create the L-R-list of 134 organisms, we introduced 36 approarches including known/putative L-R pairing.
-Please see the evidence code of lrbase-workflow, which is the Snakemake workflow to create LRBase.XXX.eg.db.
-https://github.com/rikenbit/lrbase-workflow
+To create the LRBase of 134 organisms, we introduced 36 approarches including known/putative L-R pairing.
+Please see the evidence code of lrbase-workflow^[https://github.com/rikenbit/lrbase-workflow].
+
+### Data retrieval from `AnnotationHub`
+
+First of all, we download the data of LRBase from AnnotationHub.
+`AnnotationHub::AnnotationHub` retrieve the metadata of all the data stored in cloud server.
+
+```{r AHub1, echo=FALSE}
+library("AnnotationHub")
+ah <- AnnotationHub()
+mcols(ah)
+```
+
+Specifying some keywords in `query()`, we can find LRBase data in AnnotationHub.
+
+```{r AHub2, echo=FALSE}
+dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v001"))[[1]]
+```
+
+AnnotationHub also keeps old data as an archive, so please make sure you have the latest version (e.g. "v002" or higher) when you search for LRBaseDb.
+
+Then, we can convert `dbfile` into LRBase object by using `LRBaseDbi`.
+
+```{r AHub3, echo=FALSE}
+library("LRBaseDbi")
+LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
+```
 
 ### columns, keytypes, keys, and select
 
-Some data access functions are available for LRBase.XXX.eg.db-type packages.
+Some data access functions are available for LRBase objects.
 Any data table are retrieved by 4 functions defined by
-`r Biocpkg("AnnotationDbi")`; `columns`, `keytypes`, `keys`, and `select`
-and commonly implemented by `r Biocpkg("LRBaseDbi")` package. `columns`
-returns the rows which we can retrieve in LRBase.XXX.eg.db-type packages.
-`keytypes` returns the rows which can be used as the optional parameter in
-`keys` and select functions against LRBase.XXX.eg.db-type packages. `keys`
-function returns the value of keytype. `select` function returns the rows in
-particular columns, which are having user-specified keys. This function returns
-the result as a dataframe. See the vignette of `r Biocpkg("AnnotationDbi")`
-for more details.
+`r Biocpkg("AnnotationDbi")`; `columns`, `keytypes`, `keys`, and `select` and commonly implemented by `r Biocpkg("LRBaseDbi")` package. `columns` returns the rows which we can retrieve in LRBase objects. `keytypes` returns the rows which can be used as the optional parameter in `keys` and select functions against LRBase objects. `keys` function returns the value of keytype. `select` function returns the rows in particular columns, which are having user-specified keys. This function returns the result as a dataframe. See the vignette of `r Biocpkg("AnnotationDbi")` for more details.
 
-```{r LRBase.XXX.eg.db, echo=FALSE}
-if(!require(LRBase.Hsa.eg.db)){
-    BiocManager::install("LRBase.Hsa.eg.db")
-    suppressPackageStartupMessages(library(LRBase.Hsa.eg.db))
-}
-```
-
-```{r LRBase.XXX.eg.db2, echo=TRUE}
+```{r Access, echo=TRUE}
 columns(LRBase.Hsa.eg.db)
 keytypes(LRBase.Hsa.eg.db)
 key_HSA <- keys(LRBase.Hsa.eg.db, keytype="GENEID_L")
@@ -120,15 +101,9 @@ head(select(LRBase.Hsa.eg.db, keys=key_HSA[1:2],
 
 ### Other functions
 
-Other additional functions like `species`, `nomenclature`, and `listDatabases`
-are available. In each LRBase.XXX.eg.db-type package, `species` function
-returns the common name and `nomenclature` returns the scientific name.
-`listDatabases` function returns the source of data. `dbInfo` returns the
-information of the package. `dbfile` returns the directory where sqlite
-file is stored. `dbschema` returns the schema of the database. `dbconn` returns
-the connection to the sqlite database.
+Other additional functions like `species`, `nomenclature`, and `listDatabases` are available. In each LRBase.XXX.eg.db-type package, `species` function returns the common name and `nomenclature` returns the scientific name. `listDatabases` function returns the source of data. `dbInfo` returns the information of the package. `dbfile` returns the directory where sqlite file is stored. `dbschema` returns the schema of the database. `dbconn` returns the connection to the sqlite database.
 
-```{r LRBase.XXX.eg.db3, echo=TRUE}
+```{r Other1, echo=TRUE}
 lrPackageName(LRBase.Hsa.eg.db)
 lrNomenclature(LRBase.Hsa.eg.db)
 species(LRBase.Hsa.eg.db)
@@ -144,109 +119,37 @@ dbconn(LRBase.Hsa.eg.db)
 Combined with `dbGetQuery` function of `r CRANpkg("RSQLite")` package,
 more complicated queries also can be submitted.
 
-```{r LRBase.XXX.eg.db4, echo=TRUE}
+```{r Other2, echo=TRUE}
 suppressPackageStartupMessages(library("RSQLite"))
 dbGetQuery(dbconn(LRBase.Hsa.eg.db),
   "SELECT * FROM DATA WHERE GENEID_L = '9068' AND GENEID_R = '14' LIMIT 10")
 ```
 
-## LRBaseDbi (Class definition and meta-packaging)
+## `scTensor` (CCI-tensor construction, decomposition, and HTML reporting)
 
-`r Biocpkg("LRBaseDbi")` regulates the class definition of LRBaseDb object
-instantiated from `LRBaseDb`-class. Besides, `r Biocpkg("LRBaseDbi")`
-the package generates user's original LRBase.XXX.eg.db-type packages by
-`makeLRBasePackage` function. This function is inspired by our previous package
-`r Biocpkg("MeSHDbi")`, which constructs user's original MeSH.XXX.eg.db-type
-packages. Here we call this function "meta"-packaging. The 12
-LRBase.XXX.eg.db-type packages described above are also generated by this
-"meta"-packaging. In this case, the only user have to specify are 1. an L-R-list
-containing the columns "GENEID_L" (ligand NCBI Gene IDs) and "GENEID_R"
-(receptor NCBI Gene IDs) and 2. a meta information table describing the L-R-list.
-`makeLRBasePackage` function generates LRBase.XXX.eg.db like below. **The gene
-identifier is limited as NCBI Gene ID for now.**
+Combined with LRBase object and user's gene expression matrix of scRNA-Seq, `r Biocpkg("scTensor")` detects CCIs and generates HTML reports for exploratory data inspection. The algorithm of `r Biocpkg("scTensor")` is as follows.
 
-```{r LRBaseDbi, echo=FALSE}
-suppressPackageStartupMessages(library("LRBaseDbi"))
-```
+Firstly, `r Biocpkg("scTensor")` calculates the celltype-level mean vectors, searches the corresponding pair of genes in the row names of the matrix, and extracted as two vectors.
 
+Next, the cell type-level mean vectors of ligand expression and that of receptor expression are multiplied as outer product and converted to cell type $\times$ cell type matrix. Here, the multiple matrices can be represented as a three-order "tensor" (Ligand-Cell * Receptor-Cell * L-R-Pair). `r Biocpkg("scTensor")` decomposes the tensor into a small tensor (core tensor) and two factor matrices. Tensor decomposition is very similar to the matrix decomposition like PCA (principal component analysis). The core tensor is similar to the eigenvalue of PCA; this means that how much the pattern is outstanding. Likewise, three matrices are similar to the PC scores/loadings of PCA; These represent which ligand-cell/receptor-cell/L-R-pair are informative. When the matrices have negative values, interpreting which direction (+/-) is important and which is not, is a difficult and laboring task. That's why, `r Biocpkg("scTensor")`
+performs non-negative Tucker2 decomposition (NTD2), which is non-negative version of tensor decomposition (cf. `r CRANpkg("nnTensor")`).
 
-```{r LRBaseDbi2, echo=TRUE}
-example("makeLRBasePackage")
-```
-
-Although any package name is acceptable, note that if the organism that user
-summarized L-R-list is also described above (Table \@ref(tab:table)), same
-XXX-character is recommended. This is because of the HTML report function
-described later identifies the XXX-character and if the XXX is corresponding to
-the 12 organisms, the gene annotation of the generated HTML report will become rich.
-
-## scTensor (CCI-tensor construction, decomposition, and HTML reporting)
-
-Combined with LRBase.XXX.eg.db-type package and user's gene expression matrix
-of scRNA-Seq, `r Biocpkg("scTensor")` detects CCIs and generates HTML reports
-for exploratory data inspection. The algorithm of `r Biocpkg("scTensor")`
-is as follows.
-
-Firstly, `r Biocpkg("scTensor")` calculates the celltype-level mean vectors,
-searches the corresponding pair of genes in the row names of the matrix,
-and extracted as tow vectors.
-
-Next, the cell type-level mean vectors of ligand expression and that of receptor
-expression are multiplied as outer product and converted to cell type $\times$
-cell type matrix. Here, the multiple matrices can be represented as a three-order
-"tensor" (Ligand-Cell * Receptor-Cell * L-R-Pair). `r Biocpkg("scTensor")`
-decomposes the tensor into a small tensor (core tensor) and two factor
-matrices. Tensor decomposition is very similar to the matrix decomposition like
-PCA (principal component analysis). The core tensor is similar to the eigenvalue of
-PCA;  this means that how much the pattern is outstanding. Likewise, three
-matrices are similar to the PC scores/loadings of PCA; These represent which
-ligand-cell/receptor-cell/L-R-pair are informative. When the matrices have
-negative values, interpreting which direction (+/-) is important and which
-is not, is a difficult and laboring task. That's why, `r Biocpkg("scTensor")`
-performs non-negative Tucker2 decomposition (NTD2), which is non-negative version
-of tensor decomposition (cf. `r CRANpkg("nnTensor")`).
-
-Finally, the result of NTD2 is summarized as an HTML report. Because most of the plots
-are visualized by `r CRANpkg("plotly")` package, the precise information of
-the plot can be interactively confirmed by user's on-site web browser.
-The two factor matrices can be interactively viewed and which cell types
-and which L-R-pairs are likely to be interacted each other.
-The mode-3 (LR-pair direction) sum of the core tensor is calculated and
-visualized as Ligand-Receptor Patterns. Detail of
-(Ligand-Cell, Receptor-Cell, L-R-pair) Patterns are also visualized.
-
-
+Finally, the result of NTD2 is summarized as an HTML report. Because most of the plots are visualized by `r CRANpkg("plotly")` package, the precise information of the plot can be interactively confirmed by user's on-site web browser. The two factor matrices can be interactively viewed and which cell types and which L-R-pairs are likely to be interacted each other. The mode-3 (LR-pair direction) sum of the core tensor is calculated and visualized as Ligand-Receptor Patterns. Detail of (Ligand-Cell, Receptor-Cell, L-R-pair) Patterns are also visualized.
 
 ### Creating a `SingleCellExperiment` object
 
-Here, we use the scRNA-Seq dataset of male germline cells and somatic cells$^{3}$
-[GSE86146](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE86146)
-as demo data. For saving the package size,
-the number of genes is strictly reduced by the standard of highly variable
-genes with a threshold of the p-value are 1E-150
-(cf. [Identifying highly variable genes](http://pklab.med.harvard.edu/scw2014/subpop_tutorial.html)).
-That's why we won't argue about the scientific discussion of the data here.
+Here, we use the scRNA-Seq dataset of male germline cells and somatic cells$^{3}$[GSE86146](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE86146) as demo data. For saving the package size, the number of genes is strictly reduced by the standard of highly variable genes with a threshold of the p-value are 1E-150 (cf. [Identifying highly variable genes](http://pklab.med.harvard.edu/scw2014/subpop_tutorial.html)). That's why we won't argue about the scientific discussion of the data here.
 
-We assume that user has a scRNA-Seq data matrix containing expression count
-data summarised at the level of the gene. First, we create a
-`r Biocpkg("SingleCellExperiment")` object containing the data.
-The rows of the object correspond to features, and the columns
-correspond to cells. The gene identifier is limited as NCBI Gene ID for now.
+We assume that user has a scRNA-Seq data matrix containing expression count data summarised at the level of the gene. First, we create a `r Biocpkg("SingleCellExperiment")` object containing the data. The rows of the object correspond to features, and the columns correspond to cells. The gene identifier is limited as NCBI Gene ID for now.
 
-To improve the interpretability of the following HTML report, we highly recommend
-that user specifies the two-dimensional data of input data
-(e.g. PCA, t-SNE, or UMAP). Such information is easily specified by
-`reducedDims` function of `r Biocpkg("SingleCellExperiment")` package and is
-saved to reducedDims slot of `SingleCellExperiment` object
-(Figure \@ref(fig:cellCellSetting)).
+To improve the interpretability of the following HTML report, we highly recommend that user specifies the two-dimensional data of input data (e.g. PCA, t-SNE, or UMAP). Such information is easily specified by `reducedDims` function of `r Biocpkg("SingleCellExperiment")` package and is saved to reducedDims slot of `SingleCellExperiment` object (Figure \@ref(fig:cellCellSetting)).
 
-```{r scTensor, echo=FALSE}
+```{r SCE1, echo=FALSE}
 suppressPackageStartupMessages(library("scTensor"))
 suppressPackageStartupMessages(library("SingleCellExperiment"))
 ```
 
-
-```{r cellCellSetting, fig.cap="Germline, Male, GSE86146", echo=TRUE, fig.width=10, fig.height=10}
+```{r SCE2, fig.cap="Germline, Male, GSE86146", echo=TRUE, fig.width=10, fig.height=10}
 data(GermMale)
 data(labelGermMale)
 data(tsneGermMale)
@@ -260,75 +163,44 @@ legend("topleft", legend=c(paste0("FGC_", 1:3), paste0("Soma_", 1:4)),
   pch=16)
 ```
 
-Note that if you want to use scTensor framework against other species such as
-mouse or rat, load corresponding LRBase.XXX.eg.db and MeSH.XXX.eg.db packages.
+### Parameter setting: `cellCellSetting`
 
-For example, if your scRNA-Seq dataset is sampled from Mouse, load
-`r Biocpkg("LRBase.Mmu.eg.db")` and `r Biocpkg("MeSH.Mmu.eg.db")`
-instead of `r Biocpkg("LRBase.Hsa.eg.db")` and `r Biocpkg("MeSH.Hsa.eg.db")`.
+To perform the tensor decomposition and HTML report, user is supposed to specify
 
-```{r scTensor2, echo=FALSE}
-if(!require(LRBase.Mmu.eg.db)){
-    BiocManager::install("LRBase.Mmu.eg.db")
-    suppressPackageStartupMessages(library(LRBase.Mmu.eg.db))
-}
-```
+- 1. LRBaseDb object (e.g. LRBase.Hsa.eg.db)
+- 2. cell type vector of each cell (e.g. names(labelGermMale))
 
-### Parameter setting : cellCellSetting
+to `SingleCellExperiment` object.
 
-To perform the tensor decomposition and HTML report, user is supposed to
-specify
-
-- 1. LRBase.XXX.eg.db
-- 2. color vector of each cell
-- 3. cell type vector of each cell
-
-to `SingleCellExperiment` object. The corresponding information
-is registered to the metadata slot of `SingleCellExperiment` object by
-`cellCellSetting` function.
-
-```{r cellCellDecomp2, echo=TRUE}
+```{r cellCellSetting, echo=TRUE}
 cellCellSetting(sce, LRBase.Hsa.eg.db, names(labelGermMale))
 ```
 
-### CCI-tensor construction and decomposition : cellCellDecomp
+The corresponding information is registered to the metadata slot of `SingleCellExperiment` object by `cellCellSetting` function.
 
-After `cellCellSetting`, we can perform tensor decomposition by
-`cellCellDecomp`. Here the parameter `ranks` is specified as dimension of
-core tensor. For example, c(2, 3) means The data tensor is decomposed to
-2 ligand-patterns and 3 receptor-patterns.
+### CCI-tensor construction and decomposition: `cellCellDecomp`
+
+After `cellCellSetting`, we can perform tensor decomposition by `cellCellDecomp`. Here the parameter `ranks` is specified as dimension of core tensor. For example, c(2, 3) means The data tensor is decomposed to 2 ligand-patterns and 3 receptor-patterns.
 
 ```{r cellCellDecomp, echo=TRUE}
 set.seed(1234)
 cellCellDecomp(sce, ranks=c(2,3))
 ```
 
-Although user has to specify the rank to perform cellCellDecomp,
-we implemented a simple rank estimation function based on the eigenvalues
-distribution of PCA in the matricised tensor in each mode in `cellCellRank`.
-rks$selected is also specified as rank parameter of `cellCellDecomp`.
+Although user has to specify the rank to perform cellCellDecomp, we implemented a simple rank estimation function based on the eigenvalues distribution of PCA in the matricised tensor in each mode in `cellCellRank`. `rks$selected` is also specified as rank parameter of `cellCellDecomp`.
 
 ```{r cellCellRank, echo=TRUE}
 (rks <- cellCellRanks(sce))
 rks$selected
 ```
 
-### HTML Report : cellCellReport
+### HTML Report: `cellCellReport`
 
-If `cellCellDecomp` is properly finished, we can perform `cellCellReport`
-function to output the HTML report like below. Please type
-`example(cellCellReport)` and the report will be generated in the temporary
-directory (it costs 5 to 10 minutes).
-After `cellCellReport`, multiple R markdown files, compiled HTML files,
-figures, and R binary file containing the result of analysis are saved to
-`out.dir` (Figure 2). For more details, open the `index.html` by your web
-browser. Combined with cloud storage service such as Amazon Simple Storage
-Service (S3), it can be a simple web application and multiple people like
-collaborators can confirm the same report simultaneously.
+If `cellCellDecomp` is properly finished, we can perform `cellCellReport` function to output the HTML report like below. Please type `example(cellCellReport)` and the report will be generated in the temporary directory (it costs 5 to 10 minutes). After `cellCellReport`, multiple R markdown files, compiled HTML files, figures, and R binary file containing the result of analysis are saved to `out.dir` (Figure 2). For more details, open the `index.html` by your web browser. Combined with cloud storage service such as Amazon Simple Storage Service (S3), it can be a simple web application and multiple people like collaborators can confirm the same report simultaneously.
 
 ![Figure2 : cellCellReport function of scTensor](Report.png)
 
-# Session information {.unnumbered}
+# Session Information {.unnumbered}
 
 ```{r sessionInfo, echo=FALSE}
 sessionInfo()

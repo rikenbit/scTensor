@@ -1,11 +1,11 @@
 #
 # cellCellSetting
 #
-setGeneric("cellCellSetting", function(sce, lrbase, label,  lr.evidence="all", color=NULL){
+setGeneric("cellCellSetting", function(sce, lrbase, label, lr.evidence="known", color=NULL){
     standardGeneric("cellCellSetting")})
 
 setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
-    function(sce, lrbase, label, lr.evidence="all", color=NULL){
+    function(sce, lrbase, label, lr.evidence="known", color=NULL){
         userobjects <- deparse(substitute(sce))
         .cellCellSetting(userobjects, lrbase, label, lr.evidence, color, sce)})
 

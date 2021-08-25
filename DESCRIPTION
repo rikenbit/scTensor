@@ -1,12 +1,12 @@
 Package: scTensor
 Type: Package
 Title: Detection of cell-cell interaction from single-cell RNA-seq dataset by tensor decomposition
-Version: 2.4.0
+Version: 2.3.1
 Authors@R: c(person("Koki", "Tsuyuzaki", role = c("aut", "cre"),
                 email = "k.t.the-answer@hotmail.co.jp"),
             person("Kozo", "Nishida", role = "aut",
                 email = "kozo.nishida@gmail.com"))
-Depends: R (>= 3.5.0)
+Depends: R (>= 4.1.0)
 Imports: methods,
     RSQLite,
     igraph,
@@ -45,8 +45,6 @@ Imports: methods,
     schex,
     ggplot2
 Suggests: testthat,
-    LRBase.Hsa.eg.db,
-    LRBase.Mmu.eg.db,
     LRBaseDbi,
     Seurat,
     scTGIF,

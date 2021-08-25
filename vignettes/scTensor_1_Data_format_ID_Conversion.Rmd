@@ -20,21 +20,28 @@ vignette: |
   %\VignetteEncoding{UTF-8}
 ---
 
+This vignette has been changed in BioC 3.14, when each data package (LRBase.XXX.eg.db) is deprecated and the way to provide LRBase data has changed to AnnotationHub-style.
+
 # Introduction
 We explain the way to create a matrix, in which the row names are **NCBI Gene ID (ENTREZID)**, for specifying an input of `r Biocpkg("scTensor")`.
 Typical `r Biocpkg("scTensor")` workflow can be described as below.
 
 ```{r scTensor with NCBI Gene ID, eval=FALSE}
 library("scTensor")
-library("LRBase.XXX.eg.db") # e.g. LRBase.Hsa.eg.db
+library("AnnotationHub")
+library("LRBaseDbi")
+
 # Input matrix
 input <- ...
 sce <- SingleCellExperiment(assays=list(counts = input))
-# Color vector
-color <- ...
 # Celltype vector
 label <- ...
-cellCellSetting(sce, LRBase.XXX.eg.db, color, label)
+# LRBase.XXX.eg.db
+ah <- AnnotationHub()
+dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v001"))[[1]]
+LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
+# Setting
+cellCellSetting(sce, LRBase.Hsa.eg.db, label)
 ```
 
 In `r Biocpkg("scTensor")`, the row names of the input matrix is limited only NCBI Gene ID to cooperate with the other R packages (cf. data("Germline")). Since the user has many different types of the data matrix, here we introduce some situations and the way to convert the row names of the user's matrix as NCBI Gene ID.
