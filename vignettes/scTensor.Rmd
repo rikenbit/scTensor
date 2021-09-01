@@ -104,7 +104,6 @@ head(select(LRBase.Hsa.eg.db, keys=key_HSA[1:2],
 Other additional functions like `species`, `nomenclature`, and `listDatabases` are available. In each LRBase.XXX.eg.db-type package, `species` function returns the common name and `nomenclature` returns the scientific name. `listDatabases` function returns the source of data. `dbInfo` returns the information of the package. `dbfile` returns the directory where sqlite file is stored. `dbschema` returns the schema of the database. `dbconn` returns the connection to the sqlite database.
 
 ```{r Other1, echo=TRUE}
-lrPackageName(LRBase.Hsa.eg.db)
 lrNomenclature(LRBase.Hsa.eg.db)
 species(LRBase.Hsa.eg.db)
 lrListDatabases(LRBase.Hsa.eg.db)
