@@ -92,10 +92,14 @@ The result is saved as HTML report which contains with multiple files.
 	if(interactive()){
 	# Package Loading
 	library("SingleCellExperiment")
-	if(!require(LRBase.Hsa.eg.db)){
-	    BiocManager::install("LRBase.Hsa.eg.db")
-	    library(LRBase.Hsa.eg.db)
+	library("AnnotationHub")
+	if(!require(LRBaseDbi)){
+	    BiocManager::install("LRBaseDbi")
+	    library(LRBaseDbi)
 	}
+	ah <- AnnotationHub()
+	dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v001"))[[1]]
+	LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
 
 	# Data Loading
 	data(GermMale)
