@@ -53,23 +53,22 @@
 
 .palf <- colorRampPalette(c("#4b61ba", "gray", "#a87963", "red"))
 
-.REACTOMESPC <- list(
-    "Aga" = "anopheles",
-    "Ath" = "arabidopsis",
-    "Bta" = "bovine",
-    "Cfa" = "canine",
-    "Cel" = "celegans",
-    "Gga" = "chicken",
-    "Ptr" = "chimp",
-    "Dme" = "fly",
-    "Tgo" = "gondii",
-    "Hsa" = "human",
-    "Pfa" = "malaria",
-    "Mmu" = "mouse",
-    "Ssc" = "pig",
-    "Rno" = "rat",
-    "Xla" = "xenopus",
-    "Dre" = "zebrafish"
+.REACTOMESPC_taxid <- list(
+    "7165" = "anopheles",
+    "3702" = "arabidopsis",
+    "9913" = "bovine",
+    "9615" = "canine",
+    "6239" = "celegans",
+    "9031" = "chicken",
+    "9598" = "chimp",
+    "7227" = "fly",
+    "5811" = "gondii",
+    "9606" = "human",
+    "10090" = "mouse",
+    "9823" = "pig",
+    "10116" = "rat",
+    "8355" = "xenopus",
+    "7955" = "zebrafish"
 )
 
 .ggdefault_cols <- function(n){
@@ -209,8 +208,9 @@
 }
 
 .smallTwoDplot <- function(sce, assayNames, geneid, genename, color){
-    g <- schex::plot_hexbin_gene(sce, type=assayNames, gene=geneid,
-        action="mean", xlab="Dim1", ylab="Dim2",
+    g <- schex::plot_hexbin_feature(sce, type=assayNames,
+        feature=geneid, action="mean",
+        xlab="Dim1", ylab="Dim2",
         title=paste0("Mean of ", genename))
     if(color == "reds"){
         g <- g + scale_fill_gradient(low = 'gray', high = 'red')
@@ -220,7 +220,6 @@
     }
     g
 }
-
 
 # For previous LRBase (v-1.0.0 - v-1.2.0)
 .TAXID <- c(
@@ -838,7 +837,6 @@
     doenrich <- e$doenrich
     ncgenrich <- e$ncgenrich
     dgnenrich <- e$dgnenrich
-    lrversion <- e$lrversion
 
     # Each LR-Pattern Vector
     if(algorithm == "ntd2"){
@@ -864,47 +862,46 @@
         TOP <- "full"
     }
     # L-R evidence
-    if(lrversion != 1){
-        targetL <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][1]}))
-        targetR <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][2]}))
-        targetL <- unlist(lapply(targetL, function(x){
-            which(LR$GENEID_L == x)
-        }))
-        targetR <- unlist(lapply(targetR, function(x){
-            which(LR$GENEID_R == x)
-        }))
-        target <- intersect(targetL, targetR)
-        Evidence <- LR[target, "SOURCEDB"]
-    }else{
-        Evidence <- rep("", length=length(TARGET))
-    }
+    targetL <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][1]}))
+    targetR <- unlist(lapply(names(TARGET), function(x){strsplit(x, "_")[[1]][2]}))
+    targetL <- unlist(lapply(targetL, function(x){
+        which(LR$GENEID_L == x)
+    }))
+    targetR <- unlist(lapply(targetR, function(x){
+        which(LR$GENEID_R == x)
+    }))
+    target <- intersect(targetL, targetR)
+    Evidence <- LR[target, "SOURCEDB"]
 
     # Enrichment (Too Heavy)
     all <- unique(unlist(strsplit(names(vecLR), "_")))
     sig <- unique(unlist(strsplit(names(TARGET), "_")))
-    spc <- gsub(".eg.db.sqlite", "",
-        strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
     # GO-Check
     if("GO" %ni% AnnotationDbi::columns(ah)){
         goenrich <- FALSE
     }
     # MeSH-Check
-    MeSHname <- paste0("MeSH.", spc, ".eg.db")
-    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
-    if(!MeSH.load){
-        eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "', update=FALSE, ask=FALSE), silent=TRUE)")))
-    }
-    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
-    if(MeSH.load2){
-        eval(parse(text=paste0("library(", MeSHname, ")")))
-        meshannotation <- MeSHname
+    ah <- AnnotationHub()
+    mcah <- mcols(ah)
+    mesh_org_msg <- gsub("LRBaseDb", "MeSHDb",
+        ah[metadata(sce)$ahid]$title)
+    position <- regexpr("v[0-9][0-9][0-9]", mesh_org_msg)
+    mesh_version <- substr(mesh_org_msg, position, position + 3)
+    mesh_db_msg <- paste0("MeSHDb for MeSH.db (", mesh_version, ")")
+    ahid1 <- mcah@rownames[which(mcah@listData$title == mesh_org_msg)]
+    ahid2 <- mcah@rownames[which(mcah@listData$title == mesh_db_msg)]
+    if(length(ahid1) != 0){
+        message(paste0("Related MeSH IDs are retrieved from ",
+            "AnnotationHub..."))
+        e$meshannotation <- MeSHDbi::MeSHDb(ah[[ahid1]])
+        e$meshdb <- MeSHDbi::MeSHDb(ah[[ahid2]])
     }else{
         meshenrich <- FALSE
-        meshannotation <- NA
+        e$meshannotation <- NA
+        e$meshdb <- NA
     }
     # Reactome-Check
-    reactomespc <- .REACTOMESPC[[spc]]
+    reactomespc <- .REACTOMESPC_taxid[[taxid]]
     if(is.null(reactomespc)){
         reactomeenrich <- FALSE
     }
@@ -915,8 +912,8 @@
         dgnenrich <- FALSE
     }
     Enrich <- suppressWarnings(.ENRICHMENT(all, sig,
-        meshannotation, reactomespc,
-        goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p, ah))
+        e, reactomespc, goenrich, meshenrich,
+        reactomeenrich, doenrich, ncgenrich, dgnenrich, p, ah))
 
     # Eigen Value
     # Each LR-Pattern Vector

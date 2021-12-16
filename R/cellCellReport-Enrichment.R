@@ -20,14 +20,15 @@
     }
 }
 
-.MeSHENRICHMENT <- function(all, sig, meshannotation, category, p){
-    if(is.na(meshannotation)){
+.MeSHENRICHMENT <- function(all, sig, e, category, p){
+    if(class(e$meshannotation) != "MeSHDb"){
         list(Term=NULL, Pvalue=NULL)
     }else{
         meshParams <- new("MeSHHyperGParams",
             geneIds = sig,
             universeGeneIds = all,
-            annotation = meshannotation,
+            annotation = "e$meshannotation",
+            meshdb = "e$meshdb",
             category = category,
             database = "gene2pubmed",
             pvalueCutoff = p,
@@ -105,7 +106,9 @@
 
 .NOSIG <- list(Term=NULL, PValue=NULL)
 
-.ENRICHMENT <- function(all, sig, meshannotation, reactomespc, goenrich, meshenrich, reactomeenrich, doenrich, ncgenrich, dgnenrich, p, ah){
+.ENRICHMENT <- function(all, sig, e,
+    reactomespc, goenrich, meshenrich, reactomeenrich,
+    doenrich, ncgenrich, dgnenrich, p, ah){
     # GO
     if(goenrich){
         cat("GO-Enrichment Analysis is running...(1/3)\n")
@@ -122,37 +125,37 @@
     # MeSH
     if(meshenrich){
         cat("MeSH-Enrichment Analysis is running...(1/16)\n")
-        A <- .MeSHENRICHMENT(all, sig, meshannotation, "A", p)
+        A <- .MeSHENRICHMENT(all, sig, e, "A", p)
         cat("MeSH-Enrichment Analysis is running...(2/16)\n")
-        B <- .MeSHENRICHMENT(all, sig, meshannotation, "B", p)
+        B <- .MeSHENRICHMENT(all, sig, e, "B", p)
         cat("MeSH-Enrichment Analysis is running...(3/16)\n")
-        C <- .MeSHENRICHMENT(all, sig, meshannotation, "C", p)
+        C <- .MeSHENRICHMENT(all, sig, e, "C", p)
         cat("MeSH-Enrichment Analysis is running...(4/16)\n")
-        D <- .MeSHENRICHMENT(all, sig, meshannotation, "D", p)
+        D <- .MeSHENRICHMENT(all, sig, e, "D", p)
         cat("MeSH-Enrichment Analysis is running...(5/16)\n")
-        E <- .MeSHENRICHMENT(all, sig, meshannotation, "E", p)
+        E <- .MeSHENRICHMENT(all, sig, e, "E", p)
         cat("MeSH-Enrichment Analysis is running...(6/16)\n")
-        F <- .MeSHENRICHMENT(all, sig, meshannotation, "F", p)
+        F <- .MeSHENRICHMENT(all, sig, e, "F", p)
         cat("MeSH-Enrichment Analysis is running...(7/16)\n")
-        G <- .MeSHENRICHMENT(all, sig, meshannotation, "G", p)
+        G <- .MeSHENRICHMENT(all, sig, e, "G", p)
         cat("MeSH-Enrichment Analysis is running...(8/16)\n")
-        H <- .MeSHENRICHMENT(all, sig, meshannotation, "H", p)
+        H <- .MeSHENRICHMENT(all, sig, e, "H", p)
         cat("MeSH-Enrichment Analysis is running...(9/16)\n")
-        I <- .MeSHENRICHMENT(all, sig, meshannotation, "I", p)
+        I <- .MeSHENRICHMENT(all, sig, e, "I", p)
         cat("MeSH-Enrichment Analysis is running...(10/16)\n")
-        J <- .MeSHENRICHMENT(all, sig, meshannotation, "J", p)
+        J <- .MeSHENRICHMENT(all, sig, e, "J", p)
         cat("MeSH-Enrichment Analysis is running...(11/16)\n")
-        K <- .MeSHENRICHMENT(all, sig, meshannotation, "K", p)
+        K <- .MeSHENRICHMENT(all, sig, e, "K", p)
         cat("MeSH-Enrichment Analysis is running...(12/16)\n")
-        L <- .MeSHENRICHMENT(all, sig, meshannotation, "L", p)
+        L <- .MeSHENRICHMENT(all, sig, e, "L", p)
         cat("MeSH-Enrichment Analysis is running...(13/16)\n")
-        M <- .MeSHENRICHMENT(all, sig, meshannotation, "M", p)
+        M <- .MeSHENRICHMENT(all, sig, e, "M", p)
         cat("MeSH-Enrichment Analysis is running...(14/16)\n")
-        N <- .MeSHENRICHMENT(all, sig, meshannotation, "N", p)
+        N <- .MeSHENRICHMENT(all, sig, e, "N", p)
         cat("MeSH-Enrichment Analysis is running...(15/16)\n")
-        V <- .MeSHENRICHMENT(all, sig, meshannotation, "V", p)
+        V <- .MeSHENRICHMENT(all, sig, e, "V", p)
         cat("MeSH-Enrichment Analysis is running...(16/16)\n")
-        Z <- .MeSHENRICHMENT(all, sig, meshannotation, "Z", p)
+        Z <- .MeSHENRICHMENT(all, sig, e, "Z", p)
     }else{
         A <- .NOSIG
         B <- .NOSIG

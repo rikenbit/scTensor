@@ -68,6 +68,7 @@ setMethod("cellCellSetting", signature(sce="SingleCellExperiment"),
     }
     # Overwrite
     metadata(sce) <- list(lrbase=lrbase$conn@dbname,
+        ahid=names(lrbase$dbfile),
         lr.evidence=lr.evidence, label=label, color=color)
     assign(userobjects, sce, envir=.GlobalEnv)
 }
@@ -104,7 +105,6 @@ setMethod("cellCellRanks",
     if(num.iter2 < 0){
         stop("Please specify the num.iter2 as positive integer")
     }
-
     # Import from sce object
     sce <- list(...)[[1]]
     # Import expression matrix
@@ -114,12 +114,10 @@ setMethod("cellCellRanks",
     celltypes <- metadata(sce)$color
     names(celltypes) <- metadata(sce)$label
     l <- length(unique(celltypes))
-
     # Tensor is generated
     tnsr <- .cellCellDecomp.Third(input, LR, celltypes, ranks=c(1,1,1),
         rank=1, centering, mergeas, outerfunc, comb, num.sampling,
         num.perm, decomp=FALSE, thr1=log2(5), thr2=25, thr3=0.95, verbose)$cellcelllrpairpattern
-
     # Limit
     l1 <- min(dim(tnsr)[1], dim(tnsr)[2]*dim(tnsr)[3])
     l2 <- min(dim(tnsr)[2], dim(tnsr)[3]*dim(tnsr)[1])
@@ -252,7 +250,8 @@ setMethod("cellCellDecomp", signature(sce="SingleCellExperiment"),
 
     # Overwrite
     metadata(sce) <- list(lrbase=metadata(sce)$lrbase,
-        lr.evidence=lr.evidence,
+        ahid=metadata(sce)$ahid,
+        lr.evidence=metadata(sce)$lr.evidence,
         color=metadata(sce)$color, label=metadata(sce)$label,
         algorithm=algorithm, sctensor=res.sctensor, ranks=ranks,
         datasize=datasize, recerror=recerror, relchange=relchange)
@@ -374,11 +373,4 @@ cellCellSimulate <- function(params = newCCSParams(), verbose = TRUE){
     # Output
     if(verbose){message("Done!")}
     list(input=input, LR=LR, celltypes=celltypes, LR_CCI=LR_CCI)
-}
-
-#
-# convertToNCBIGeneID
-#
-convertToNCBIGeneID <- function(input, rowID, LefttoRight) {
-  .Deprecated(msg = "`scTensor::convertToNCBIGeneID` is deprecated; use `scTGIF::convertRowID` instead.")
 }

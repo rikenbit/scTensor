@@ -1,6 +1,5 @@
 .geneInformation_taxid <- function(sce, ah, taxid, LR){
     targetGeneID <- as.character(unique(c(LR$GENEID_L, LR$GENEID_R)))
-
     # Gene symbol
     if("SYMBOL" %in% AnnotationDbi::columns(ah) && !is.null(ah)){
         message("Related gene names are retrieved from AnnotationHub...")
@@ -80,19 +79,15 @@
     }
 
     # MeSH
-    MeSHname <- paste0("MeSH.", gsub(".eg.db.sqlite", "",
-        strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3]), ".eg.db")
-    MeSH.load <- eval(parse(text=paste0("try(requireNamespace('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
-    if(!MeSH.load){
-        eval(parse(text=paste0("try(BiocManager::install('",
-            MeSHname, "', update=FALSE, ask=FALSE), silent=TRUE)")))
-    }
-    MeSH.load2 <- eval(parse(text=paste0("try(require('", MeSHname, "', quietly=TRUE), silent=TRUE)")))
-    if(MeSH.load2){
-        eval(parse(text=paste0("library(", MeSHname, ")")))
+    ah <- AnnotationHub()
+    mcah <- mcols(ah)
+    msg <- gsub("LRBaseDb", "MeSHDb", ah[metadata(sce)$ahid]$title)
+    ahid <- mcah@rownames[which(mcah@listData$title == msg)]
+    if(length(ahid) != 0){
         message(paste0("Related MeSH IDs are retrieved from ",
-            "MeSH.XXX.eg.db-type package..."))
-        MeSHobj <- eval(parse(text=MeSHname))
+            "AnnotationHub..."))
+        MeSHfile <- ah[[ahid]]
+        MeSHobj <- MeSHDbi::MeSHDb(MeSHfile)
         MeSH <- MeSHDbi::select(MeSHobj, columns=c("MESHID", "GENEID"),
             keytype="GENEID",
             keys=targetGeneID)

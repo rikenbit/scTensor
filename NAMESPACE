@@ -40,8 +40,8 @@ importFrom("utils", "data")
 importFrom("grDevices", "hcl")
 
 importFrom(visNetwork, visNetwork)
-importFrom(schex, make_hexbin, plot_hexbin_gene)
+importFrom(schex, make_hexbin, plot_hexbin_feature)
 importFrom(ggplot2, scale_fill_gradient, ggsave)
 
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
-export(cellCellSimulate, newCCSParams, convertToNCBIGeneID)
+export(cellCellSimulate, newCCSParams)

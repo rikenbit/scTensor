@@ -1,7 +1,14 @@
+VERSION 2.4.1
+------------------------
+   o A vignette modified.
+
 VERSION 2.4.0
 ------------------------
    o Regularizer parameter (L2_A/L1_A) was added in cellCellDecomp() ("ntd", "ntd2").
    o Multilinear CX Decompotision was added in cellCellDecomp() ("cx").
+   o convertNCBIGeneID is removed.
+   o The vignettes were modified.
+   o Support of LRBase.XXX.eg.db-type packages is completely deprecated
 
 VERSION 2.0.0
 ------------------------

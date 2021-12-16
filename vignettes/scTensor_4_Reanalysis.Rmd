@@ -25,7 +25,7 @@ vignette: |
 Here, we introduced the objects saved in reanalysis.RData.
 
 ```{r reanalysis.RData, eval=FALSE}
-suppressPackageStartupMessages(library("scTensor"))
+library("scTensor")
 load("reanalysis.RData")
 ```
 
@@ -65,14 +65,20 @@ For example, some users want to perform `cellCellDecomp` with different ranks, p
 To do such tasks, just type like belows.
 
 ```{r Reanalysis, eval=FALSE}
-if(!require(LRBase.Hsa.eg.db)){
-    BiocManager::install("LRBase.Hsa.eg.db")
-    suppressPackageStartupMessages(library(LRBase.Hsa.eg.db))
-}
+library("AnnotationHub")
+library("LRBaseDbi")
+
+# Create LRBase object
+ah <- AnnotationHub()
+dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v002"))[[1]]
+LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
+
 # Register the file pass of user's LRBase
 metadata(sce)$lrbase <- dbfile(LRBase.Hsa.eg.db)
+
 # CCI Tensor Decomposition
 cellCellDecomp(sce, ranks=c(6,5), assayNames="normcounts")
+
 # HTML Report
 cellCellReport(sce, reducedDimNames="TSNE", assayNames="normcounts",
     title="Cell-cell interaction within Germline_Male, GSE86146",

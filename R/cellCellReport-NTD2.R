@@ -31,45 +31,22 @@
         taxid <- dbGetQuery(con, "SELECT * FROM METADATA")
         taxid <- taxid[which(taxid$NAME == "TAXID"), "VALUE"]
         dbDisconnect(con)
-        if(length(taxid) == 0){
-            ###########################################
-            # Threename based information retrieval
-            ###########################################
-            message(paste("Old LRBase is being used.",
-                "Please consider updating it to the newer version 2.0."))
-            # Species
-            spc <- gsub(".eg.db.sqlite", "",
-                strsplit(metadata(sce)$lrbase, "LRBase.")[[1]][3])
-            taxid <- as.character(.TAXID[spc])
-            # biomaRt Setting
-            ah <- .annotationhub[[spc]]()
-            # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneInformation(sce, ah, spc, LR)
-            # The version of LRBase.XXX.eg.db
-            lrversion <- 1
-        }else{
-            ###########################################
-            # Taxonomy ID based information retrieval
-            ###########################################
-            # biomaRt Setting
-            ah <- .annotationhub_taxid(taxid)
-            # GeneName, Description, GO, Reactome, MeSH
-            GeneInfo <- .geneInformation_taxid(sce, ah, taxid, LR)
-            # The version of LRBase.XXX.eg.db
-            lrversion <- 2
-        }
-
+        ###########################################
+        # Taxonomy ID based information retrieval
+        ###########################################
+        # biomaRt Setting
+        ah <- .annotationhub_taxid(taxid)
+        # GeneName, Description, GO, Reactome, MeSH
+        GeneInfo <- .geneInformation_taxid(sce, ah, taxid, LR)
         # Cell Label
         celltypes <- metadata(sce)$color
         names(celltypes) <- metadata(sce)$label
-
         # Setting of schex
         sce <- make_hexbin(sce, nbins=nbins,
             dimension_reduction=reducedDimNames)
         # Plot Ligand/Receptor Genes
         suppressMessages(
             invisible(.genePlot(sce, assayNames, input, out.dir, GeneInfo, LR)))
-
         # Plot (Each <L,R,*>)
         out <- vapply(seq_along(selected), function(i){
             filenames <- paste0(out.dir,
@@ -84,7 +61,6 @@
         }, 0L)
         # <L,R,>
         SelectedLR <- index[selected, seq_len(2)]
-
         # Setting for Parallel Computing
         message(paste0(length(selected),
             " LR vectors will be calculated :"))
@@ -117,7 +93,6 @@
         e$doenrich <- doenrich
         e$ncgenrich <- ncgenrich
         e$dgnenrich <- dgnenrich
-        e$lrversion <- lrversion
 
         # EachVec（Heavy...）
         if(is.vector(SelectedLR)){
