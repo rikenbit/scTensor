@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/135140761.svg)](https://zenodo.org/badge/latestdoi/135140761)
+[![](https://img.shields.io/badge/release%20version-2.6.0-green.svg)](https://www.bioconductor.org/packages/release/bioc/html/scTensor.html)
+
 # scTensor
  R package for detection of cell-cell interaction using Non-negative Tensor Decomposition
 
