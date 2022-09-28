@@ -1,4 +1,4 @@
-name: Build, Test, and Push Docker image to GHCR
+name: DockerHub/GHCR
 
 env:
   IMAGE_NAME: sctensor
