@@ -1,0 +1,70 @@
+name: Build, Test, and Push Docker image to GHCR
+
+env:
+  IMAGE_NAME: sctensor
+  repo-name: koki/sctensor
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build_push_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Declare some variables
+        id: vars
+        shell: bash
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Build
+        run: docker build -t ${{ github.repository_owner }}/${{ env.IMAGE_NAME }} .
+
+      - name: Tag (Latest)
+        run: docker tag ${{ github.repository_owner }}/${{ env.IMAGE_NAME }} ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
+      - name: Tag (SHA)
+        run: docker tag ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.sha_short }}
+
+      - name: Push (Latest)
+        run: docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Push (SHA)
+        run: docker push ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.sha_short }}
+
+      - uses: docker/build-push-action@v1
+        with:
+          # The two entries below need to be entered as
+          # github secrets. The "secret" names are "DOCKER_USERNAME"
+          # and "DOCKER_PASSWORD". See https://docs.github.com/en/actions/reference/encrypted-secrets#creating-encrypted-secrets-for-a-repository
+          # for detailed instructions.
+          #
+          # DO NOT EDIT THESE ENTRIES HERE. Doing so will
+          # expose your docker username and password on github.
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          # Use the environment variable on first few lines to set repo name--just centralizes changes
+          repository: ${{ env.repo-name }}
+          tag_with_ref: true
+          tag_with_sha: true
+          tags: latest
+
+# Ref
+# https://github.com/marketplace/actions/docker-login
+# https://github.com/inutano/cwl-log-generator/blob/master/.github/workflows/main.yml
+# https://www.docker.com/blog/first-docker-github-action-is-here/
+# https://github.com/docker/login-action
