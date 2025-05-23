@@ -38,7 +38,7 @@ sce <- SingleCellExperiment(assays=list(counts = input))
 label <- ...
 # LRBase.XXX.eg.db
 ah <- AnnotationHub()
-dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v002"))[[1]]
+dbfile <- query(ah, c("LRBaseDb", "Homo sapiens"))[[1]]
 LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
 # Setting
 cellCellSetting(sce, LRBase.Hsa.eg.db, label)
