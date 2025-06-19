@@ -98,7 +98,7 @@ The result is saved as HTML report which contains with multiple files.
 	    library(LRBaseDbi)
 	}
 	ah <- AnnotationHub()
-	dbfile <- query(ah, c("LRBaseDb", "Homo sapiens", "v002"))[[1]]
+	dbfile <- query(ah, c("LRBaseDb", "Homo sapiens"))[[1]]
 	LRBase.Hsa.eg.db <- LRBaseDbi::LRBaseDb(dbfile)
 
 	# Data Loading
