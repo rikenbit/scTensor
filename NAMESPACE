@@ -45,3 +45,4 @@ importFrom(ggplot2, scale_fill_gradient, ggsave)
 
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
 export(cellCellSimulate, newCCSParams)
+export(BuildSignedCCI)

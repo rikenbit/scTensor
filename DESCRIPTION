@@ -1,7 +1,7 @@
 Package: scTensor
 Type: Package
 Title: Detection of cell-cell interaction from single-cell RNA-seq dataset by tensor decomposition
-Version: 2.18.2
+Version: 2.23.1
 Authors@R: c(person("Koki", "Tsuyuzaki", role = c("aut", "cre"),
                 email = "k.t.the-answer@hotmail.co.jp"),
             person("Kozo", "Nishida", role = "aut",
@@ -16,6 +16,7 @@ Imports: methods,
     AnnotationDbi,
     SummarizedExperiment,
     SingleCellExperiment,
+    symTensor,
     nnTensor (>= 1.1.5),
     ccTensor (>= 1.0.2),
     rTensor (>= 1.4.8),
