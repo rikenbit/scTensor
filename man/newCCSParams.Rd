@@ -4,9 +4,6 @@
 \usage{
 newCCSParams()
 }
-\arguments{
-\item{}{Nothing.}
-}
 \value{
 New Params object.
 }

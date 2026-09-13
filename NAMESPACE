@@ -31,7 +31,7 @@ importFrom(Category, hyperGTest)
 importFrom(meshr, meshHyperGTest)
 import(GOstats)
 importFrom(ReactomePA, enrichPathway)
-importFrom(DOSE, enrichDGN, enrichDO, enrichNCG)
+importFrom(DOSE, enrichDO, enrichNCG)
 
 importFrom(crayon, bold, blue, green)
 importFrom(checkmate, assertClass, assertList)
@@ -45,3 +45,4 @@ importFrom(ggplot2, scale_fill_gradient, ggsave)
 
 exportMethods(cellCellSetting, cellCellRanks, cellCellDecomp, cellCellReport, getParam, "setParam<-")
 export(cellCellSimulate, newCCSParams)
+export(BuildSignedCCI)

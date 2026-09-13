@@ -16,7 +16,7 @@ cellCellReport(sce, reducedDimNames,
     author="The person who runs this script", assayNames = "counts", thr=100,
     top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=FALSE, nbins=40)
 }
 
 \arguments{
@@ -72,7 +72,11 @@ Whether DO-Enrichment analysis is performed (Default: TRUE)
 Whether NCG-Enrichment analysis is performed (Default: TRUE)
 }
 \item{dgnenrich}{
-Whether DGN-Enrichment analysis is performed (Default: TRUE)
+Whether DGN-Enrichment analysis is performed (Default: FALSE).
+DGN enrichment is currently unavailable because \code{enrichDGN()} was
+removed from the \pkg{DOSE} package following a DisGeNET licensing change.
+If set to \code{TRUE}, a warning is issued and the parameter is treated
+as \code{FALSE}.
 }
 \item{nbins}{
 The number of bins used for the two dimensional plot of schex (Default: 40)
@@ -137,7 +141,7 @@ The result is saved as HTML report which contains with multiple files.
         assayNames="counts", thr=100,
         top="full", p=0.05, upper=20,
         goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-        doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40)
+        doenrich=TRUE, ncgenrich=TRUE, dgnenrich=FALSE, nbins=40)
     }else{
         showMethods("cellCellReport")
     }

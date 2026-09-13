@@ -92,16 +92,7 @@
 }
 
 .DGNENRICHMENT <- function(all, sig, p){
-    out <- try(enrichDGN(gene=sig,
-      pvalueCutoff=p, readable=TRUE), silent=TRUE)
-    if(is(out)[1] == "try-error"){
-        list(Term=NULL, Pvalue=NULL)
-    }else if(is.null(out)){
-        list(Term=NULL, Pvalue=NULL)
-    }else{
-        list(Term=out@result$Description,
-            Pvalue=out@result$pvalue)
-    }
+    list(Term=NULL, Pvalue=NULL)
 }
 
 .NOSIG <- list(Term=NULL, PValue=NULL)

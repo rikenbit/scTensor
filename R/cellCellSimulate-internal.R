@@ -101,8 +101,11 @@
         cciInfo[[x]]$fc
     }))
     set.seed(seed)
-    data("m")
-    data("v")
+    e <- new.env(parent = emptyenv())
+    data("m", envir = e)
+    data("v", envir = e)
+    m <- e$m
+    v <- e$v
     disp <- (v - m)/m^2
     rn.index <- sample(which(disp > 0), nGene, replace = TRUE)
     row.index <- list()

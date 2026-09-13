@@ -267,7 +267,7 @@ setGeneric("cellCellReport", function(sce, reducedDimNames,
     author="The person who runs this script", assayNames="counts", thr=100,
     top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40){
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=FALSE, nbins=40){
     standardGeneric("cellCellReport")})
 
 setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
@@ -285,9 +285,19 @@ setMethod("cellCellReport", signature(sce="SingleCellExperiment"),
     author="The person who runs this script", assayNames="counts",
     thr=100, top="full", p=0.05, upper=20,
     goenrich=TRUE, meshenrich=TRUE, reactomeenrich=TRUE,
-    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=TRUE, nbins=40, ...){
+    doenrich=TRUE, ncgenrich=TRUE, dgnenrich=FALSE, nbins=40, ...){
     # Import from sce object
     sce <- list(...)[[1]]
+    # DGN-check: enrichDGN() was removed from DOSE
+    if(dgnenrich){
+        warning(
+            "DGN enrichment is currently unavailable because enrichDGN() ",
+            "was removed from the DOSE package (>= 4.7.1) following a ",
+            "DisGeNET licensing change. Setting dgnenrich=FALSE.",
+            call. = FALSE
+        )
+        dgnenrich <- FALSE
+    }
     # algorithm-check
     if(metadata(sce)$algorithm %ni% c("cx", "ntd2", "ntd")){
         stop(paste0("cellCellReport can be performed by the result of",
