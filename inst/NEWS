@@ -1,7 +1,8 @@
-VERSION 2.23.3
+VERSION 2.23.4
 ------------------------
+   o Removed BuildSignedCCI export and man page (function was reverted but
+     NAMESPACE entry remained, causing undefined export error).
    o Fixed empty \item label in newCCSParams.Rd (R CMD check WARNING).
-   o Added manual page for BuildSignedCCI (R CMD check WARNING).
    o Removed unused symTensor from Imports (R CMD check NOTE).
    o Fixed 'no visible binding' NOTE for m and v in .simulateDropoutCounts.
 
